@@ -1,0 +1,38 @@
+monki-focus Android app
+Copyright monki-focus contributors
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+Third-party references
+======================
+
+The Android detector packs (packages/rules/detectors/android/*.pack.json),
+the synthetic UI dump fixtures (packages/rules/fixtures/detectors/android/)
+and the detection approach of the :detectors module were informed by the
+following GPL-3.0 projects. No source code was copied from them: the packs
+reuse view ids (facts about the target apps' UI) and the module reimplements
+the ideas below as data-only predicates.
+
+- curbox (https://github.com/nethical6/curbox), GPL-3.0
+  Instagram Reels viewer and DM reply-bar ids (clips_viewer_view_pager,
+  clips_ufi_component, reply_bar_container_scroll_view), YouTube Shorts ids
+  (reel_recycler, reel_player_page_content), browser URL bar ids (url_bar for
+  Chromium browsers, mozac_browser_toolbar_url_view, ADDRESSBAR_URL_BOX), and
+  the idea of guarding our own accessibility detail and device-admin screens
+  by our own label.
+
+- Scrolless (https://github.com/duartebarbosadev/Scrolless), GPL-3.0
+  Instagram Stories viewer id (reel_viewer_root), the DM-reel exemption
+  signals (sender_username_or_fullname, sender_timestamp, reply_bar_edittext)
+  vetoed by suggested_title, YouTube Shorts player id
+  (reel_player_page_container), and content-description fallbacks with
+  per-language label lists.
+
+- nudge (https://github.com/astraedus/nudge), GPL-3.0
+  Instagram home and tab-bar ids measured from its sanitised dumps
+  (tab_bar, feed_tab, clips_tab, title_logo, sticky_header_list,
+  action_bar), the finding that Instagram tabs report selected=false, and
+  the practice of replaying sanitised uiautomator dumps in JVM tests.
+
+GPL-3.0 code may be combined with AGPL-3.0 code (GPL-3.0 section 13). Should
+code ever be ported from these projects, it keeps its original copyright
+notice and is listed here.
