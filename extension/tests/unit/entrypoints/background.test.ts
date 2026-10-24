@@ -1,12 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { beforeEach, describe, expect, it } from 'vitest'
+import type { Ruleset } from '@monki-focus/rules/pure'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeBrowser } from 'wxt/testing/fake-browser'
+import { RULESET_KEY } from '../../../src/background/rules/RulesetStore'
 import background from '../../../src/entrypoints/background'
-import { commandMessage, type CommandResult } from '../../../src/shared/messages'
+import {
+  commandMessage,
+  type CommandMessage,
+  type CommandResult,
+  type CommandType,
+} from '../../../src/shared/messages'
+
+function send<T extends CommandType>(
+  message: CommandMessage<T>,
+  sender: Parameters<typeof fakeBrowser.runtime.onMessage.trigger>[1]
+): Promise<CommandResult<T>> {
+  return new Promise((resolve) => {
+    void fakeBrowser.runtime.onMessage.trigger(message, sender, resolve)
+  })
+}
+
+async function storedRuleset(): Promise<Ruleset | undefined> {
+  return (await fakeBrowser.storage.local.get(RULESET_KEY))[RULESET_KEY] as Ruleset | undefined
+}
 
 describe('background entrypoint', () => {
+  let updateEnabledRulesets: ReturnType<typeof vi.fn>
+
   beforeEach(() => {
     fakeBrowser.reset()
+    updateEnabledRulesets = vi.fn(() => Promise.resolve())
+    fakeBrowser.declarativeNetRequest.updateEnabledRulesets =
+      updateEnabledRulesets as typeof fakeBrowser.declarativeNetRequest.updateEnabledRulesets
   })
 
   it('background_registers_command_router_on_start', () => {
@@ -20,13 +45,7 @@ describe('background entrypoint', () => {
   it('background_answers_a_ping_from_its_own_extension', async () => {
     background.main()
 
-    const response = await new Promise<CommandResult<'system.ping'>>((resolve) => {
-      void fakeBrowser.runtime.onMessage.trigger(
-        commandMessage('system.ping', {}),
-        { id: fakeBrowser.runtime.id },
-        resolve
-      )
-    })
+    const response = await send(commandMessage('system.ping', {}), { id: fakeBrowser.runtime.id })
 
     expect(response.ok).toBe(true)
   })
@@ -34,14 +53,43 @@ describe('background entrypoint', () => {
   it('background_rejects_a_ping_from_a_foreign_sender', async () => {
     background.main()
 
-    const response = await new Promise<CommandResult<'system.ping'>>((resolve) => {
-      void fakeBrowser.runtime.onMessage.trigger(
-        commandMessage('system.ping', {}),
-        { id: 'another-extension-id' },
-        resolve
-      )
-    })
+    const response = await send(commandMessage('system.ping', {}), { id: 'another-extension-id' })
 
     expect(response).toEqual({ ok: false, error: 'sender.rejected' })
+  })
+
+  it('install_pins_the_device_time_zone_into_the_starter_rule_set', async () => {
+    background.main()
+
+    await fakeBrowser.runtime.onInstalled.trigger({ reason: 'install' })
+
+    await vi.waitFor(async () => {
+      expect((await storedRuleset())?.timeZone).toBe(
+        Intl.DateTimeFormat().resolvedOptions().timeZone
+      )
+    })
+  })
+
+  it('start_up_enables_the_shorts_redirect_for_the_starter_rule_set', async () => {
+    background.main()
+
+    await vi.waitFor(() => {
+      expect(updateEnabledRulesets).toHaveBeenCalledWith({ enableRulesetIds: ['shorts-redirect'] })
+    })
+  })
+
+  it('a_content_script_gets_the_feed_decision_of_its_page', async () => {
+    background.main()
+
+    const response = await send(
+      commandMessage('decision.get', { url: 'https://www.reddit.com/' }),
+      {
+        id: fakeBrowser.runtime.id,
+        tab: { url: 'https://www.reddit.com/', id: 1 } as never,
+      }
+    )
+
+    expect(response.ok).toBe(true)
+    if (response.ok) expect(response.data.surface).toBe('reddit.feed')
   })
 })

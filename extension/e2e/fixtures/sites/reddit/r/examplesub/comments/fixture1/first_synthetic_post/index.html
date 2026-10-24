@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Synthetic stand-in for a Reddit permalink: real structure, fake content. -->
+<html lang="en" data-fixture="reddit-permalink">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture: reddit permalink</title>
+  </head>
+  <body>
+    <shreddit-app>
+      <shreddit-post post-title="First synthetic post">
+        <h1 slot="title">First synthetic post</h1>
+        <p>Synthetic body text for the permalink fixture.</p>
+      </shreddit-post>
+      <shreddit-comment-tree>
+        <shreddit-comment depth="0">
+          <p>A synthetic comment.</p>
+        </shreddit-comment>
+      </shreddit-comment-tree>
+    </shreddit-app>
+  </body>
+</html>

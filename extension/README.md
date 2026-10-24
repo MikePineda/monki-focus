@@ -35,13 +35,16 @@ repo (`*.pem` is gitignored).
 ## Layout
 
 ```
-src/entrypoints/   background.ts (wiring only), popup/, options/, gate/
-src/background/    service-worker modules (commands/CommandRouter.ts, ...)
-src/shared/        clock.ts (injected Clock), messages.ts (typed commands)
+src/entrypoints/   background.ts and feed-guard.content/ (wiring only), popup/, options/, gate/
+src/background/    service-worker modules (commands/, decisions/, rules/, shorts/)
+src/content/       feed guard: FeedGuard, FeedHider, SpaNavigationWatcher, FeedPlaceholder, ...
+src/sites/         per-site DOM selectors keyed by surface id (reddit, x, youtube, instagram)
+src/shared/        clock.ts, messages.ts (typed commands), bundledRulesCatalog.ts, FeedSurfaces.ts
 src/i18n/          catalogs/{en,es}.json, t.ts, locale.ts, LanguagePreference.ts, I18nContext.tsx
 src/theme/         tokens.css (imports @monki-focus/design-tokens), applyTheme.ts, bootTheme.ts
 src/ui/            Preact UI kit, one component per file with its own CSS
 src/dev/           UI kit gallery (dev.html, development build only)
+public/rules/      static DNR rulesets (shorts-redirect.json)
 public/_locales/   store name and description only
 tests/unit/        mirrors src/
 e2e/               Playwright: support/, fixtures/sites/<site>/, tests/
@@ -86,6 +89,87 @@ e2e/               Playwright: support/, fixtures/sites/<site>/, tests/
   both themes and both languages with synthetic data. `config/devOnlyEntrypoints.ts`
   marks it skipped in the e2e and production builds, so the zip never has it.
 - Inter is not bundled yet; the token font stack falls back to the system face.
+
+## Feeds and Shorts (E5)
+
+"Remove the feed, not the tool." Which page is which surface, and whether it
+is hidden, comes only from `@monki-focus/engine` over the user's rule set;
+the extension never lists feed paths.
+
+- **Decisions.** `DecisionService` (service worker) builds the engine catalog
+  once from `@monki-focus/rules/pure`, reads the rule set from
+  `storage.local` (`rules.ruleset`, created from the starter preset with the
+  device time zone at install; the engine pins it afterwards) and answers
+  `decision.get` with `decide(...)` at `instantOf(Date.now())`. Anything that
+  throws answers the engine's `engine_error` decision (block, hide every feed
+  of the site). The router only answers `decision.get` from a tab whose URL
+  has the same host as the URL asked about.
+- **Feed guard** (`feed-guard.content`, `document_start`, the four sites and
+  their subdomains/aliases). It injects one `<style>` whose rules key on
+  `html[data-mf-hide~="<surface>"]` (page content of the current surface)
+  and `html[data-mf-restrict~="<surface>"]` (entry points such as Shorts
+  shelves or the Reels link, hidden on every page while the surface is
+  restricted). Until the first answer it hides the page's surface when the
+  bundled catalog says it is a feed; after 1.5 s without an answer it stays
+  hidden and shows the placeholder (fail closed); a late answer still
+  applies. `SpaNavigationWatcher` re-evaluates on `popstate`,
+  `yt-navigate-finish`, `<title>` changes and a 1 s URL poll; nothing is
+  patched in the page's MAIN world.
+- **Placeholder.** `FeedPlaceholder` mounts in an open shadow root right
+  before the hidden feed, with the tokens and UI kit CSS inlined into the
+  shadow root only (`cssInjectionMode: 'manual'`): Reddit search and the
+  allowed communities (filled by E8), X Following and Search, YouTube search
+  and Subscriptions, Instagram Direct and Search. Text comes only from the
+  catalogs; nothing read from the page is shown or sent anywhere.
+- **Selectors** live in `src/sites/<site>.ts`, keyed by the surface ids of
+  `packages/rules/data/surfaces.json` (a test checks every key): custom
+  elements and stable attributes only (`shreddit-feed`, `data-testid`,
+  `ytd-browse[page-subtype]`, `is-shorts`, ARIA roles, exact `href`s), never
+  hashed class names. X "For you" is the first tab of the home tablist, by
+  position, never by its text.
+- **Shorts.** The static DNR ruleset `shorts-redirect` turns a hard load of
+  `https://(www.|m.)youtube.com/shorts/<11-char id>` into
+  `https://www.youtube.com/watch?v=<id>`. Chromium refuses to compile a
+  counted id followed by an optional tail (the 2 KB regex memory cap; the
+  rule is then silently skipped), so the ruleset spells the end of the id as
+  three anchored rules: end of URL, `/…` and `?…`. `ShortsRedirectSync`
+  enables or disables the ruleset with `updateEnabledRulesets` whenever the
+  rule set changes, at start-up and on every YouTube decision, according to
+  whether the rule set blocks or hides `youtube.shorts`. In-app navigations
+  to `/shorts/…` (which DNR never sees) are replaced by the watch URL in the
+  feed guard.
+- The `e2e` build can delay decisions (`e2e.decisionDelayMs` in
+  `storage.local`) to test the fail-closed timeout; the production bundle
+  drops that code.
+
+## Live smoke before release
+
+The E2E fixtures imitate the sites; the real ones change without notice.
+Before every release, in Chrome and in Brave, with the production zip loaded
+unpacked and the starter rule set:
+
+1. **Reddit** (`www.reddit.com`, signed out and signed in): the home feed and
+   `/r/popular/` are gone, the placeholder shows search; a search returns
+   results; a post permalink shows the post and its comments; old Reddit
+   (`old.reddit.com`) hides `#siteTable` on the front page only.
+2. **X** (`x.com` and `twitter.com`): Home shows the placeholder on "For you"
+   (check in a non-English UI too), "Following" shows its timeline, the
+   placeholder's Following button switches tabs, Explore is hidden and its
+   nav link is gone, a status permalink and search work.
+3. **YouTube**: the home grid is gone, the placeholder search opens
+   `/results`, Subscriptions works; no Shorts shelf on search results or a
+   watch page; the Shorts guide entry is hidden; pasting a `/shorts/<id>`
+   URL lands on `/watch?v=<id>`; clicking a Short inside the site (SPA) lands
+   on the watch page; `m.youtube.com/shorts/<id>` redirects as well.
+4. **Instagram**: `/reels/` and `/explore/` show the placeholder and their
+   nav links are gone; the home feed, Direct (`/direct/inbox/`), search and a
+   post permalink work.
+5. **No flash**: reload each feed page with the cache disabled; the feed
+   never paints before it disappears.
+6. **Placeholder**: right language (switch `ui.language`), right theme in
+   light and dark, keyboard reachable, nothing from the page inside it.
+7. If any selector no longer matches, update `src/sites/<site>.ts` and its
+   synthetic fixture under `e2e/fixtures/sites/` in the same change.
 
 ## E2E harness
 

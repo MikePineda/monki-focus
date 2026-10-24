@@ -24,6 +24,16 @@ export const SITE_HOST_PERMISSIONS = [
   '*://*.instagram.com/*',
 ] as const
 
+/**
+ * Static DNR rulesets in `public/rules`. `shorts-redirect` turns a hard
+ * `/shorts/<id>` load into `/watch?v=<id>`; it ships enabled (the starter
+ * rule set blocks Shorts) and the service worker toggles it with
+ * `updateEnabledRulesets` to follow the user's rule set.
+ */
+export const STATIC_RULESETS = [
+  { id: 'shorts-redirect', enabled: true, path: 'rules/shorts-redirect.json' },
+] as const
+
 const MODES_WITH_KEY: readonly string[] = ['development', 'e2e']
 
 /**
@@ -49,6 +59,9 @@ export function extensionManifest({ mode, devPublicKey }: ManifestInputs): UserM
     // Asked per origin when the user adds a friction/block rule for another site.
     optional_host_permissions: ['<all_urls>'],
     incognito: 'spanning',
+    declarative_net_request: {
+      rule_resources: STATIC_RULESETS.map((ruleset) => ({ ...ruleset })),
+    },
     // The intention gate is reached through a DNR redirect, so it must be
     // web accessible; the dynamic URL stops pages from fingerprinting the id.
     web_accessible_resources: [
