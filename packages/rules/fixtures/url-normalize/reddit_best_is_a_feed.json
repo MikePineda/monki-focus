@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.reddit_best_is_a_feed",
+  "kind": "url-normalize",
+  "description": "The front page sorted by best is a feed.",
+  "given": {
+    "urlText": "https://www.reddit.com/best/"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/best",
+    "pathKnown": true,
+    "surface": "reddit.feed"
+  }
+}

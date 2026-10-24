@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.youtube_gaming_is_explore",
+  "kind": "url-normalize",
+  "description": "The Gaming destination is an explore feed.",
+  "given": {
+    "urlText": "https://www.youtube.com/gaming"
+  },
+  "then": {
+    "host": "youtube.com",
+    "path": "/gaming",
+    "pathKnown": true,
+    "surface": "youtube.explore"
+  }
+}
