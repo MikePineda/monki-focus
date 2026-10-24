@@ -1,0 +1,19 @@
+{
+  "id": "schedule.bedtime_is_active_after_midnight",
+  "kind": "schedule",
+  "description": "Bedtime that started the evening before is active at 03:00.",
+  "given": {
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "now": "2026-10-27T03:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "phase": "active"
+  }
+}

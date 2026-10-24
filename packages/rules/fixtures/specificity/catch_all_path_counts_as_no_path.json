@@ -1,0 +1,69 @@
+{
+  "id": "specificity.catch_all_path_counts_as_no_path",
+  "kind": "specificity",
+  "description": "A site rule with path `/**` is not a refinement, so it does not beat the Shorts surface block.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-shorts-block",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.shorts"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "r-yt-all-allow",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com",
+            "path": "/**"
+          },
+          "mode": "allow",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.youtube.com/shorts/abc123DEF45"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": "r-shorts-block",
+    "reason": "rule_match",
+    "explanationKey": "decision.blocked_by_rule"
+  }
+}

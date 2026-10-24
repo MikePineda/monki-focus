@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.url_with_scheme_and_no_path_is_the_root",
+  "kind": "url-normalize",
+  "description": "With a scheme, a URL without a path is the root page.",
+  "given": {
+    "urlText": "https://reddit.com"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/",
+    "pathKnown": true,
+    "surface": "reddit.feed"
+  }
+}

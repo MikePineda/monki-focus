@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/escalation.schema.json",
+  "title": "Escalation",
+  "description": "Friction escalation state machine of one target group (SEMANTICS.md §7). Every field is always present; unused fields are null. `lastActivityAt` is the last event that changed the state; the 2-hour session reset is measured from it.",
+  "$defs": {
+    "targetGroup": {
+      "title": "TargetGroup",
+      "description": "The id of the rule that produced the gate or block, or `bedtime`.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    },
+    "phase": {
+      "title": "EscalationPhase",
+      "type": "string",
+      "enum": [
+        "idle",
+        "pausing",
+        "asking",
+        "active",
+        "timed_out",
+        "override_waiting",
+        "override_active"
+      ]
+    },
+    "nullableUtcInstant": {
+      "oneOf": [
+        {
+          "$ref": "time.schema.json#/$defs/utcInstant"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state": {
+      "title": "EscalationState",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetGroup",
+        "phase",
+        "attemptCount",
+        "lastAttemptAt",
+        "lastActivityAt",
+        "brokenCount",
+        "lastFrictionType",
+        "gate",
+        "pauseEndsAt",
+        "pendingExtension",
+        "intentionExpiresAt",
+        "overrideReadyAt",
+        "overrideEndsAt"
+      ],
+      "properties": {
+        "targetGroup": {
+          "$ref": "#/$defs/targetGroup"
+        },
+        "phase": {
+          "$ref": "#/$defs/phase"
+        },
+        "attemptCount": {
+          "description": "Gate attempts in the current session (resets after 2 quiet hours).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "lastAttemptAt": {
+          "$ref": "#/$defs/nullableUtcInstant"
+        },
+        "lastActivityAt": {
+          "$ref": "#/$defs/nullableUtcInstant"
+        },
+        "brokenCount": {
+          "description": "Intentions extended (broken) in the current session; the third extension needs a full gate.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        },
+        "lastFrictionType": {
+          "oneOf": [
+            {
+              "$ref": "decision.schema.json#/$defs/frictionType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gate": {
+          "oneOf": [
+            {
+              "$ref": "decision.schema.json#/$defs/gate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pauseEndsAt": {
+          "$ref": "#/$defs/nullableUtcInstant"
+        },
+        "pendingExtension": {
+          "description": "True while the doubled pause of an extension runs; `pause_elapsed` then grants 5 minutes.",
+          "type": "boolean"
+        },
+        "intentionExpiresAt": {
+          "$ref": "#/$defs/nullableUtcInstant"
+        },
+        "overrideReadyAt": {
+          "$ref": "#/$defs/nullableUtcInstant"
+        },
+        "overrideEndsAt": {
+          "$ref": "#/$defs/nullableUtcInstant"
+        }
+      }
+    },
+    "event": {
+      "title": "EscalationEvent",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/simpleEvent"
+        },
+        {
+          "$ref": "#/$defs/commitEvent"
+        }
+      ]
+    },
+    "simpleEvent": {
+      "title": "EscalationSimpleEvent",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "visit",
+            "pause_elapsed",
+            "close",
+            "intention_expired",
+            "leave",
+            "extend",
+            "emergency_request",
+            "emergency_wait_elapsed",
+            "emergency_expired"
+          ]
+        }
+      }
+    },
+    "commitEvent": {
+      "title": "EscalationCommitEvent",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "minutes", "typedWords", "guardianKeyVerified"],
+      "properties": {
+        "type": {
+          "const": "commit"
+        },
+        "minutes": {
+          "type": "integer",
+          "enum": [5, 10, 15]
+        },
+        "typedWords": {
+          "description": "Words in the typed intention (the text itself never reaches the engine).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "guardianKeyVerified": {
+          "type": "boolean"
+        }
+      }
+    },
+    "effect": {
+      "title": "EscalationEffect",
+      "type": "string",
+      "enum": ["record_bypass"]
+    }
+  }
+}

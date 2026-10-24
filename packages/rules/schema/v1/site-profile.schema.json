@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/site-profile.schema.json",
+  "title": "SiteProfile",
+  "description": "Maps URL paths of one site to surfaces (data/sites/<domain>.json). Applies to `domain` and its subdomains; `aliases` are rewritten to `domain` during URL normalisation. DOM selectors never live here (they belong to the extension).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "domain", "aliases", "spaNavigation", "surfaces"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "domain": { "$ref": "target.schema.json#/$defs/domain" },
+    "aliases": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "target.schema.json#/$defs/domain" }
+    },
+    "spaNavigation": {
+      "description": "How the extension notices in-page navigations.",
+      "type": "string",
+      "enum": ["history", "yt-navigate-finish"]
+    },
+    "surfaces": {
+      "description": "Surface id to the path globs that resolve to it.",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 32,
+      "propertyNames": { "$ref": "target.schema.json#/$defs/surfaceId" },
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 32,
+        "uniqueItems": true,
+        "items": { "$ref": "target.schema.json#/$defs/pathGlob" }
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/bedtime.schema.json",
+  "title": "Bedtime",
+  "description": "Nightly window that blocks distracting targets (category level <= 25). `days` are the days the window starts on; the warning phase is the `warnMinutesBefore` minutes before each start.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["enabled", "days", "start", "end", "warnMinutesBefore"],
+  "properties": {
+    "enabled": { "type": "boolean" },
+    "days": { "$ref": "schedule.schema.json#/$defs/weekdays" },
+    "start": { "$ref": "schedule.schema.json#/$defs/timeOfDay" },
+    "end": { "$ref": "schedule.schema.json#/$defs/timeOfDay" },
+    "warnMinutesBefore": { "type": "integer", "minimum": 0, "maximum": 120 }
+  }
+}

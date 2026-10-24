@@ -1,0 +1,35 @@
+{
+  "id": "activity.synced_blocks_never_contain_titles_or_urls",
+  "kind": "activity",
+  "operation": "blocks",
+  "description": "Titles and URLs known locally never reach a block.",
+  "given": {
+    "deviceId": "device-a",
+    "syncActivityKey": true,
+    "events": [
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 180,
+        "source": "web",
+        "activityKey": "reddit.com",
+        "categoryPath": "social",
+        "level": 0,
+        "title": "Weekly discussion thread",
+        "url": "https://www.reddit.com/r/MachineLearning/comments/abc123/weekly_thread/"
+      }
+    ]
+  },
+  "then": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "reddit.com",
+        "categoryPath": "social",
+        "level": 0,
+        "source": "web",
+        "seconds": 180
+      }
+    ]
+  }
+}

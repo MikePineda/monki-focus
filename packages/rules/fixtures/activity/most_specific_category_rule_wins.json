@@ -1,0 +1,29 @@
+{
+  "id": "activity.most_specific_category_rule_wins",
+  "kind": "activity",
+  "operation": "categorise",
+  "description": "The default Shorts surface assignment (0) beats the user's domain-wide YouTube assignment (50).",
+  "given": {
+    "activity": {
+      "source": "web",
+      "activityKey": "youtube.com",
+      "path": "/shorts/abc123DEF45",
+      "surface": "youtube.shorts"
+    },
+    "assignments": [
+      {
+        "target": {
+          "kind": "site",
+          "domain": "youtube.com"
+        },
+        "level": 50,
+        "category": "video"
+      }
+    ],
+    "includeDefaults": true
+  },
+  "then": {
+    "level": 0,
+    "categoryPath": "video/short-form"
+  }
+}

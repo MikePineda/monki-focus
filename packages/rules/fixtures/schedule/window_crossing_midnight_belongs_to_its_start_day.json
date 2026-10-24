@@ -1,0 +1,24 @@
+{
+  "id": "schedule.window_crossing_midnight_belongs_to_its_start_day",
+  "kind": "schedule",
+  "description": "A Saturday 22:00-02:00 window is not active in the early hours of Saturday.",
+  "given": {
+    "schedules": [
+      {
+        "days": ["sat"],
+        "start": "22:00",
+        "end": "02:00"
+      }
+    ],
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "now": "2026-10-31T01:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "active": false
+  }
+}

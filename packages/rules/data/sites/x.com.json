@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "domain": "x.com",
+  "aliases": ["twitter.com"],
+  "spaNavigation": "history",
+  "surfaces": {
+    "x.home": ["/", "/home"],
+    "x.explore": ["/explore/**"],
+    "x.status": ["/*/status/**", "/i/web/status/**"],
+    "x.search": ["/search/**"],
+    "x.messages": ["/messages/**"]
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "id": "decision.domain_only_url_counts_every_budget_of_the_domain",
+  "kind": "decision",
+  "description": "With an unknown path every rule of the domain takes part in the budget check.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-watch-budget",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com",
+            "path": "/watch"
+          },
+          "mode": "allow",
+          "schedules": [],
+          "enabled": true,
+          "dailyBudgetMinutes": 30
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": {
+        "localDate": "2026-10-26",
+        "secondsByRule": {
+          "r-watch-budget": 1800
+        }
+      },
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "youtube.com"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": "r-watch-budget",
+    "reason": "budget_exhausted",
+    "explanationKey": "decision.budget_exhausted"
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "id": "decision.gate_after_two_quiet_hours_starts_again_at_level_zero",
+  "kind": "decision",
+  "description": "Two hours without gates reset the session: level 0 and no broken-intention penalty, but the friction type still rotates.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-x-friction",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [
+        {
+          "targetGroup": "r-x-friction",
+          "phase": "idle",
+          "attemptCount": 3,
+          "lastAttemptAt": "2026-10-25T20:58:20Z",
+          "lastActivityAt": "2026-10-25T21:00:00Z",
+          "brokenCount": 1,
+          "lastFrictionType": "breath",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        }
+      ],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "x.com/home"
+    }
+  },
+  "then": {
+    "access": "gate",
+    "content": "show",
+    "ruleId": "r-x-friction",
+    "reason": "intention_required",
+    "gate": {
+      "level": 0,
+      "pauseSeconds": 5,
+      "frictionType": "reflect",
+      "requiresTypedIntention": false,
+      "requiresGuardianKey": false
+    },
+    "explanationKey": "decision.intention_required"
+  }
+}

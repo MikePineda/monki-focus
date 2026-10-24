@@ -1,0 +1,44 @@
+{
+  "id": "activity.event_crossing_local_midnight_splits_daily_totals",
+  "kind": "activity",
+  "operation": "daily-totals",
+  "description": "An event from 23:50 to 00:10 Sydney time counts 600 s on each local day.",
+  "given": {
+    "timeZone": "Australia/Sydney",
+    "entries": [
+      {
+        "timestamp": "2026-10-26T12:50:00Z",
+        "duration": 1200,
+        "level": 100
+      }
+    ]
+  },
+  "then": {
+    "days": [
+      {
+        "date": "2026-10-26",
+        "seconds": 600,
+        "secondsByLevel": {
+          "0": 0,
+          "25": 0,
+          "50": 0,
+          "75": 0,
+          "100": 600
+        },
+        "pulse": 100
+      },
+      {
+        "date": "2026-10-27",
+        "seconds": 600,
+        "secondsByLevel": {
+          "0": 0,
+          "25": 0,
+          "50": 0,
+          "75": 0,
+          "100": 600
+        },
+        "pulse": 100
+      }
+    ]
+  }
+}

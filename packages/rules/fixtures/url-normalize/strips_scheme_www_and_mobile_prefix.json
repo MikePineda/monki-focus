@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.strips_scheme_www_and_mobile_prefix",
+  "kind": "url-normalize",
+  "description": "Scheme and `www.` go, the trailing slash goes, and the path resolves to a surface.",
+  "given": {
+    "urlText": "https://www.reddit.com/r/MachineLearning/"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/r/MachineLearning",
+    "pathKnown": true,
+    "surface": "reddit.feed"
+  }
+}

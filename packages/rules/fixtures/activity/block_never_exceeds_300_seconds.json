@@ -1,0 +1,50 @@
+{
+  "id": "activity.block_never_exceeds_300_seconds",
+  "kind": "activity",
+  "operation": "blocks",
+  "description": "Overlapping input from one device is scaled so a block holds at most 300 s.",
+  "given": {
+    "deviceId": "device-a",
+    "syncActivityKey": true,
+    "events": [
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 300,
+        "source": "web",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100
+      },
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 300,
+        "source": "web",
+        "activityKey": "reddit.com",
+        "categoryPath": "social",
+        "level": 0
+      }
+    ]
+  },
+  "then": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 150
+      },
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "reddit.com",
+        "categoryPath": "social",
+        "level": 0,
+        "source": "web",
+        "seconds": 150
+      }
+    ]
+  }
+}

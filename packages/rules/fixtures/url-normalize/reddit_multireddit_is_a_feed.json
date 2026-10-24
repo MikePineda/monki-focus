@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.reddit_multireddit_is_a_feed",
+  "kind": "url-normalize",
+  "description": "A multireddit is a feed.",
+  "given": {
+    "urlText": "https://www.reddit.com/user/example_user/m/reading_list/"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/user/example_user/m/reading_list",
+    "pathKnown": true,
+    "surface": "reddit.feed"
+  }
+}

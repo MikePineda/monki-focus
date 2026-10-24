@@ -1,0 +1,49 @@
+{
+  "id": "activity.daily_totals_handle_the_23_hour_spring_forward_day",
+  "kind": "activity",
+  "operation": "daily-totals",
+  "description": "The 2026-10-04 spring-forward day lasts 23 hours.",
+  "given": {
+    "timeZone": "Australia/Sydney",
+    "entries": [
+      {
+        "timestamp": "2026-10-03T14:00:00Z",
+        "duration": 82800,
+        "level": 25
+      },
+      {
+        "timestamp": "2026-10-04T13:00:00Z",
+        "duration": 60,
+        "level": 75
+      }
+    ]
+  },
+  "then": {
+    "days": [
+      {
+        "date": "2026-10-04",
+        "seconds": 82800,
+        "secondsByLevel": {
+          "0": 0,
+          "25": 82800,
+          "50": 0,
+          "75": 0,
+          "100": 0
+        },
+        "pulse": 25
+      },
+      {
+        "date": "2026-10-05",
+        "seconds": 60,
+        "secondsByLevel": {
+          "0": 0,
+          "25": 0,
+          "50": 0,
+          "75": 60,
+          "100": 0
+        },
+        "pulse": 75
+      }
+    ]
+  }
+}

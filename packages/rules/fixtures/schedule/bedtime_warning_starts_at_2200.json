@@ -1,0 +1,19 @@
+{
+  "id": "schedule.bedtime_warning_starts_at_2200",
+  "kind": "schedule",
+  "description": "The warning phase starts warnMinutesBefore (30) minutes before 22:30.",
+  "given": {
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "now": "2026-10-26T22:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "phase": "warning"
+  }
+}

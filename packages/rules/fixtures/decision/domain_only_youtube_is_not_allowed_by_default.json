@@ -1,0 +1,155 @@
+{
+  "id": "decision.domain_only_youtube_is_not_allowed_by_default",
+  "kind": "decision",
+  "description": "With only the domain visible the strictest rule of the domain applies, but a surface block counts as friction outside bedtime: remove the feed, not the tool.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "starter-instagram-explore-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "instagram.explore"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-instagram-reels-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "instagram.reels"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-reddit-feed-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "reddit.feed"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-reddit-friction",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-x-explore-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "x.explore"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-x-friction",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-x-home-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "x.home"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-youtube-home-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.home"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-youtube-explore-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.explore"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-youtube-shorts-block",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.shorts"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T15:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "m.youtube.com"
+    }
+  },
+  "then": {
+    "access": "gate",
+    "content": "show",
+    "ruleId": "starter-youtube-shorts-block",
+    "reason": "intention_required",
+    "gate": {
+      "level": 0,
+      "pauseSeconds": 5,
+      "frictionType": "countdown",
+      "requiresTypedIntention": false,
+      "requiresGuardianKey": false
+    },
+    "explanationKey": "decision.intention_required"
+  }
+}

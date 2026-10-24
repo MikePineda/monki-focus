@@ -1,0 +1,67 @@
+{
+  "id": "decision.unlock_for_another_target_does_not_lift_a_block",
+  "kind": "decision",
+  "description": "An unlock only lifts what its target matches.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit-block",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [
+        {
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "notBefore": "2026-10-25T22:55:00Z",
+          "expiresAt": "2026-10-25T23:25:00Z"
+        }
+      ],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "reddit.com/r/AskHistorians"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": "r-reddit-block",
+    "reason": "rule_match",
+    "explanationKey": "decision.blocked_by_rule"
+  }
+}

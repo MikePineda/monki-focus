@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.semicolon_segment_makes_the_path_unknown",
+  "kind": "url-normalize",
+  "description": "A `;` in a segment is never stripped: the path counts as unknown.",
+  "given": {
+    "urlText": "youtube.com/;x"
+  },
+  "then": {
+    "host": "youtube.com",
+    "path": "/;x",
+    "pathKnown": false,
+    "surface": null
+  }
+}

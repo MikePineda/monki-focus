@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "domain": "youtube.com",
+  "aliases": [],
+  "spaNavigation": "yt-navigate-finish",
+  "surfaces": {
+    "youtube.home": ["/"],
+    "youtube.subscriptions": ["/feed/subscriptions"],
+    "youtube.explore": ["/feed/explore", "/feed/trending", "/hashtag/*"],
+    "youtube.shorts": ["/shorts/**"],
+    "youtube.watch": ["/watch", "/live/*"],
+    "youtube.search": ["/results"]
+  }
+}

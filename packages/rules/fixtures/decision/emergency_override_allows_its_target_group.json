@@ -1,0 +1,74 @@
+{
+  "id": "decision.emergency_override_allows_its_target_group",
+  "kind": "decision",
+  "description": "An active emergency override for the rule lifts its block.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit-block",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [
+        {
+          "targetGroup": "r-reddit-block",
+          "phase": "override_active",
+          "attemptCount": 0,
+          "lastAttemptAt": null,
+          "lastActivityAt": null,
+          "brokenCount": 0,
+          "lastFrictionType": null,
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": "2026-10-25T22:55:00Z",
+          "overrideEndsAt": "2026-10-25T23:10:00Z"
+        }
+      ],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "reddit.com/r/AskHistorians"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "show",
+    "ruleId": "r-reddit-block",
+    "reason": "emergency_active",
+    "explanationKey": "decision.emergency_active"
+  }
+}

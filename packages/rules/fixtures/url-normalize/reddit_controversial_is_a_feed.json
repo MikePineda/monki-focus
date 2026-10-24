@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.reddit_controversial_is_a_feed",
+  "kind": "url-normalize",
+  "description": "Sort orders of a subreddit are feeds.",
+  "given": {
+    "urlText": "https://www.reddit.com/r/AskHistorians/controversial/"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/r/AskHistorians/controversial",
+    "pathKnown": true,
+    "surface": "reddit.feed"
+  }
+}

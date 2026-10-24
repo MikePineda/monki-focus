@@ -1,0 +1,20 @@
+{
+  "id": "activity.app_category_applies_to_its_package",
+  "kind": "activity",
+  "operation": "categorise",
+  "description": "Apps are categorised by package or bundle id.",
+  "given": {
+    "activity": {
+      "source": "app",
+      "activityKey": "com.microsoft.VSCode",
+      "path": null,
+      "surface": null
+    },
+    "assignments": [],
+    "includeDefaults": true
+  },
+  "then": {
+    "level": 100,
+    "categoryPath": "development"
+  }
+}

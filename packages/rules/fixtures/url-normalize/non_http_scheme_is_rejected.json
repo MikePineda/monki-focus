@@ -1,0 +1,11 @@
+{
+  "id": "url-normalize.non_http_scheme_is_rejected",
+  "kind": "url-normalize",
+  "description": "Browser-internal pages are not sites.",
+  "given": {
+    "urlText": "chrome://settings/"
+  },
+  "then": {
+    "rejected": "not_http"
+  }
+}

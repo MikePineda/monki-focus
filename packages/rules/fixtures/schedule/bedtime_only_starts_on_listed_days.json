@@ -1,0 +1,19 @@
+{
+  "id": "schedule.bedtime_only_starts_on_listed_days",
+  "kind": "schedule",
+  "description": "A Sunday-to-Thursday bedtime does not start on Friday night.",
+  "given": {
+    "bedtime": {
+      "enabled": true,
+      "days": ["sun", "mon", "tue", "wed", "thu"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "now": "2026-10-30T23:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "phase": "inactive"
+  }
+}

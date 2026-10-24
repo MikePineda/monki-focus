@@ -1,0 +1,19 @@
+{
+  "id": "schedule.bedtime_ends_at_seven",
+  "kind": "schedule",
+  "description": "Bedtime is over at 07:00.",
+  "given": {
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "now": "2026-10-27T07:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "phase": "inactive"
+  }
+}

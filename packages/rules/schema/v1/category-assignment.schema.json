@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/category-assignment.schema.json",
+  "title": "CategoryAssignment",
+  "description": "Assigns a category and a productivity level to an app, a site (optionally a path) or a surface. Uncategorised activity is level 50.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["target", "level", "category"],
+  "properties": {
+    "target": { "$ref": "target.schema.json" },
+    "level": { "$ref": "#/$defs/level" },
+    "category": { "$ref": "#/$defs/categoryPath" }
+  },
+  "$defs": {
+    "level": {
+      "title": "CategoryLevel",
+      "description": "0 very distracting, 25 distracting, 50 neutral, 75 productive, 100 very productive (RescueTime -2..2 scaled).",
+      "type": "integer",
+      "enum": [0, 25, 50, 75, 100]
+    },
+    "categoryPath": {
+      "title": "CategoryPath",
+      "description": "Slash-separated category slug, for example `development` or `video/short-form`. `uncategorised` and `browser-unknown` are reserved.",
+      "type": "string",
+      "maxLength": 96,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*)*$"
+    }
+  }
+}

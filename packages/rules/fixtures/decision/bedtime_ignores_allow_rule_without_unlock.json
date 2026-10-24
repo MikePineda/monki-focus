@@ -1,0 +1,58 @@
+{
+  "id": "decision.bedtime_ignores_allow_rule_without_unlock",
+  "kind": "decision",
+  "description": "An allow rule does not lift bedtime.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-ig-allow",
+          "target": {
+            "kind": "site",
+            "domain": "instagram.com"
+          },
+          "mode": "allow",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T23:30:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.instagram.com/direct/inbox/"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": null,
+    "reason": "schedule_bedtime",
+    "explanationKey": "decision.schedule_bedtime"
+  }
+}

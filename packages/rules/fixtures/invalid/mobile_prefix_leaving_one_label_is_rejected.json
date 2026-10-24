@@ -1,0 +1,41 @@
+{
+  "id": "invalid.mobile_prefix_leaving_one_label_is_rejected",
+  "kind": "invalid",
+  "description": "`m.me` normalises to the single label `me`.",
+  "schema": "ruleset",
+  "document": {
+    "schemaVersion": 1,
+    "revision": 1,
+    "updatedAt": "2026-10-01T00:00:00Z",
+    "timeZone": "Australia/Sydney",
+    "rules": [
+      {
+        "id": "r-x",
+        "target": {
+          "kind": "site",
+          "domain": "m.me"
+        },
+        "mode": "block",
+        "schedules": [],
+        "enabled": true
+      }
+    ],
+    "categories": [],
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    }
+  },
+  "then": {
+    "rejected": true,
+    "code": "invalid_domain"
+  }
+}

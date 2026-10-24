@@ -1,0 +1,391 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/activity-fixture.schema.json",
+  "title": "ActivityFixture",
+  "description": "Analytics conformance case. `operation` names the pure function under test (SEMANTICS.md §10).",
+  "oneOf": [
+    { "$ref": "#/$defs/heartbeatMerge" },
+    { "$ref": "#/$defs/probe" },
+    { "$ref": "#/$defs/activeTime" },
+    { "$ref": "#/$defs/categorise" },
+    { "$ref": "#/$defs/pulse" },
+    { "$ref": "#/$defs/blocks" },
+    { "$ref": "#/$defs/dailyTotals" },
+    { "$ref": "#/$defs/browserDedupe" },
+    { "$ref": "#/$defs/crossDeviceCap" }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^activity\\.[a-z0-9]+(_[a-z0-9]+)*$"
+    },
+    "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "events": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "activity.schema.json#/$defs/event" }
+    },
+    "blockList": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "activity.schema.json#/$defs/block" }
+    },
+    "heartbeatMerge": {
+      "title": "HeartbeatMergeFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "operation", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "activity" },
+        "operation": { "const": "heartbeat-merge" },
+        "description": { "$ref": "#/$defs/description" },
+        "given": {
+          "title": "HeartbeatMergeGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pulsetime", "events", "heartbeats"],
+          "properties": {
+            "pulsetime": { "type": "integer", "minimum": 1, "maximum": 600 },
+            "events": { "$ref": "#/$defs/events" },
+            "heartbeats": { "$ref": "#/$defs/events" }
+          }
+        },
+        "then": {
+          "title": "HeartbeatMergeThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["events"],
+          "properties": { "events": { "$ref": "#/$defs/events" } }
+        }
+      }
+    },
+    "probe": {
+      "title": "TabProbeFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "operation", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "activity" },
+        "operation": { "const": "probe" },
+        "description": { "$ref": "#/$defs/description" },
+        "given": {
+          "title": "TabProbeGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["now", "windowFocused", "idleState", "tab", "settings"],
+          "properties": {
+            "now": { "$ref": "time.schema.json#/$defs/utcInstant" },
+            "windowFocused": { "type": "boolean" },
+            "idleState": { "type": "string", "enum": ["active", "idle", "locked"] },
+            "tab": {
+              "oneOf": [
+                {
+                  "title": "ProbedTab",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["url", "audible", "incognito"],
+                  "properties": {
+                    "url": { "type": "string", "maxLength": 2048 },
+                    "audible": { "type": "boolean" },
+                    "incognito": { "type": "boolean" },
+                    "title": { "type": "string", "maxLength": 1024 }
+                  }
+                },
+                { "type": "null" }
+              ]
+            },
+            "settings": {
+              "title": "TabProbeSettings",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["countAudibleWhileIdle", "storeTitles"],
+              "properties": {
+                "countAudibleWhileIdle": { "type": "boolean" },
+                "storeTitles": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "then": {
+          "title": "TabProbeThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["heartbeat"],
+          "properties": {
+            "heartbeat": {
+              "oneOf": [{ "$ref": "activity.schema.json#/$defs/event" }, { "type": "null" }]
+            }
+          }
+        }
+      }
+    },
+    "activeTime": {
+      "title": "ActiveTimeFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "operation", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "activity" },
+        "operation": { "const": "active-time" },
+        "description": { "$ref": "#/$defs/description" },
+        "given": {
+          "title": "ActiveTimeGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["events", "afk"],
+          "properties": {
+            "events": { "$ref": "#/$defs/events" },
+            "afk": { "$ref": "#/$defs/events" }
+          }
+        },
+        "then": {
+          "title": "ActiveTimeThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["events"],
+          "properties": { "events": { "$ref": "#/$defs/events" } }
+        }
+      }
+    },
+    "categorise": {
+      "title": "CategoriseFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "operation", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "activity" },
+        "operation": { "const": "categorise" },
+        "description": { "$ref": "#/$defs/description" },
+        "given": {
+          "title": "CategoriseGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["activity", "assignments", "includeDefaults"],
+          "properties": {
+            "activity": { "$ref": "activity.schema.json#/$defs/activity" },
+            "assignments": {
+              "type": "array",
+              "maxItems": 2000,
+              "items": { "$ref": "category-assignment.schema.json" }
+            },
+            "includeDefaults": {
+              "description": "Whether data/categories/default.json takes part.",
+              "type": "boolean"
+            }
+          }
+        },
+        "then": { "$ref": "activity.schema.json#/$defs/categoryMatch" }
+      }
+    },
+    "pulse": {
+      "title": "PulseFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "operation", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "activity" },
+        "operation": { "const": "pulse" },
+        "description": { "$ref": "#/$defs/description" },
+        "given": {
+          "title": "PulseGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entries"],
+          "properties": {
+            "entries": {
+              "type": "array",
+              "maxItems": 500,
+              "items": {
+                "title": "PulseEntry",
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["seconds", "level"],
+                "properties": {
+                  "seconds": { "$ref": "activity.schema.json#/$defs/seconds" },
+                  "level": { "$ref": "category-assignment.schema.json#/$defs/level" }
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "title": "PulseThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pulse"],
+          "properties": { "pulse": { "$ref": "activity.schema.json#/$defs/pulse" } }
+        }
+      }
+    },
+    "blocks": {
+      "title": "BlocksFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "operation", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "activity" },
+        "operation": { "const": "blocks" },
+        "description": { "$ref": "#/$defs/description" },
+        "given": {
+          "title": "BlocksGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["deviceId", "syncActivityKey", "events"],
+          "properties": {
+            "deviceId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "syncActivityKey": { "type": "boolean" },
+            "events": {
+              "type": "array",
+              "maxItems": 500,
+              "items": { "$ref": "activity.schema.json#/$defs/attributedEvent" }
+            }
+          }
+        },
+        "then": {
+          "title": "BlocksThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["blocks"],
+          "properties": { "blocks": { "$ref": "#/$defs/blockList" } }
+        }
+      }
+    },
+    "dailyTotals": {
+      "title": "DailyTotalsFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "operation", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "activity" },
+        "operation": { "const": "daily-totals" },
+        "description": { "$ref": "#/$defs/description" },
+        "given": {
+          "title": "DailyTotalsGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["timeZone", "entries"],
+          "properties": {
+            "timeZone": { "$ref": "time.schema.json#/$defs/timeZone" },
+            "entries": {
+              "type": "array",
+              "maxItems": 500,
+              "items": {
+                "title": "LevelledInterval",
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["timestamp", "duration", "level"],
+                "properties": {
+                  "timestamp": { "$ref": "time.schema.json#/$defs/utcInstant" },
+                  "duration": { "$ref": "activity.schema.json#/$defs/seconds" },
+                  "level": { "$ref": "category-assignment.schema.json#/$defs/level" }
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "title": "DailyTotalsThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["days"],
+          "properties": {
+            "days": {
+              "type": "array",
+              "maxItems": 400,
+              "items": { "$ref": "activity.schema.json#/$defs/dailyTotal" }
+            }
+          }
+        }
+      }
+    },
+    "browserDedupe": {
+      "title": "BrowserDedupeFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "operation", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "activity" },
+        "operation": { "const": "browser-dedupe" },
+        "description": { "$ref": "#/$defs/description" },
+        "given": {
+          "title": "BrowserDedupeGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "browserApps",
+            "windowEvents",
+            "webEvents",
+            "extensionLastHeartbeatAt",
+            "staleAfterSeconds"
+          ],
+          "properties": {
+            "browserApps": {
+              "type": "array",
+              "maxItems": 16,
+              "items": { "$ref": "target.schema.json#/$defs/appPackage" }
+            },
+            "windowEvents": { "$ref": "#/$defs/events" },
+            "webEvents": { "$ref": "#/$defs/events" },
+            "extensionLastHeartbeatAt": {
+              "oneOf": [{ "$ref": "time.schema.json#/$defs/utcInstant" }, { "type": "null" }]
+            },
+            "staleAfterSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 }
+          }
+        },
+        "then": {
+          "title": "BrowserDedupeThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["segments"],
+          "properties": {
+            "segments": {
+              "type": "array",
+              "maxItems": 500,
+              "items": { "$ref": "activity.schema.json#/$defs/segment" }
+            }
+          }
+        }
+      }
+    },
+    "crossDeviceCap": {
+      "title": "CrossDeviceCapFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "operation", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "activity" },
+        "operation": { "const": "cross-device-cap" },
+        "description": { "$ref": "#/$defs/description" },
+        "given": {
+          "title": "CrossDeviceCapGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["blocks"],
+          "properties": { "blocks": { "$ref": "#/$defs/blockList" } }
+        },
+        "then": {
+          "title": "CrossDeviceCapThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["blocks"],
+          "properties": { "blocks": { "$ref": "#/$defs/blockList" } }
+        }
+      }
+    }
+  }
+}

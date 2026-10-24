@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "assignments": [
+    {
+      "target": {
+        "kind": "app",
+        "package": "com.microsoft.VSCode"
+      },
+      "level": 100,
+      "category": "development"
+    },
+    {
+      "target": {
+        "kind": "app",
+        "package": "com.apple.dt.Xcode"
+      },
+      "level": 100,
+      "category": "development"
+    },
+    {
+      "target": {
+        "kind": "app",
+        "package": "com.apple.Terminal"
+      },
+      "level": 100,
+      "category": "development"
+    },
+    {
+      "target": {
+        "kind": "app",
+        "package": "com.googlecode.iterm2"
+      },
+      "level": 100,
+      "category": "development"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "github.com"
+      },
+      "level": 100,
+      "category": "development"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "gitlab.com"
+      },
+      "level": 100,
+      "category": "development"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "stackoverflow.com"
+      },
+      "level": 100,
+      "category": "development/reference"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "developer.mozilla.org"
+      },
+      "level": 100,
+      "category": "development/reference"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "wikipedia.org"
+      },
+      "level": 75,
+      "category": "reference"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "reddit.com"
+      },
+      "level": 0,
+      "category": "social"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "x.com"
+      },
+      "level": 0,
+      "category": "social"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "instagram.com"
+      },
+      "level": 0,
+      "category": "social"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "tiktok.com"
+      },
+      "level": 0,
+      "category": "video/short-form"
+    },
+    {
+      "target": {
+        "kind": "site",
+        "domain": "facebook.com"
+      },
+      "level": 0,
+      "category": "social"
+    },
+    {
+      "target": {
+        "kind": "surface",
+        "surface": "youtube.shorts"
+      },
+      "level": 0,
+      "category": "video/short-form"
+    },
+    {
+      "target": {
+        "kind": "surface",
+        "surface": "youtube.home"
+      },
+      "level": 25,
+      "category": "video"
+    },
+    {
+      "target": {
+        "kind": "surface",
+        "surface": "youtube.watch"
+      },
+      "level": 50,
+      "category": "video"
+    },
+    {
+      "target": {
+        "kind": "surface",
+        "surface": "youtube.explore"
+      },
+      "level": 25,
+      "category": "video"
+    },
+    {
+      "target": {
+        "kind": "surface",
+        "surface": "youtube.subscriptions"
+      },
+      "level": 50,
+      "category": "video"
+    },
+    {
+      "target": {
+        "kind": "surface",
+        "surface": "reddit.user_feed"
+      },
+      "level": 0,
+      "category": "social"
+    },
+    {
+      "target": {
+        "kind": "surface",
+        "surface": "instagram.reels"
+      },
+      "level": 0,
+      "category": "video/short-form"
+    },
+    {
+      "target": {
+        "kind": "app",
+        "package": "com.instagram.android"
+      },
+      "level": 0,
+      "category": "social"
+    },
+    {
+      "target": {
+        "kind": "app",
+        "package": "com.zhiliaoapp.musically"
+      },
+      "level": 0,
+      "category": "video/short-form"
+    },
+    {
+      "target": {
+        "kind": "app",
+        "package": "com.reddit.frontpage"
+      },
+      "level": 0,
+      "category": "social"
+    },
+    {
+      "target": {
+        "kind": "app",
+        "package": "com.twitter.android"
+      },
+      "level": 0,
+      "category": "social"
+    },
+    {
+      "target": {
+        "kind": "app",
+        "package": "com.google.android.youtube"
+      },
+      "level": 50,
+      "category": "video"
+    }
+  ]
+}

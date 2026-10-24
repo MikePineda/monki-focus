@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.idn_domain_is_normalised_to_punycode",
+  "kind": "url-normalize",
+  "description": "Internationalised domain names become punycode.",
+  "given": {
+    "urlText": "https://bücher.example/katalog"
+  },
+  "then": {
+    "host": "xn--bcher-kva.example",
+    "path": "/katalog",
+    "pathKnown": true,
+    "surface": null
+  }
+}

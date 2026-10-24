@@ -1,0 +1,43 @@
+{
+  "id": "activity.browser_time_covered_by_web_events_is_not_counted_as_browser",
+  "kind": "activity",
+  "operation": "browser-dedupe",
+  "description": "Browser window time covered by extension events belongs to the site, not to the browser app.",
+  "given": {
+    "browserApps": ["com.brave.Browser", "com.google.Chrome"],
+    "staleAfterSeconds": 60,
+    "windowEvents": [
+      {
+        "timestamp": "2026-10-26T10:00:00Z",
+        "duration": 600,
+        "data": {
+          "app": "com.brave.Browser"
+        }
+      }
+    ],
+    "webEvents": [
+      {
+        "timestamp": "2026-10-26T10:00:00Z",
+        "duration": 600,
+        "data": {
+          "domain": "reddit.com",
+          "path": "/r/MachineLearning",
+          "surface": "reddit.feed",
+          "audible": false,
+          "incognito": false
+        }
+      }
+    ],
+    "extensionLastHeartbeatAt": "2026-10-26T10:10:00Z"
+  },
+  "then": {
+    "segments": [
+      {
+        "start": "2026-10-26T10:00:00Z",
+        "end": "2026-10-26T10:10:00Z",
+        "source": "web",
+        "activityKey": "reddit.com"
+      }
+    ]
+  }
+}

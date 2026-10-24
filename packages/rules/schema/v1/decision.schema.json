@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/decision.schema.json",
+  "title": "Decision",
+  "description": "Output of `decide`. Two independent axes (`access`, `content`); `ruleId`, `reason` and `explanationKey` describe the primary outcome (SEMANTICS.md §5). The domain never returns text, only reason codes and i18n keys.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["access", "content", "ruleId", "reason", "explanationKey"],
+  "properties": {
+    "access": { "$ref": "#/$defs/access" },
+    "content": { "$ref": "#/$defs/content" },
+    "ruleId": {
+      "oneOf": [{ "$ref": "rule.schema.json#/$defs/ruleId" }, { "type": "null" }]
+    },
+    "reason": { "$ref": "#/$defs/reasonCode" },
+    "gate": { "$ref": "#/$defs/gate" },
+    "explanationKey": { "$ref": "#/$defs/explanationKey" }
+  },
+  "if": {
+    "type": "object",
+    "properties": { "access": { "const": "gate" } },
+    "required": ["access"]
+  },
+  "then": { "type": "object", "required": ["gate"] },
+  "else": { "type": "object", "not": { "type": "object", "required": ["gate"] } },
+  "$defs": {
+    "access": {
+      "title": "Access",
+      "type": "string",
+      "enum": ["allow", "gate", "block"]
+    },
+    "content": {
+      "title": "Content",
+      "type": "string",
+      "enum": ["show", "hide-feed"]
+    },
+    "reasonCode": {
+      "title": "ReasonCode",
+      "type": "string",
+      "enum": [
+        "no_rule",
+        "rule_match",
+        "intention_required",
+        "intention_active",
+        "schedule_bedtime",
+        "budget_exhausted",
+        "unlock_active",
+        "emergency_active",
+        "permalink_never_hidden",
+        "path_unknown_allow",
+        "not_a_feed"
+      ]
+    },
+    "explanationKey": {
+      "title": "ExplanationKey",
+      "description": "i18n key; fixed mapping from the primary outcome (SEMANTICS.md §5.3).",
+      "type": "string",
+      "enum": [
+        "decision.no_rule",
+        "decision.allowed_by_rule",
+        "decision.blocked_by_rule",
+        "decision.feed_hidden",
+        "decision.intention_required",
+        "decision.intention_active",
+        "decision.schedule_bedtime",
+        "decision.budget_exhausted",
+        "decision.unlock_active",
+        "decision.emergency_active",
+        "decision.permalink_never_hidden",
+        "decision.path_unknown_allow",
+        "decision.not_a_feed"
+      ]
+    },
+    "frictionType": {
+      "title": "FrictionType",
+      "description": "How a pause is presented. Rotates in this order and never repeats twice in a row.",
+      "type": "string",
+      "enum": ["countdown", "breath", "reflect", "type-intention"]
+    },
+    "escalationLevel": {
+      "title": "EscalationLevel",
+      "type": "integer",
+      "enum": [0, 1, 2, 3]
+    },
+    "gate": {
+      "title": "Gate",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "pauseSeconds",
+        "frictionType",
+        "requiresTypedIntention",
+        "requiresGuardianKey"
+      ],
+      "properties": {
+        "level": { "$ref": "#/$defs/escalationLevel" },
+        "pauseSeconds": { "type": "integer", "minimum": 1, "maximum": 60 },
+        "frictionType": { "$ref": "#/$defs/frictionType" },
+        "requiresTypedIntention": { "type": "boolean" },
+        "requiresGuardianKey": { "type": "boolean" }
+      }
+    }
+  }
+}

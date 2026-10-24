@@ -1,0 +1,50 @@
+{
+  "id": "activity.blocks_under_the_cap_are_unchanged",
+  "kind": "activity",
+  "operation": "cross-device-cap",
+  "description": "120 + 100 s fit in one block and stay as they are.",
+  "given": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 120
+      },
+      {
+        "deviceId": "device-b",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "reddit.com",
+        "categoryPath": "social",
+        "level": 0,
+        "source": "android",
+        "seconds": 100
+      }
+    ]
+  },
+  "then": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 120
+      },
+      {
+        "deviceId": "device-b",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "reddit.com",
+        "categoryPath": "social",
+        "level": 0,
+        "source": "android",
+        "seconds": 100
+      }
+    ]
+  }
+}

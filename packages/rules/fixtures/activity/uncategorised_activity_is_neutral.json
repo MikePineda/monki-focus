@@ -1,0 +1,20 @@
+{
+  "id": "activity.uncategorised_activity_is_neutral",
+  "kind": "activity",
+  "operation": "categorise",
+  "description": "Activity no assignment matches is neutral (50) under `uncategorised`.",
+  "given": {
+    "activity": {
+      "source": "web",
+      "activityKey": "news.example.org",
+      "path": "/",
+      "surface": null
+    },
+    "assignments": [],
+    "includeDefaults": true
+  },
+  "then": {
+    "level": 50,
+    "categoryPath": "uncategorised"
+  }
+}

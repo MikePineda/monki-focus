@@ -1,0 +1,72 @@
+{
+  "id": "rule-change.changing_work_hours_waits",
+  "kind": "rule-change",
+  "description": "Any change of work hours waits.",
+  "given": {
+    "old": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "new": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "16:00"
+      }
+    },
+    "now": "2026-10-26T15:00:00+11:00",
+    "pendingEffectiveFrom": null
+  },
+  "then": {
+    "effectiveToday": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "effectiveFrom": "2026-10-26T13:00:00Z"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "schedule.work_hours_end_is_exclusive",
+  "kind": "schedule",
+  "description": "Windows are half-open: 17:30 on Friday is already outside.",
+  "given": {
+    "schedules": [
+      {
+        "ref": "workHours"
+      }
+    ],
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "now": "2026-10-30T17:30:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "active": false
+  }
+}

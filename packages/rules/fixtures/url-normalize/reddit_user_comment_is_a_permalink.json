@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.reddit_user_comment_is_a_permalink",
+  "kind": "url-normalize",
+  "description": "A comment page under a user stays a permalink.",
+  "given": {
+    "urlText": "https://www.reddit.com/user/example_user/comments/abc123/a_post/"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/user/example_user/comments/abc123/a_post",
+    "pathKnown": true,
+    "surface": "reddit.permalink"
+  }
+}
