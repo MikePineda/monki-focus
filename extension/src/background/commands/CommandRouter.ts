@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import {
+  COMMAND_PAYLOAD_GUARDS,
   isCommandEnvelope,
+  TAB_URL_COMMANDS,
   type CommandRequest,
   type CommandResponse,
   type CommandResult,
@@ -11,6 +13,8 @@ import {
 export interface CommandSender {
   id?: string | undefined
   url?: string | undefined
+  /** Present when the message comes from a tab (a content script). */
+  tab?: { url?: string | undefined } | undefined
 }
 
 export type CommandHandler<T extends CommandType> = (
@@ -31,11 +35,32 @@ export interface MessageEvent {
   ): void
 }
 
+function hostOf(url: string | undefined): string | null {
+  if (!url) return null
+  try {
+    return new URL(url).hostname
+  } catch {
+    return null
+  }
+}
+
+/**
+ * A tab-scoped command must come from a tab whose URL has the same host as
+ * the URL it asks about (04 §4: messages validate the tab URL).
+ */
+function isTabUrlAllowed(type: CommandType, payload: unknown, sender: CommandSender): boolean {
+  const urlOf = TAB_URL_COMMANDS[type] as ((payload: unknown) => string) | undefined
+  if (!urlOf) return true
+  const tabHost = hostOf(sender.tab?.url)
+  return tabHost !== null && tabHost === hostOf(urlOf(payload))
+}
+
 /**
  * Single entry point for commands sent to the service worker. It answers only
  * messages from this extension's own contexts (`sender.id === runtime.id`;
- * there is no `externally_connectable`), drops malformed envelopes and
- * unknown commands, and never leaks handler errors to the caller.
+ * there is no `externally_connectable`), drops malformed envelopes, unknown
+ * commands and payloads that fail their guard, checks the sending tab of
+ * content-script commands, and never leaks handler errors to the caller.
  */
 export class CommandRouter {
   constructor(
@@ -53,9 +78,17 @@ export class CommandRouter {
     if (!Object.hasOwn(this.handlers, message.type)) {
       return { ok: false, error: 'command.unknown' }
     }
-    const handler = this.handlers[message.type as CommandType] as CommandHandler<CommandType>
+    const type = message.type as CommandType
+    const payload = message.payload as object
+    if (!COMMAND_PAYLOAD_GUARDS[type](payload)) {
+      return { ok: false, error: 'message.malformed' }
+    }
+    if (!isTabUrlAllowed(type, payload, sender)) {
+      return { ok: false, error: 'sender.rejected' }
+    }
+    const handler = this.handlers[type] as CommandHandler<CommandType>
     try {
-      const data = await handler(message.payload as CommandRequest<CommandType>, sender)
+      const data = await handler(payload as CommandRequest<CommandType>, sender)
       return { ok: true, data }
     } catch {
       return { ok: false, error: 'command.failed' }

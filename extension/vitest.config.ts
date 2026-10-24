@@ -6,7 +6,10 @@ import { WxtVitest } from 'wxt/testing/vitest-plugin'
 // Component, theme and page specs need a DOM; everything else (service
 // worker, config, e2e support) runs in plain Node, where `node:https` and
 // WebCrypto behave exactly as in production.
-const DOM_SPECS = ['tests/unit/{ui,theme,dev}/**/*.test.{ts,tsx}', 'tests/unit/**/*.test.tsx']
+const DOM_SPECS = [
+  'tests/unit/{ui,theme,dev,content,sites}/**/*.test.{ts,tsx}',
+  'tests/unit/**/*.test.tsx',
+]
 
 export default defineConfig({
   // WxtVitest wires `fakeBrowser` as `browser`, the WXT aliases and the

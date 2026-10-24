@@ -40,7 +40,12 @@ export default tseslint.config(
     // Type information lets the rule accept literals whose contextual type
     // is a string-literal union (`variant="quiet"`, `align: 'end'`): those
     // are enum values, never copy.
-    files: ['src/ui/**/*.{ts,tsx}', 'src/entrypoints/**/*.{ts,tsx}', 'src/dev/**/*.{ts,tsx}'],
+    files: [
+      'src/ui/**/*.{ts,tsx}',
+      'src/entrypoints/**/*.{ts,tsx}',
+      'src/dev/**/*.{ts,tsx}',
+      'src/content/**/*.{ts,tsx}',
+    ],
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },

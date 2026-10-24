@@ -4,6 +4,10 @@ import { defineConfig } from 'wxt'
 import { isEntrypointBuilt } from './config/devOnlyEntrypoints'
 import { extensionManifest } from './config/extensionManifest'
 
+/** Modules of `@monki-focus/rules` and its validator that have no side effects at import. */
+const RULES_VALIDATOR_MODULES =
+  /[\\/](?:node_modules[\\/](?:ajv|ajv-formats|fast-uri|fast-deep-equal|json-schema-traverse|require-from-string)|packages[\\/]rules[\\/]dist)[\\/]/
+
 // Modes: `wxt` and `build:dev` -> development, `build:e2e` -> e2e,
 // `build`/`zip` -> production. Output lands in `.output/chrome-mv3{,-dev,-e2e}`.
 export default defineConfig({
@@ -14,6 +18,16 @@ export default defineConfig({
     extensionManifest({ mode, devPublicKey: process.env.EXTENSION_DEV_PUBLIC_KEY }),
   vite: () => ({
     plugins: [preact()],
+    build: {
+      rollupOptions: {
+        treeshake: {
+          // `@monki-focus/rules/pure` also exports the schema validator (ajv,
+          // CommonJS), which the extension never calls: without this hint the
+          // bundler keeps the whole validator in the worker and content script.
+          moduleSideEffects: (id: string) => !RULES_VALIDATOR_MODULES.test(id),
+        },
+      },
+    },
   }),
   hooks: {
     // The UI kit gallery (dev.html) only exists in the development build.

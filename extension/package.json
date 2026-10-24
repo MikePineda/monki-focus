@@ -39,6 +39,8 @@
   },
   "dependencies": {
     "@monki-focus/design-tokens": "0.0.0",
+    "@monki-focus/engine": "0.0.0",
+    "@monki-focus/rules": "0.0.0",
     "lucide-preact": "1.61.0",
     "preact": "11.0.2"
   }

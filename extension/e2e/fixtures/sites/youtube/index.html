@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Synthetic stand-in for the YouTube home page: real structure, fake content. -->
+<html lang="en" data-fixture="youtube-home">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture: youtube home</title>
+  </head>
+  <body>
+    <ytd-app>
+      <ytd-guide-renderer>
+        <ytd-guide-entry-renderer data-fixture="guide-home">
+          <a href="/">Home</a>
+        </ytd-guide-entry-renderer>
+        <ytd-guide-entry-renderer data-fixture="guide-shorts">
+          <a href="/shorts/">Shorts</a>
+        </ytd-guide-entry-renderer>
+        <ytd-guide-entry-renderer data-fixture="guide-subscriptions">
+          <a href="/feed/subscriptions">Subscriptions</a>
+        </ytd-guide-entry-renderer>
+      </ytd-guide-renderer>
+      <button id="open-short" type="button">Open a short</button>
+      <ytd-browse page-subtype="home">
+        <ytd-rich-grid-renderer>
+          <ytd-rich-item-renderer>
+            <a href="/watch?v=abcdefghijk">A synthetic video</a>
+          </ytd-rich-item-renderer>
+          <ytd-rich-section-renderer>
+            <ytd-rich-shelf-renderer is-shorts>
+              <a href="/shorts/abcdefghijk">A synthetic short</a>
+            </ytd-rich-shelf-renderer>
+          </ytd-rich-section-renderer>
+        </ytd-rich-grid-renderer>
+      </ytd-browse>
+    </ytd-app>
+    <script>
+      // In-app navigation as the real site does it: pushState, then its own event.
+      document.getElementById('open-short').addEventListener('click', () => {
+        history.pushState({}, '', '/shorts/abcdefghijk')
+        document.title = 'Fixture: youtube short'
+        document.dispatchEvent(new Event('yt-navigate-finish'))
+      })
+    </script>
+  </body>
+</html>

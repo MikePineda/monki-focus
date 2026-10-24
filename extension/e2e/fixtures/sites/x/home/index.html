@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Synthetic stand-in for the X home timeline: real structure, fake content. -->
+<html lang="en" data-fixture="x-home">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture: x home</title>
+  </head>
+  <body>
+    <nav role="navigation">
+      <a href="/home" data-testid="AppTabBar_Home_Link" role="link">Home</a>
+      <a href="/explore" data-testid="AppTabBar_Explore_Link" role="link">Explore</a>
+    </nav>
+    <main role="main">
+      <div data-testid="primaryColumn">
+        <div role="tablist">
+          <div role="presentation">
+            <a href="/home" role="tab" aria-selected="true" data-fixture-tab="first">For you</a>
+          </div>
+          <div role="presentation">
+            <a href="/home" role="tab" aria-selected="false" data-fixture-tab="second">Following</a>
+          </div>
+        </div>
+        <section role="region" aria-label="Timeline">
+          <article data-testid="tweet">A synthetic post from an invented account.</article>
+          <article data-testid="tweet">Another synthetic post.</article>
+        </section>
+      </div>
+    </main>
+    <script>
+      // Tab switching as the real page does it: only aria-selected changes.
+      for (const tab of document.querySelectorAll('[role="tab"]')) {
+        tab.addEventListener('click', (event) => {
+          event.preventDefault()
+          for (const other of document.querySelectorAll('[role="tab"]')) {
+            other.setAttribute('aria-selected', String(other === tab))
+          }
+        })
+      }
+    </script>
+  </body>
+</html>

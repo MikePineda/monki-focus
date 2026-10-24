@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -26,6 +26,8 @@ describe('bootTheme', () => {
     const pages = readdirSync(ENTRYPOINTS, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => join(ENTRYPOINTS, entry.name, 'index.html'))
+      // Content-script folders (`*.content/`) have no page.
+      .filter((page) => existsSync(page))
     expect(pages.length).toBeGreaterThan(0)
 
     for (const page of pages) {

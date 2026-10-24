@@ -74,5 +74,19 @@
   "dev.sample.settings": "Settings",
   "dev.sample.statistics": "Statistics",
   "dev.sample.visits_one": "{count} visit today",
-  "dev.sample.visits_other": "{count} visits today"
+  "dev.sample.visits_other": "{count} visits today",
+  "site.reddit": "Reddit",
+  "site.x": "X",
+  "site.youtube": "YouTube",
+  "site.instagram": "Instagram",
+  "feedPlaceholder.title": "Feed hidden",
+  "feedPlaceholder.body": "You chose to remove the {site} feed. The useful parts are still here.",
+  "feedPlaceholder.searchLabel": "Search {site}",
+  "feedPlaceholder.searchSubmit": "Search",
+  "feedPlaceholder.search": "Search",
+  "feedPlaceholder.following": "Following",
+  "feedPlaceholder.subscriptions": "Subscriptions",
+  "feedPlaceholder.direct": "Messages",
+  "feedPlaceholder.communities": "Your communities",
+  "feedPlaceholder.communitiesEmpty": "Communities you allow will show up here."
 }

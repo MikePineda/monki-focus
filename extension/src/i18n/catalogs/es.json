@@ -74,5 +74,19 @@
   "dev.sample.settings": "Ajustes",
   "dev.sample.statistics": "Estadísticas",
   "dev.sample.visits_one": "{count} visita hoy",
-  "dev.sample.visits_other": "{count} visitas hoy"
+  "dev.sample.visits_other": "{count} visitas hoy",
+  "site.reddit": "Reddit",
+  "site.x": "X",
+  "site.youtube": "YouTube",
+  "site.instagram": "Instagram",
+  "feedPlaceholder.title": "Feed oculto",
+  "feedPlaceholder.body": "Elegiste quitar el feed de {site}. Lo útil sigue aquí.",
+  "feedPlaceholder.searchLabel": "Buscar en {site}",
+  "feedPlaceholder.searchSubmit": "Buscar",
+  "feedPlaceholder.search": "Buscar",
+  "feedPlaceholder.following": "Siguiendo",
+  "feedPlaceholder.subscriptions": "Suscripciones",
+  "feedPlaceholder.direct": "Mensajes",
+  "feedPlaceholder.communities": "Tus comunidades",
+  "feedPlaceholder.communitiesEmpty": "Las comunidades que permitas aparecerán aquí."
 }
