@@ -2,6 +2,14 @@
 
 plugins {
     alias(libs.plugins.monki.jvm.library)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+dependencies {
+    // Models mirror the JSON Schemas of packages/rules and decode strictly.
+    api(libs.kotlinx.serialization.json)
+    // RulesetValidator: the schemas plus the x-uniqueBy, x-registrableDomain and x-timeZone keywords.
+    implementation(libs.json.schema.validator)
 }
 
 // Shared fixtures: the data directories of packages/rules join the test

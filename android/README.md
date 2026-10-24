@@ -72,6 +72,16 @@ plugin from `gradle/libs.versions.toml` so the compiler version is the catalog's
   names on `@Test` functions and PascalCase on `@Composable` ones.
 - `:core-domain` adds `schema/`, `data/`, `fixtures/` and `detectors/` of
   `packages/rules` to its test resources straight from the package (no copy).
+- `:core-domain` ports the decision engine of `packages/engine` one concept
+  per file (`dev.monkifocus.android.core.domain.engine`), with models that
+  mirror the JSON Schemas (`…domain.rules`, kotlinx.serialization, strict) and
+  `RulesetValidator` (networknt 2.0.x on Jackson 2, plus `x-uniqueBy`,
+  `x-registrableDomain`, `x-timeZone` and the 256 KiB limit). JUnit4
+  `Parameterized` runners run every `decision`, `specificity`,
+  `url-normalize`, `schedule`, `escalation`, `rule-change` and `invalid`
+  fixture; `RunnerCoverageTest` fails on a kind without a runner. Adapters
+  call `decide(…, now = instantOf(clock.millis()), catalog)`; it never throws
+  and fails closed (`engine_error`).
 - UI copy only through `core-ui/src/main/res/values{,-es}/strings.xml`; the
   parity test and Lint (`MissingTranslation`, `ExtraTranslation`,
   `HardcodedText` as errors) fail on drift.
