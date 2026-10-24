@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/decision-fixture.schema.json",
+  "title": "DecisionFixture",
+  "description": "One `decide(ruleset, observation, state, now, timeZone)` case. Kinds `decision` and `specificity` share this shape.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "description", "given", "when", "then"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^(decision|specificity)\\.[a-z0-9]+(_[a-z0-9]+)*$"
+    },
+    "kind": { "type": "string", "enum": ["decision", "specificity"] },
+    "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "given": {
+      "title": "DecisionGiven",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleset", "now", "timeZone", "state"],
+      "properties": {
+        "ruleset": { "$ref": "ruleset.schema.json" },
+        "now": { "$ref": "time.schema.json#/$defs/instant" },
+        "timeZone": { "$ref": "time.schema.json#/$defs/timeZone" },
+        "state": { "$ref": "decision-context.schema.json#/$defs/state" }
+      }
+    },
+    "when": {
+      "title": "DecisionWhen",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target"],
+      "properties": {
+        "target": { "$ref": "decision-context.schema.json#/$defs/observation" }
+      }
+    },
+    "then": { "$ref": "decision.schema.json" }
+  }
+}

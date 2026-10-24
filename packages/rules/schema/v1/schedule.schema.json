@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/schedule.schema.json",
+  "title": "Schedule",
+  "description": "Weekly window in the device's local wall-clock time. `end <= start` crosses midnight; `end == start` is a full 24 hours. A window belongs to the day it starts on.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["days", "start", "end"],
+  "properties": {
+    "days": { "$ref": "#/$defs/weekdays" },
+    "start": { "$ref": "#/$defs/timeOfDay" },
+    "end": { "$ref": "#/$defs/timeOfDay" }
+  },
+  "$defs": {
+    "weekday": {
+      "title": "Weekday",
+      "type": "string",
+      "enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    },
+    "weekdays": {
+      "title": "Weekdays",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/weekday" }
+    },
+    "timeOfDay": {
+      "title": "TimeOfDay",
+      "description": "Local wall-clock time `HH:MM`, 24-hour.",
+      "type": "string",
+      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "scheduleRef": {
+      "title": "ScheduleRef",
+      "description": "Reference to a named schedule of the rule set (today only `workHours`).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref"],
+      "properties": {
+        "ref": { "type": "string", "enum": ["workHours"] }
+      }
+    },
+    "ruleSchedule": {
+      "title": "RuleSchedule",
+      "oneOf": [{ "$ref": "#" }, { "$ref": "#/$defs/scheduleRef" }]
+    }
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "id": "decision.youtube_shorts_are_blocked_on_mobile_web",
+  "kind": "decision",
+  "description": "The starter preset blocks the Shorts surface, also on m.youtube.com.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "starter-instagram-explore-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "instagram.explore"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-instagram-reels-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "instagram.reels"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-reddit-feed-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "reddit.feed"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-reddit-friction",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-x-explore-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "x.explore"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-x-friction",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-x-home-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "x.home"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-youtube-home-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.home"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-youtube-shorts-block",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.shorts"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://m.youtube.com/shorts/abc123DEF45"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": "starter-youtube-shorts-block",
+    "reason": "rule_match",
+    "explanationKey": "decision.blocked_by_rule"
+  }
+}

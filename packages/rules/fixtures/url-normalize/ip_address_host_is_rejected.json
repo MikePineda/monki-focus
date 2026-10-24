@@ -1,0 +1,11 @@
+{
+  "id": "url-normalize.ip_address_host_is_rejected",
+  "kind": "url-normalize",
+  "description": "Only domain names are sites.",
+  "given": {
+    "urlText": "http://192.168.1.10/admin"
+  },
+  "then": {
+    "rejected": "invalid_host"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "id": "decision.active_intention_allows_access_until_expiry",
+  "kind": "decision",
+  "description": "An intention allows the friction target until the instant it expires.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "r-x-friction",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [
+        {
+          "targetGroup": "r-x-friction",
+          "phase": "active",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T22:54:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "countdown",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": "2026-10-25T23:00:01Z",
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        }
+      ],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "x.com/home"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "show",
+    "ruleId": "r-x-friction",
+    "reason": "intention_active",
+    "explanationKey": "decision.intention_active"
+  }
+}

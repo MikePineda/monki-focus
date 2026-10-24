@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/activity.schema.json",
+  "title": "Activity",
+  "description": "Analytics model (ActivityWatch-compatible events, categorisation, pulse, 5-minute blocks). See SEMANTICS.md §10.",
+  "$defs": {
+    "seconds": {
+      "title": "Seconds",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 31622400
+    },
+    "windowData": {
+      "title": "WindowData",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["app"],
+      "properties": {
+        "app": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "title": { "type": "string", "maxLength": 1024 }
+      }
+    },
+    "afkData": {
+      "title": "AfkData",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["afk", "not-afk"] }
+      }
+    },
+    "webTabData": {
+      "title": "WebTabData",
+      "description": "Web tab heartbeat data. `path` never carries a query or fragment.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain", "path", "surface", "audible", "incognito"],
+      "properties": {
+        "domain": { "$ref": "target.schema.json#/$defs/domain" },
+        "path": { "type": "string", "maxLength": 2048, "pattern": "^/" },
+        "surface": {
+          "oneOf": [{ "$ref": "target.schema.json#/$defs/surfaceId" }, { "type": "null" }]
+        },
+        "audible": { "type": "boolean" },
+        "incognito": { "type": "boolean" },
+        "title": { "type": "string", "maxLength": 1024 }
+      }
+    },
+    "event": {
+      "title": "ActivityEvent",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "duration", "data"],
+      "properties": {
+        "timestamp": { "$ref": "time.schema.json#/$defs/utcInstant" },
+        "duration": { "$ref": "#/$defs/seconds" },
+        "data": {
+          "oneOf": [
+            { "$ref": "#/$defs/windowData" },
+            { "$ref": "#/$defs/afkData" },
+            { "$ref": "#/$defs/webTabData" }
+          ]
+        }
+      }
+    },
+    "source": {
+      "title": "ActivitySource",
+      "type": "string",
+      "enum": ["web", "app", "android"]
+    },
+    "activity": {
+      "title": "CategorisableActivity",
+      "description": "What categorisation sees. `activityKey` is the normalised domain (web) or the package / bundle id (app).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "activityKey", "path", "surface"],
+      "properties": {
+        "source": { "$ref": "#/$defs/source" },
+        "activityKey": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "path": { "oneOf": [{ "type": "string", "pattern": "^/" }, { "type": "null" }] },
+        "surface": {
+          "oneOf": [{ "$ref": "target.schema.json#/$defs/surfaceId" }, { "type": "null" }]
+        }
+      }
+    },
+    "categoryMatch": {
+      "title": "CategoryMatch",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "categoryPath"],
+      "properties": {
+        "level": { "$ref": "category-assignment.schema.json#/$defs/level" },
+        "categoryPath": { "$ref": "category-assignment.schema.json#/$defs/categoryPath" }
+      }
+    },
+    "attributedEvent": {
+      "title": "AttributedEvent",
+      "description": "A categorised, non-idle stretch of time ready to be cut into blocks. `title` and `url` may exist locally and must never reach a block.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timestamp", "duration", "source", "activityKey", "categoryPath", "level"],
+      "properties": {
+        "timestamp": { "$ref": "time.schema.json#/$defs/utcInstant" },
+        "duration": { "$ref": "#/$defs/seconds" },
+        "source": { "$ref": "#/$defs/source" },
+        "activityKey": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "categoryPath": { "$ref": "category-assignment.schema.json#/$defs/categoryPath" },
+        "level": { "$ref": "category-assignment.schema.json#/$defs/level" },
+        "title": { "type": "string", "maxLength": 1024 },
+        "url": { "type": "string", "maxLength": 2048 }
+      }
+    },
+    "block": {
+      "title": "ActivityBlock",
+      "description": "The only analytics record that syncs. Never contains titles, URLs or paths.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deviceId",
+        "blockStart",
+        "activityKey",
+        "categoryPath",
+        "level",
+        "source",
+        "seconds"
+      ],
+      "properties": {
+        "deviceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "blockStart": {
+          "description": "UTC, aligned to a multiple of 5 minutes.",
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-5][05]:00Z$"
+        },
+        "activityKey": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "categoryPath": { "$ref": "category-assignment.schema.json#/$defs/categoryPath" },
+        "level": { "$ref": "category-assignment.schema.json#/$defs/level" },
+        "source": { "$ref": "#/$defs/source" },
+        "seconds": { "type": "integer", "minimum": 1, "maximum": 300 }
+      }
+    },
+    "secondsByLevel": {
+      "title": "SecondsByLevel",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["0", "25", "50", "75", "100"],
+      "properties": {
+        "0": { "$ref": "#/$defs/seconds" },
+        "25": { "$ref": "#/$defs/seconds" },
+        "50": { "$ref": "#/$defs/seconds" },
+        "75": { "$ref": "#/$defs/seconds" },
+        "100": { "$ref": "#/$defs/seconds" }
+      }
+    },
+    "pulse": {
+      "title": "Pulse",
+      "description": "round(sum(seconds * level) / sum(seconds)), half up; null without tracked time.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "dailyTotal": {
+      "title": "DailyTotal",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "seconds", "secondsByLevel", "pulse"],
+      "properties": {
+        "date": { "$ref": "time.schema.json#/$defs/localDate" },
+        "seconds": { "$ref": "#/$defs/seconds" },
+        "secondsByLevel": { "$ref": "#/$defs/secondsByLevel" },
+        "pulse": { "$ref": "#/$defs/pulse" }
+      }
+    },
+    "segment": {
+      "title": "AttributedSegment",
+      "description": "Output of browser de-duplication: who a stretch of time belongs to.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "source", "activityKey"],
+      "properties": {
+        "start": { "$ref": "time.schema.json#/$defs/utcInstant" },
+        "end": { "$ref": "time.schema.json#/$defs/utcInstant" },
+        "source": { "$ref": "#/$defs/source" },
+        "activityKey": { "type": "string", "minLength": 1, "maxLength": 255 }
+      }
+    }
+  }
+}

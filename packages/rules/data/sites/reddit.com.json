@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "domain": "reddit.com",
+  "aliases": [],
+  "spaNavigation": "history",
+  "surfaces": {
+    "reddit.feed": [
+      "/",
+      "/hot",
+      "/new",
+      "/top",
+      "/best",
+      "/rising",
+      "/r/all/**",
+      "/r/popular/**",
+      "/r/*",
+      "/r/*/hot",
+      "/r/*/new",
+      "/r/*/top",
+      "/r/*/rising"
+    ],
+    "reddit.permalink": ["/r/*/comments/**", "/user/*/comments/**", "/comments/**"],
+    "reddit.search": ["/search/**", "/r/*/search/**"],
+    "reddit.messages": ["/message/**", "/chat/**"]
+  }
+}

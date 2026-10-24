@@ -1,0 +1,65 @@
+{
+  "id": "decision.friction_without_intention_requires_gate",
+  "kind": "decision",
+  "description": "A first visit to a friction target gates at level 0: a 5 second countdown.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "r-x-friction",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "x.com/home"
+    }
+  },
+  "then": {
+    "access": "gate",
+    "content": "show",
+    "ruleId": "r-x-friction",
+    "reason": "intention_required",
+    "gate": {
+      "level": 0,
+      "pauseSeconds": 5,
+      "frictionType": "countdown",
+      "requiresTypedIntention": false,
+      "requiresGuardianKey": false
+    },
+    "explanationKey": "decision.intention_required"
+  }
+}

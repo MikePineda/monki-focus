@@ -1,0 +1,58 @@
+{
+  "id": "decision.hide_feed_allows_messages",
+  "kind": "decision",
+  "description": "Messages are a utility surface and are never hidden.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "r-x-hide",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://x.com/messages/1234567890"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "show",
+    "ruleId": "r-x-hide",
+    "reason": "permalink_never_hidden",
+    "explanationKey": "decision.permalink_never_hidden"
+  }
+}

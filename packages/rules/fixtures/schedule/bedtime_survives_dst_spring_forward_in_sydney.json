@@ -1,0 +1,19 @@
+{
+  "id": "schedule.bedtime_survives_dst_spring_forward_in_sydney",
+  "kind": "schedule",
+  "description": "On the 23-hour night of 2026-10-04 bedtime still ends at 07:00 wall-clock time.",
+  "given": {
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "now": "2026-10-04T06:59:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "phase": "active"
+  }
+}

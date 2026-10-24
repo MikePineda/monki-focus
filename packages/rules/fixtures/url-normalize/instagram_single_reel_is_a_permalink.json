@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.instagram_single_reel_is_a_permalink",
+  "kind": "url-normalize",
+  "description": "A single shared Reel is a permalink, not the Reels feed.",
+  "given": {
+    "urlText": "https://www.instagram.com/reel/C0ffee12345/?igsh=abc123"
+  },
+  "then": {
+    "host": "instagram.com",
+    "path": "/reel/C0ffee12345",
+    "pathKnown": true,
+    "surface": "instagram.reel_permalink"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "schedule.schedule_uses_device_time_zone",
+  "kind": "schedule",
+  "description": "Sunday 23:00 UTC is Monday 10:00 in Sydney: inside Mon-Fri 09:00-17:30.",
+  "given": {
+    "schedules": [
+      {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    ],
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "now": "2026-10-25T23:00:00Z",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "active": true
+  }
+}

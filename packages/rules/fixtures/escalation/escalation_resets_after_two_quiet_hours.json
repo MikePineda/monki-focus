@@ -1,0 +1,105 @@
+{
+  "id": "escalation.escalation_resets_after_two_quiet_hours",
+  "kind": "escalation",
+  "description": "At 1 h 59 min 59 s after the last gate the session continues; after a full two quiet hours it starts again at level 0.",
+  "given": {
+    "state": {
+      "targetGroup": "r-x-friction",
+      "phase": "idle",
+      "attemptCount": 1,
+      "lastAttemptAt": "2026-10-25T23:00:00Z",
+      "brokenCount": 0,
+      "lastFrictionType": "countdown",
+      "gate": null,
+      "pauseEndsAt": null,
+      "pendingExtension": false,
+      "intentionExpiresAt": null,
+      "overrideReadyAt": null,
+      "overrideEndsAt": null
+    },
+    "guardianLinked": false
+  },
+  "steps": [
+    {
+      "at": "2026-10-26T11:59:59+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "pausing",
+          "attemptCount": 2,
+          "lastAttemptAt": "2026-10-26T00:59:59Z",
+          "brokenCount": 0,
+          "lastFrictionType": "breath",
+          "gate": {
+            "level": 1,
+            "pauseSeconds": 15,
+            "frictionType": "breath",
+            "requiresTypedIntention": false,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-26T01:00:14Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T12:00:10+11:00",
+      "event": {
+        "type": "close"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "idle",
+          "attemptCount": 2,
+          "lastAttemptAt": "2026-10-26T00:59:59Z",
+          "brokenCount": 0,
+          "lastFrictionType": "breath",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T13:59:59+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "pausing",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-26T02:59:59Z",
+          "brokenCount": 0,
+          "lastFrictionType": "reflect",
+          "gate": {
+            "level": 0,
+            "pauseSeconds": 5,
+            "frictionType": "reflect",
+            "requiresTypedIntention": false,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-26T03:00:04Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    }
+  ]
+}

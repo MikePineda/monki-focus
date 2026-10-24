@@ -1,0 +1,64 @@
+{
+  "id": "decision.budget_exhausted_blocks_until_local_midnight",
+  "kind": "decision",
+  "description": "Thirty budgeted minutes used today: blocked at 23:59 local time.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "r-yt-budget",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com"
+          },
+          "mode": "allow",
+          "schedules": [],
+          "enabled": true,
+          "dailyBudgetMinutes": 30
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T23:59:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [],
+      "usage": {
+        "localDate": "2026-10-26",
+        "secondsByRule": {
+          "r-yt-budget": 1800
+        }
+      },
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.youtube.com/watch?v=abc123DEF45"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": "r-yt-budget",
+    "reason": "budget_exhausted",
+    "explanationKey": "decision.budget_exhausted"
+  }
+}

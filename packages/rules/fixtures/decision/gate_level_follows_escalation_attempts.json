@@ -1,0 +1,80 @@
+{
+  "id": "decision.gate_level_follows_escalation_attempts",
+  "kind": "decision",
+  "description": "After three gates in the session the fourth asks for the guardian key (and a typed intention).",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "r-x-friction",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [
+        {
+          "targetGroup": "r-x-friction",
+          "phase": "idle",
+          "attemptCount": 3,
+          "lastAttemptAt": "2026-10-25T22:30:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "reflect",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        }
+      ],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": true
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "x.com/home"
+    }
+  },
+  "then": {
+    "access": "gate",
+    "content": "show",
+    "ruleId": "r-x-friction",
+    "reason": "intention_required",
+    "gate": {
+      "level": 3,
+      "pauseSeconds": 15,
+      "frictionType": "type-intention",
+      "requiresTypedIntention": true,
+      "requiresGuardianKey": true
+    },
+    "explanationKey": "decision.intention_required"
+  }
+}

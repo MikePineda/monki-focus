@@ -1,0 +1,58 @@
+{
+  "id": "decision.hide_feed_hides_a_feed_surface",
+  "kind": "decision",
+  "description": "hide-feed on the Reddit feed surface hides the home feed.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "r-reddit-feed-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "reddit.feed"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "reddit.com/"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "hide-feed",
+    "ruleId": "r-reddit-feed-hide",
+    "reason": "rule_match",
+    "explanationKey": "decision.feed_hidden"
+  }
+}

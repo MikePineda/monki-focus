@@ -1,0 +1,23 @@
+{
+  "id": "activity.locked_screen_counts_nothing_even_with_sound",
+  "kind": "activity",
+  "operation": "probe",
+  "description": "A locked screen records nothing, even for an audible tab.",
+  "given": {
+    "now": "2026-10-26T09:00:00Z",
+    "settings": {
+      "countAudibleWhileIdle": true,
+      "storeTitles": false
+    },
+    "windowFocused": true,
+    "idleState": "locked",
+    "tab": {
+      "url": "https://www.youtube.com/watch?v=abc123DEF45",
+      "audible": true,
+      "incognito": false
+    }
+  },
+  "then": {
+    "heartbeat": null
+  }
+}

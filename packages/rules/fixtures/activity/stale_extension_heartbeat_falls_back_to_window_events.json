@@ -1,0 +1,68 @@
+{
+  "id": "activity.stale_extension_heartbeat_falls_back_to_window_events",
+  "kind": "activity",
+  "operation": "browser-dedupe",
+  "description": "Once the extension has been silent for more than 60 s, browser time counts as the browser app again.",
+  "given": {
+    "browserApps": ["com.brave.Browser", "com.google.Chrome"],
+    "staleAfterSeconds": 60,
+    "windowEvents": [
+      {
+        "timestamp": "2026-10-26T10:00:00Z",
+        "duration": 900,
+        "data": {
+          "app": "com.brave.Browser"
+        }
+      },
+      {
+        "timestamp": "2026-10-26T10:15:00Z",
+        "duration": 300,
+        "data": {
+          "app": "com.microsoft.VSCode"
+        }
+      }
+    ],
+    "webEvents": [
+      {
+        "timestamp": "2026-10-26T10:00:00Z",
+        "duration": 120,
+        "data": {
+          "domain": "github.com",
+          "path": "/",
+          "surface": null,
+          "audible": false,
+          "incognito": false
+        }
+      }
+    ],
+    "extensionLastHeartbeatAt": "2026-10-26T10:02:00Z"
+  },
+  "then": {
+    "segments": [
+      {
+        "start": "2026-10-26T10:00:00Z",
+        "end": "2026-10-26T10:02:00Z",
+        "source": "web",
+        "activityKey": "github.com"
+      },
+      {
+        "start": "2026-10-26T10:02:00Z",
+        "end": "2026-10-26T10:03:00Z",
+        "source": "app",
+        "activityKey": "browser-unknown"
+      },
+      {
+        "start": "2026-10-26T10:03:00Z",
+        "end": "2026-10-26T10:15:00Z",
+        "source": "app",
+        "activityKey": "com.brave.Browser"
+      },
+      {
+        "start": "2026-10-26T10:15:00Z",
+        "end": "2026-10-26T10:20:00Z",
+        "source": "app",
+        "activityKey": "com.microsoft.VSCode"
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "activity.pulse_is_null_without_tracked_time",
+  "kind": "activity",
+  "operation": "pulse",
+  "description": "No tracked time means no pulse (not zero).",
+  "given": {
+    "entries": []
+  },
+  "then": {
+    "pulse": null
+  }
+}

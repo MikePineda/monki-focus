@@ -1,0 +1,61 @@
+{
+  "id": "activity.heartbeat_beyond_pulsetime_opens_new_event",
+  "kind": "activity",
+  "operation": "heartbeat-merge",
+  "description": "Same data but 50 s after the event ended (pulsetime 45 s) starts a new event.",
+  "given": {
+    "pulsetime": 45,
+    "events": [
+      {
+        "timestamp": "2026-10-25T23:00:00Z",
+        "duration": 30,
+        "data": {
+          "domain": "reddit.com",
+          "path": "/r/MachineLearning",
+          "surface": "reddit.feed",
+          "audible": false,
+          "incognito": false
+        }
+      }
+    ],
+    "heartbeats": [
+      {
+        "timestamp": "2026-10-25T23:01:20Z",
+        "duration": 0,
+        "data": {
+          "domain": "reddit.com",
+          "path": "/r/MachineLearning",
+          "surface": "reddit.feed",
+          "audible": false,
+          "incognito": false
+        }
+      }
+    ]
+  },
+  "then": {
+    "events": [
+      {
+        "timestamp": "2026-10-25T23:00:00Z",
+        "duration": 30,
+        "data": {
+          "domain": "reddit.com",
+          "path": "/r/MachineLearning",
+          "surface": "reddit.feed",
+          "audible": false,
+          "incognito": false
+        }
+      },
+      {
+        "timestamp": "2026-10-25T23:01:20Z",
+        "duration": 0,
+        "data": {
+          "domain": "reddit.com",
+          "path": "/r/MachineLearning",
+          "surface": "reddit.feed",
+          "audible": false,
+          "incognito": false
+        }
+      }
+    ]
+  }
+}

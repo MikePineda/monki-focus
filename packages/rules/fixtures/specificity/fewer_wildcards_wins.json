@@ -1,0 +1,70 @@
+{
+  "id": "specificity.fewer_wildcards_wins",
+  "kind": "specificity",
+  "description": "With equal literal segments and labels, the glob with fewer wildcards wins (`/watch` over `/watch/**`).",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "r-watch-allow",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com",
+            "path": "/watch"
+          },
+          "mode": "allow",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "r-watch-any-block",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com",
+            "path": "/watch/**"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.youtube.com/watch?v=abc123DEF45"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "show",
+    "ruleId": "r-watch-allow",
+    "reason": "rule_match",
+    "explanationKey": "decision.allowed_by_rule"
+  }
+}

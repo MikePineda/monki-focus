@@ -1,0 +1,22 @@
+{
+  "id": "schedule.work_hours_default_mon_fri_0900_1730",
+  "kind": "schedule",
+  "description": "The default work hours start at 09:00 on Monday.",
+  "given": {
+    "schedules": [
+      {
+        "ref": "workHours"
+      }
+    ],
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "now": "2026-10-26T09:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "active": true
+  }
+}

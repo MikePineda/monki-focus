@@ -1,0 +1,24 @@
+{
+  "id": "schedule.schedule_crossing_midnight_is_evaluated_in_local_tz",
+  "kind": "schedule",
+  "description": "Friday 22:00-02:00 is active at 01:00 on Saturday local time (15:00 UTC on Friday).",
+  "given": {
+    "schedules": [
+      {
+        "days": ["fri"],
+        "start": "22:00",
+        "end": "02:00"
+      }
+    ],
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "now": "2026-10-31T01:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "active": true
+  }
+}

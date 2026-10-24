@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/schedule-fixture.schema.json",
+  "title": "ScheduleFixture",
+  "description": "Either `isScheduleActive(schedules, workHours, now, timeZone)` or `bedtimePhase(bedtime, now, timeZone)` (SEMANTICS.md §6).",
+  "oneOf": [{ "$ref": "#/$defs/scheduleCase" }, { "$ref": "#/$defs/bedtimeCase" }],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^schedule\\.[a-z0-9]+(_[a-z0-9]+)*$"
+    },
+    "scheduleCase": {
+      "title": "ScheduleActiveFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "schedule" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "given": {
+          "title": "ScheduleActiveGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schedules", "workHours", "now", "timeZone"],
+          "properties": {
+            "schedules": {
+              "type": "array",
+              "maxItems": 14,
+              "items": { "$ref": "schedule.schema.json#/$defs/ruleSchedule" }
+            },
+            "workHours": { "$ref": "schedule.schema.json" },
+            "now": { "$ref": "time.schema.json#/$defs/instant" },
+            "timeZone": { "$ref": "time.schema.json#/$defs/timeZone" }
+          }
+        },
+        "then": {
+          "title": "ScheduleActiveThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["active"],
+          "properties": { "active": { "type": "boolean" } }
+        }
+      }
+    },
+    "bedtimeCase": {
+      "title": "BedtimePhaseFixture",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "description", "given", "then"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "schedule" },
+        "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "given": {
+          "title": "BedtimePhaseGiven",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bedtime", "now", "timeZone"],
+          "properties": {
+            "bedtime": { "$ref": "bedtime.schema.json" },
+            "now": { "$ref": "time.schema.json#/$defs/instant" },
+            "timeZone": { "$ref": "time.schema.json#/$defs/timeZone" }
+          }
+        },
+        "then": {
+          "title": "BedtimePhaseThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["phase"],
+          "properties": {
+            "phase": { "type": "string", "enum": ["inactive", "warning", "active"] }
+          }
+        }
+      }
+    }
+  }
+}

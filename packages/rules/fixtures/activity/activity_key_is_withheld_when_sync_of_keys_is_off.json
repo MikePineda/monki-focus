@@ -1,0 +1,41 @@
+{
+  "id": "activity.activity_key_is_withheld_when_sync_of_keys_is_off",
+  "kind": "activity",
+  "operation": "blocks",
+  "description": "With activity keys off, blocks only carry the category, aggregated across keys.",
+  "given": {
+    "deviceId": "device-a",
+    "syncActivityKey": false,
+    "events": [
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 60,
+        "source": "web",
+        "activityKey": "reddit.com",
+        "categoryPath": "social",
+        "level": 0
+      },
+      {
+        "timestamp": "2026-10-26T09:01:00Z",
+        "duration": 90,
+        "source": "web",
+        "activityKey": "x.com",
+        "categoryPath": "social",
+        "level": 0
+      }
+    ]
+  },
+  "then": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": null,
+        "categoryPath": "social",
+        "level": 0,
+        "source": "web",
+        "seconds": 150
+      }
+    ]
+  }
+}

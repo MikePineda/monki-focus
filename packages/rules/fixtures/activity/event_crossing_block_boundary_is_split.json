@@ -1,0 +1,42 @@
+{
+  "id": "activity.event_crossing_block_boundary_is_split",
+  "kind": "activity",
+  "operation": "blocks",
+  "description": "An event from 09:03 to 09:07 becomes 120 s in the 09:00 block and 120 s in the 09:05 block.",
+  "given": {
+    "deviceId": "device-a",
+    "syncActivityKey": true,
+    "events": [
+      {
+        "timestamp": "2026-10-26T09:03:00Z",
+        "duration": 240,
+        "source": "web",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100
+      }
+    ]
+  },
+  "then": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 120
+      },
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:05:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 120
+      }
+    ]
+  }
+}

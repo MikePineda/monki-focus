@@ -1,0 +1,162 @@
+{
+  "id": "escalation.emergency_override_waits_120s_grants_15min_and_records_bypass",
+  "kind": "escalation",
+  "description": "The emergency override waits 120 s, then grants 15 minutes and records a bypass event for the guardian.",
+  "given": {
+    "state": {
+      "targetGroup": "r-reddit-block",
+      "phase": "idle",
+      "attemptCount": 0,
+      "lastAttemptAt": null,
+      "brokenCount": 0,
+      "lastFrictionType": null,
+      "gate": null,
+      "pauseEndsAt": null,
+      "pendingExtension": false,
+      "intentionExpiresAt": null,
+      "overrideReadyAt": null,
+      "overrideEndsAt": null
+    },
+    "guardianLinked": true
+  },
+  "steps": [
+    {
+      "at": "2026-10-26T10:00:00+11:00",
+      "event": {
+        "type": "emergency_request"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-block",
+          "phase": "override_waiting",
+          "attemptCount": 0,
+          "lastAttemptAt": null,
+          "brokenCount": 0,
+          "lastFrictionType": null,
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": "2026-10-25T23:02:00Z",
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:01:59+11:00",
+      "event": {
+        "type": "emergency_wait_elapsed"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-block",
+          "phase": "override_waiting",
+          "attemptCount": 0,
+          "lastAttemptAt": null,
+          "brokenCount": 0,
+          "lastFrictionType": null,
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": "2026-10-25T23:02:00Z",
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:02:00+11:00",
+      "event": {
+        "type": "emergency_wait_elapsed"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-block",
+          "phase": "override_active",
+          "attemptCount": 0,
+          "lastAttemptAt": null,
+          "brokenCount": 0,
+          "lastFrictionType": null,
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": "2026-10-25T23:02:00Z",
+          "overrideEndsAt": "2026-10-25T23:17:00Z"
+        },
+        "effects": ["record_bypass"]
+      }
+    },
+    {
+      "at": "2026-10-26T10:10:00+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-block",
+          "phase": "override_active",
+          "attemptCount": 0,
+          "lastAttemptAt": null,
+          "brokenCount": 0,
+          "lastFrictionType": null,
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": "2026-10-25T23:02:00Z",
+          "overrideEndsAt": "2026-10-25T23:17:00Z"
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:16:59+11:00",
+      "event": {
+        "type": "emergency_expired"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-block",
+          "phase": "override_active",
+          "attemptCount": 0,
+          "lastAttemptAt": null,
+          "brokenCount": 0,
+          "lastFrictionType": null,
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": "2026-10-25T23:02:00Z",
+          "overrideEndsAt": "2026-10-25T23:17:00Z"
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:17:00+11:00",
+      "event": {
+        "type": "emergency_expired"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-block",
+          "phase": "idle",
+          "attemptCount": 0,
+          "lastAttemptAt": null,
+          "brokenCount": 0,
+          "lastFrictionType": null,
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    }
+  ]
+}

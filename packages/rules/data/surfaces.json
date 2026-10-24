@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "surfaces": [
+    { "id": "instagram.home", "family": "instagram", "kind": "feed" },
+    { "id": "instagram.reels", "family": "instagram", "kind": "feed" },
+    { "id": "instagram.explore", "family": "instagram", "kind": "feed" },
+    { "id": "instagram.reel_from_dm", "family": "instagram", "kind": "permalink" },
+    { "id": "instagram.reel_permalink", "family": "instagram", "kind": "permalink" },
+    { "id": "instagram.post", "family": "instagram", "kind": "permalink" },
+    { "id": "instagram.stories", "family": "instagram", "kind": "permalink" },
+    { "id": "instagram.direct", "family": "instagram", "kind": "utility" },
+    { "id": "reddit.feed", "family": "reddit", "kind": "feed" },
+    { "id": "reddit.permalink", "family": "reddit", "kind": "permalink" },
+    { "id": "reddit.search", "family": "reddit", "kind": "utility" },
+    { "id": "reddit.messages", "family": "reddit", "kind": "utility" },
+    { "id": "x.home", "family": "x", "kind": "feed" },
+    { "id": "x.explore", "family": "x", "kind": "feed" },
+    { "id": "x.status", "family": "x", "kind": "permalink" },
+    { "id": "x.search", "family": "x", "kind": "utility" },
+    { "id": "x.messages", "family": "x", "kind": "utility" },
+    { "id": "youtube.home", "family": "youtube", "kind": "feed" },
+    { "id": "youtube.shorts", "family": "youtube", "kind": "feed" },
+    { "id": "youtube.watch", "family": "youtube", "kind": "permalink" },
+    { "id": "youtube.search", "family": "youtube", "kind": "utility" }
+  ]
+}

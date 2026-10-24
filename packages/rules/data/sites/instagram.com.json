@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "domain": "instagram.com",
+  "aliases": [],
+  "spaNavigation": "history",
+  "surfaces": {
+    "instagram.home": ["/"],
+    "instagram.reels": ["/reels/**"],
+    "instagram.explore": ["/explore/**"],
+    "instagram.reel_permalink": ["/reel/*"],
+    "instagram.post": ["/p/*"],
+    "instagram.stories": ["/stories/**"],
+    "instagram.direct": ["/direct/**"]
+  }
+}

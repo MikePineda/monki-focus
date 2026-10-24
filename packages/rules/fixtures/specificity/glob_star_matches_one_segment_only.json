@@ -1,0 +1,59 @@
+{
+  "id": "specificity.glob_star_matches_one_segment_only",
+  "kind": "specificity",
+  "description": "`*` matches exactly one segment, so `/r/*` does not match a comment page.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "r-sub-block",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com",
+            "path": "/r/*"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "reddit.com/r/AskHistorians/comments/xyz789"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "show",
+    "ruleId": null,
+    "reason": "no_rule",
+    "explanationKey": "decision.no_rule"
+  }
+}

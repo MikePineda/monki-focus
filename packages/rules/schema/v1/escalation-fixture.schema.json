@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/escalation-fixture.schema.json",
+  "title": "EscalationFixture",
+  "description": "A multi-step run of `nextEscalation(state, event, now, guardianLinked)`; each step feeds the previous step's state (SEMANTICS.md §7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "description", "given", "steps"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^escalation\\.[a-z0-9]+(_[a-z0-9]+)*$"
+    },
+    "kind": { "const": "escalation" },
+    "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "given": {
+      "title": "EscalationGiven",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "guardianLinked"],
+      "properties": {
+        "state": { "$ref": "escalation.schema.json#/$defs/state" },
+        "guardianLinked": { "type": "boolean" }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+  "$defs": {
+    "step": {
+      "title": "EscalationStep",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "event", "then"],
+      "properties": {
+        "at": { "$ref": "time.schema.json#/$defs/instant" },
+        "event": { "$ref": "escalation.schema.json#/$defs/event" },
+        "then": {
+          "title": "EscalationStepThen",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "effects"],
+          "properties": {
+            "state": { "$ref": "escalation.schema.json#/$defs/state" },
+            "effects": {
+              "type": "array",
+              "maxItems": 4,
+              "items": { "$ref": "escalation.schema.json#/$defs/effect" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

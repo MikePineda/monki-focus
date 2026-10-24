@@ -1,0 +1,258 @@
+{
+  "id": "escalation.extending_marks_intention_broken_and_doubles_next_pause",
+  "kind": "escalation",
+  "description": "Extending an expired intention counts as broken: a doubled pause before 5 more minutes, and every later pause in the session doubles.",
+  "given": {
+    "state": {
+      "targetGroup": "r-reddit-friction",
+      "phase": "idle",
+      "attemptCount": 0,
+      "lastAttemptAt": null,
+      "brokenCount": 0,
+      "lastFrictionType": null,
+      "gate": null,
+      "pauseEndsAt": null,
+      "pendingExtension": false,
+      "intentionExpiresAt": null,
+      "overrideReadyAt": null,
+      "overrideEndsAt": null
+    },
+    "guardianLinked": false
+  },
+  "steps": [
+    {
+      "at": "2026-10-26T10:00:00+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-friction",
+          "phase": "pausing",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "countdown",
+          "gate": {
+            "level": 0,
+            "pauseSeconds": 5,
+            "frictionType": "countdown",
+            "requiresTypedIntention": false,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:00:05Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:00:05+11:00",
+      "event": {
+        "type": "pause_elapsed"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-friction",
+          "phase": "asking",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "countdown",
+          "gate": {
+            "level": 0,
+            "pauseSeconds": 5,
+            "frictionType": "countdown",
+            "requiresTypedIntention": false,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:00:05Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:00:10+11:00",
+      "event": {
+        "type": "commit",
+        "minutes": 10,
+        "typedWords": 0,
+        "guardianKeyVerified": false
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-friction",
+          "phase": "active",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "countdown",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": "2026-10-25T23:10:10Z",
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:10:10+11:00",
+      "event": {
+        "type": "intention_expired"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-friction",
+          "phase": "timed_out",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "countdown",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": "2026-10-25T23:10:10Z",
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:10:20+11:00",
+      "event": {
+        "type": "extend"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-friction",
+          "phase": "pausing",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "brokenCount": 1,
+          "lastFrictionType": "breath",
+          "gate": {
+            "level": 0,
+            "pauseSeconds": 10,
+            "frictionType": "breath",
+            "requiresTypedIntention": false,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:10:30Z",
+          "pendingExtension": true,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:10:30+11:00",
+      "event": {
+        "type": "pause_elapsed"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-friction",
+          "phase": "active",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "brokenCount": 1,
+          "lastFrictionType": "breath",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": "2026-10-25T23:15:30Z",
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:15:30+11:00",
+      "event": {
+        "type": "intention_expired"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-friction",
+          "phase": "timed_out",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "brokenCount": 1,
+          "lastFrictionType": "breath",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": "2026-10-25T23:15:30Z",
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:15:35+11:00",
+      "event": {
+        "type": "leave"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-friction",
+          "phase": "idle",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "brokenCount": 1,
+          "lastFrictionType": "breath",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:30:00+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-reddit-friction",
+          "phase": "pausing",
+          "attemptCount": 2,
+          "lastAttemptAt": "2026-10-25T23:30:00Z",
+          "brokenCount": 1,
+          "lastFrictionType": "reflect",
+          "gate": {
+            "level": 1,
+            "pauseSeconds": 30,
+            "frictionType": "reflect",
+            "requiresTypedIntention": false,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:30:30Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    }
+  ]
+}

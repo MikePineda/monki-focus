@@ -1,0 +1,208 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { describe, expect, it } from 'vitest'
+import { readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import {
+  FIXTURE_KINDS,
+  checkFixtureInvariants,
+  listFixtureFiles,
+  loadFixtures,
+  loadSurfaceRegistry,
+  schemaValidator,
+} from '../../src/index.ts'
+import type { Fixture } from '../../src/index.ts'
+import { packageRoot } from '../../src/PackageRoot.ts'
+
+const files = listFixtureFiles()
+
+/** Every business rule of the plan has at least one fixture, under exactly this id. */
+const REQUIRED_FIXTURE_IDS = [
+  'specificity.most_specific_rule_wins',
+  'specificity.path_rule_beats_domain_rule',
+  'specificity.surface_rule_beats_app_rule',
+  'specificity.more_domain_labels_wins',
+  'specificity.equal_specificity_stricter_mode_wins',
+  'specificity.full_tie_breaks_by_rule_id',
+  'decision.hide_feed_never_blocks_a_permalink',
+  'decision.hide_feed_allows_search',
+  'decision.hide_feed_allows_messages',
+  'decision.hide_feed_with_unknown_path_allows',
+  'decision.allow_listed_subreddit_is_shown',
+  'decision.active_intention_allows_access_until_expiry',
+  'decision.expired_intention_requires_gate',
+  'decision.valid_unlock_allows_blocked_target',
+  'decision.expired_unlock_is_ignored',
+  'decision.budget_exhausted_blocks_until_local_midnight',
+  'decision.budget_resets_at_local_midnight',
+  'decision.bedtime_blocks_distracting_targets',
+  'decision.bedtime_ignores_allow_rule_without_unlock',
+  'decision.emergency_override_allows_its_target_group',
+  'decision.friction_and_hide_feed_coexist_on_two_axes',
+  'url-normalize.strips_scheme_www_and_mobile_prefix',
+  'url-normalize.text_without_slash_marks_path_unknown',
+  'url-normalize.idn_domain_is_normalised_to_punycode',
+  'schedule.work_hours_default_mon_fri_0900_1730',
+  'schedule.bedtime_blocks_from_2230_to_0700',
+  'schedule.bedtime_warning_starts_at_2200',
+  'schedule.schedule_crossing_midnight_is_evaluated_in_local_tz',
+  'schedule.bedtime_survives_dst_fall_back_in_sydney',
+  'schedule.bedtime_survives_dst_spring_forward_in_sydney',
+  'escalation.escalation_goes_5s_15s_typed_guardian',
+  'escalation.escalation_resets_after_two_quiet_hours',
+  'escalation.friction_type_never_repeats_consecutively',
+  'escalation.l3_without_guardian_falls_back_to_60s_typed',
+  'escalation.extending_marks_intention_broken_and_doubles_next_pause',
+  'escalation.pause_never_exceeds_60_seconds',
+  'escalation.emergency_override_waits_120s_grants_15min_and_records_bypass',
+  'rule-change.tightening_a_limit_applies_immediately',
+  'rule-change.loosening_a_limit_applies_next_day',
+  'rule-change.mixed_change_applies_tightening_now_and_loosening_tomorrow',
+  'rule-change.deleting_a_rule_counts_as_loosening',
+  'activity.heartbeat_within_pulsetime_extends_event',
+  'activity.heartbeat_with_different_data_opens_new_event',
+  'activity.idle_time_is_never_counted',
+  'activity.audible_active_tab_counts_while_idle',
+  'activity.unfocused_browser_counts_nothing',
+  'activity.uncategorised_activity_is_neutral',
+  'activity.most_specific_category_rule_wins',
+  'activity.pulse_formula_matches_rescuetime',
+  'activity.pulse_is_null_without_tracked_time',
+  'activity.event_crossing_block_boundary_is_split',
+  'activity.event_crossing_local_midnight_splits_daily_totals',
+  'activity.block_never_exceeds_300_seconds',
+  'activity.split_preserves_total_seconds',
+  'activity.browser_time_covered_by_web_events_is_not_counted_as_browser',
+  'activity.uncovered_browser_time_counts_as_browser_unknown',
+  'activity.stale_extension_heartbeat_falls_back_to_window_events',
+  'activity.cross_device_overlap_is_capped_per_block',
+  'activity.synced_blocks_never_contain_titles_or_urls',
+  'activity.daily_totals_respect_dst_in_australia_sydney',
+]
+
+const MINIMUM_COUNTS: Record<string, number> = {
+  'decision+specificity': 25,
+  'url-normalize': 6,
+  'schedule': 6,
+  'escalation': 4,
+  'rule-change': 4,
+  'activity': 20,
+}
+
+function surfacesIn(node: unknown, found: Set<string>): Set<string> {
+  if (Array.isArray(node)) {
+    for (const child of node) surfacesIn(child, found)
+  } else if (node !== null && typeof node === 'object') {
+    for (const [key, child] of Object.entries(node)) {
+      if (key === 'surface' && typeof child === 'string') found.add(child)
+      surfacesIn(child, found)
+    }
+  }
+  return found
+}
+
+describe('fixture files', () => {
+  it.each(files.map((file) => [file.relativePath, file] as const))(
+    'every_fixture_validates_against_the_fixture_schema %s',
+    (_name, file) => {
+      expect(schemaValidator().validateDocument('fixture', file.text)).toEqual({ valid: true })
+    }
+  )
+
+  it('fixture_ids_are_unique', () => {
+    const ids = files.map((file) => (file.json as Fixture).id)
+    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index)
+    expect(duplicates).toEqual([])
+  })
+
+  it('fixture_file_name_matches_its_id', () => {
+    for (const file of files) {
+      const id = (file.json as Fixture).id
+      expect(`${id.slice(id.indexOf('.') + 1)}.json`, file.relativePath).toBe(file.fileName)
+    }
+  })
+
+  it('fixture_lives_in_the_directory_of_its_kind', () => {
+    for (const file of files) {
+      const fixture = file.json as Fixture
+      expect(fixture.kind, file.relativePath).toBe(file.directory)
+      expect(fixture.id.startsWith(`${fixture.kind}.`), file.relativePath).toBe(true)
+    }
+  })
+
+  it('unknown_fixture_kind_fails_loudly', () => {
+    const unknown = {
+      id: 'telepathy.reads_minds',
+      kind: 'telepathy',
+      description: 'A kind no runner knows.',
+      given: {},
+      then: {},
+    }
+    expect(schemaValidator().validate('fixture', unknown).valid).toBe(false)
+    expect(() => loadFixtures('telepathy' as never)).toThrow(/unknown fixture kind/i)
+    expect(checkFixtureInvariants(unknown)).toContain('unknown fixture kind: telepathy')
+  })
+
+  it('unlock_token_directory_is_a_documented_placeholder', () => {
+    const entries = readdirSync(join(packageRoot, 'fixtures/unlock-token'))
+    expect(entries).toEqual(['README.md'])
+    expect(() => loadFixtures('unlock-token' as never)).toThrow(/packages\/protocol/)
+  })
+
+  it('unlock_token_fixture_is_rejected_here', () => {
+    const misplaced = { id: 'unlock-token.valid', kind: 'unlock-token', description: 'Misplaced.' }
+    expect(schemaValidator().validate('fixture', misplaced).valid).toBe(false)
+  })
+
+  it('every_fixture_directory_is_a_known_kind', () => {
+    const directories = readdirSync(join(packageRoot, 'fixtures')).sort()
+    expect(directories).toEqual([...FIXTURE_KINDS].sort())
+  })
+
+  it.each(files.map((file) => [file.relativePath, file] as const))(
+    'every_fixture_satisfies_the_reference_invariants %s',
+    (_name, file) => {
+      expect(checkFixtureInvariants(file.json)).toEqual([])
+    }
+  )
+
+  it('minimum_fixture_counts_per_kind_are_met', () => {
+    const counts: Record<string, number> = {}
+    for (const file of files) {
+      const kind =
+        file.directory === 'decision' || file.directory === 'specificity'
+          ? 'decision+specificity'
+          : file.directory
+      counts[kind] = (counts[kind] ?? 0) + 1
+    }
+    for (const [kind, minimum] of Object.entries(MINIMUM_COUNTS)) {
+      expect(counts[kind] ?? 0, kind).toBeGreaterThanOrEqual(minimum)
+    }
+  })
+
+  it('every_business_rule_has_a_fixture', () => {
+    const ids = new Set(files.map((file) => (file.json as Fixture).id))
+    expect(REQUIRED_FIXTURE_IDS.filter((id) => !ids.has(id))).toEqual([])
+  })
+
+  it('fixture_time_zones_are_real_iana_zones', () => {
+    for (const file of files) {
+      const text = file.text
+      for (const match of text.matchAll(/"timeZone": "([^"]+)"/g)) {
+        const zone = match[1] ?? ''
+        expect(() => new Intl.DateTimeFormat('en', { timeZone: zone }), zone).not.toThrow()
+        expect(['UTC', 'Australia/Sydney'], `${file.relativePath}: generic zones only`).toContain(
+          zone
+        )
+      }
+    }
+  })
+
+  it('fixtures_use_only_registered_surfaces', () => {
+    const registered = new Set(loadSurfaceRegistry().surfaces.map((surface) => surface.id))
+    for (const file of files) {
+      for (const surface of surfacesIn(file.json, new Set())) {
+        expect(registered.has(surface), `${file.relativePath}: ${surface}`).toBe(true)
+      }
+    }
+  })
+})

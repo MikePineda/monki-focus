@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.empty_segments_are_removed",
+  "kind": "url-normalize",
+  "description": "Repeated slashes collapse.",
+  "given": {
+    "urlText": "https://reddit.com//r//AskHistorians//"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/r/AskHistorians",
+    "pathKnown": true,
+    "surface": "reddit.feed"
+  }
+}

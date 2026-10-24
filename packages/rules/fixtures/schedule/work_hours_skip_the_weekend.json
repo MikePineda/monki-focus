@@ -1,0 +1,22 @@
+{
+  "id": "schedule.work_hours_skip_the_weekend",
+  "kind": "schedule",
+  "description": "Saturday is not a work day.",
+  "given": {
+    "schedules": [
+      {
+        "ref": "workHours"
+      }
+    ],
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "now": "2026-10-31T10:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "active": false
+  }
+}

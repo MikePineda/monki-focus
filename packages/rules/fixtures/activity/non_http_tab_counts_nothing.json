@@ -1,0 +1,23 @@
+{
+  "id": "activity.non_http_tab_counts_nothing",
+  "kind": "activity",
+  "operation": "probe",
+  "description": "Browser-internal pages are not tracked.",
+  "given": {
+    "now": "2026-10-26T09:00:00Z",
+    "settings": {
+      "countAudibleWhileIdle": true,
+      "storeTitles": false
+    },
+    "windowFocused": true,
+    "idleState": "active",
+    "tab": {
+      "url": "chrome://newtab/",
+      "audible": false,
+      "incognito": false
+    }
+  },
+  "then": {
+    "heartbeat": null
+  }
+}

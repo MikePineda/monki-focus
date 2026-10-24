@@ -1,0 +1,24 @@
+{
+  "id": "schedule.same_instant_in_utc_is_outside_work_hours",
+  "kind": "schedule",
+  "description": "The same instant evaluated in UTC is Sunday 23:00: outside.",
+  "given": {
+    "schedules": [
+      {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    ],
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "now": "2026-10-25T23:00:00Z",
+    "timeZone": "UTC"
+  },
+  "then": {
+    "active": false
+  }
+}

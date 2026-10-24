@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/ruleset.schema.json",
+  "title": "Ruleset",
+  "description": "A user's rule set: the document that is imported, exported, synced and enforced. `workHours` is the user's working hours, which rules opt into with `{ \"ref\": \"workHours\" }`. Strict: unknown fields are rejected and the serialised document must not exceed 256 KB.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "revision",
+    "updatedAt",
+    "rules",
+    "categories",
+    "bedtime",
+    "workHours"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "revision": {
+      "description": "Monotonic, assigned by whoever edits the set.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "updatedAt": { "$ref": "time.schema.json#/$defs/utcInstant" },
+    "rules": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "rule.schema.json" }
+    },
+    "categories": {
+      "description": "Overrides of data/categories/default.json.",
+      "type": "array",
+      "maxItems": 2000,
+      "items": { "$ref": "category-assignment.schema.json" }
+    },
+    "bedtime": { "$ref": "bedtime.schema.json" },
+    "workHours": { "$ref": "schedule.schema.json" }
+  }
+}

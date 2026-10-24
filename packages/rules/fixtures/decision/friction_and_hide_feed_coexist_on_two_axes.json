@@ -1,0 +1,83 @@
+{
+  "id": "decision.friction_and_hide_feed_coexist_on_two_axes",
+  "kind": "decision",
+  "description": "Friction on reddit.com and hide-feed on its feed: an active intention allows access while the feed stays hidden.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "rules": [
+        {
+          "id": "r-reddit-feed-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "reddit.feed"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "r-reddit-friction",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "timeZone": "Australia/Sydney",
+    "state": {
+      "escalation": [
+        {
+          "targetGroup": "r-reddit-friction",
+          "phase": "active",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T22:54:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "countdown",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": "2026-10-25T23:04:00Z",
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        }
+      ],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "reddit.com/"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "hide-feed",
+    "ruleId": "r-reddit-friction",
+    "reason": "intention_active",
+    "explanationKey": "decision.intention_active"
+  }
+}

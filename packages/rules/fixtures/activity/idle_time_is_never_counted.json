@@ -1,0 +1,58 @@
+{
+  "id": "activity.idle_time_is_never_counted",
+  "kind": "activity",
+  "operation": "active-time",
+  "description": "Window time that overlaps an AFK interval is cut out.",
+  "given": {
+    "events": [
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 600,
+        "data": {
+          "app": "com.microsoft.VSCode"
+        }
+      }
+    ],
+    "afk": [
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 120,
+        "data": {
+          "status": "not-afk"
+        }
+      },
+      {
+        "timestamp": "2026-10-26T09:02:00Z",
+        "duration": 300,
+        "data": {
+          "status": "afk"
+        }
+      },
+      {
+        "timestamp": "2026-10-26T09:07:00Z",
+        "duration": 180,
+        "data": {
+          "status": "not-afk"
+        }
+      }
+    ]
+  },
+  "then": {
+    "events": [
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 120,
+        "data": {
+          "app": "com.microsoft.VSCode"
+        }
+      },
+      {
+        "timestamp": "2026-10-26T09:07:00Z",
+        "duration": 180,
+        "data": {
+          "app": "com.microsoft.VSCode"
+        }
+      }
+    ]
+  }
+}
