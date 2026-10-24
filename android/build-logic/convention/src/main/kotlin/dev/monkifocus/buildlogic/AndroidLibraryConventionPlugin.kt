@@ -38,6 +38,7 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
             }
             configureKotlinJvmTarget()
             configureTestTasks()
+            configureRobolectricJvmArgs()
 
             dependencies {
                 add("testImplementation", libs.library("junit4"))
