@@ -26,8 +26,9 @@ data, screenshots, branch names or commit messages. Use roles: "the user",
 - `docs/internal/` is gitignored and holds private notes with real names.
   Never copy text from it into tracked files without scrubbing it, and never
   `git add -f` anything under it.
-- Before every push, run gitleaks and the privacy grep that CI also runs
-  (`scripts/` gets the exact command with WP 0.5); both must print nothing.
+- Before every push, gitleaks and `scripts/ci/privacy-pre-push.sh` run via the
+  lefthook `pre-push` hook (patterns come from a local, gitignored file and
+  from the `PRIVACY_PATTERNS` CI secret — never write them into the repo).
 
 **Owner Q&A lives in `docs/internal/QA.md` and the plan in
 `docs/internal/PLAN-*.md` plus `docs/internal/plan/` (local-only, gitignored):

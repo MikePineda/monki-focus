@@ -1,2 +1,12 @@
 # Default owner for everything until component maintainers are added.
 * @MikePineda
+
+# CI, release and repository guard configuration: explicit so they stay
+# owned by the maintainer when component owners are added above.
+/.github/ @MikePineda
+/scripts/ci/ @MikePineda
+/.gitleaks.toml @MikePineda
+/commitlint.config.mjs @MikePineda
+/lefthook.yml @MikePineda
+/release-please-config.json @MikePineda
+/.release-please-manifest.json @MikePineda

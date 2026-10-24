@@ -1,0 +1,19 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "prepare:wxt": {
+      "outputs": [".wxt/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build", "prepare:wxt"]
+    },
+    "test": {
+      "dependsOn": ["^build", "prepare:wxt"],
+      "outputs": []
+    },
+    "build": {
+      "dependsOn": ["^build", "prepare:wxt"]
+    }
+  }
+}
