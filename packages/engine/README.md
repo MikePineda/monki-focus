@@ -42,6 +42,10 @@ the returned one.
 
 ## Failure handling (§14)
 
+Always build `now` with `instantOf(Date.now())`: it floors to whole seconds
+and writes `YYYY-MM-DDTHH:MM:SSZ`. `new Date().toISOString()` carries
+milliseconds, which is invalid input and fails closed on every decision.
+
 `decide` fails closed: any exception or invalid input (garbage URL text, an
 unknown observation, an instant without an explicit offset, an unresolvable
 time zone, an internal error) returns `ENGINE_ERROR_DECISION`, i.e. `block`,

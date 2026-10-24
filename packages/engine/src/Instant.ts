@@ -42,6 +42,18 @@ export function epochSecondsOf(instant: Instant): number {
   return millis / 1000 - offsetSign * (offsetHours * 3600 + offsetMinutes * 60)
 }
 
+/**
+ * The `now` adapters pass to the engine: `instantOf(Date.now())`. Floors to
+ * whole seconds (an ISO string with milliseconds is invalid input and would
+ * fail closed). A negative or non-finite value is an adapter bug and throws.
+ */
+export function instantOf(epochMillis: number): Instant {
+  if (!Number.isFinite(epochMillis) || epochMillis < 0) {
+    throw new RangeError('epochMillis must be a finite, non-negative number')
+  }
+  return utcInstantOf(Math.floor(epochMillis / 1000))
+}
+
 /** The canonical UTC form (`2026-10-25T23:00:00Z`) of whole epoch seconds. */
 export function utcInstantOf(epochSeconds: number): UtcInstant {
   return `${new Date(epochSeconds * 1000).toISOString().slice(0, 19)}Z`
