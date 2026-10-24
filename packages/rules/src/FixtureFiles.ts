@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { NON_KIND_FIXTURE_DIRECTORIES } from './FixtureKind.ts'
 import { packageRoot } from './PackageRoot.ts'
 
 export interface FixtureFile {
@@ -19,7 +20,8 @@ export interface FixtureFile {
 const DOCUMENTATION_FILES = new Set(['README.md'])
 
 /**
- * Every JSON file under `fixtures/<kind>/`, sorted by path. A file that is
+ * Every JSON file under `fixtures/<kind>/`, sorted by path (the UI dump
+ * directories of `NON_KIND_FIXTURE_DIRECTORIES` are not kinds and are skipped). A file that is
  * not JSON (other than a README) or does not parse throws: nothing is skipped
  * silently.
  */
@@ -28,7 +30,12 @@ export function listFixtureFiles(
   directories?: readonly string[]
 ): FixtureFile[] {
   const fixturesRoot = join(root, 'fixtures')
-  const kinds = directories ?? readdirSync(fixturesRoot).sort()
+  const skipped = new Set<string>(NON_KIND_FIXTURE_DIRECTORIES)
+  const kinds =
+    directories ??
+    readdirSync(fixturesRoot)
+      .filter((name) => !skipped.has(name))
+      .sort()
   return kinds.flatMap((directory) => {
     const absolute = join(fixturesRoot, directory)
     if (!statSync(absolute).isDirectory()) {

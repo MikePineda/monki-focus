@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "packId": "instagram",
+  "packVersion": "2026.10.25.1",
+  "minSchemaVersion": 1,
+  "packages": ["com.instagram.android"],
+  "testedAppVersions": [],
+  "unclassifiedCapMinutes": 10,
+  "keepVisible": ["action_bar", "tab_bar"],
+  "surfaces": [
+    {
+      "surface": "instagram.reel_from_dm",
+      "priority": 100,
+      "all": [
+        { "viewId": "clips_viewer_view_pager", "onScreen": true },
+        { "viewId": "reply_bar_container_scroll_view", "onScreen": true }
+      ],
+      "none": [{ "viewId": "suggested_title" }]
+    },
+    {
+      "surface": "instagram.reel_from_dm",
+      "priority": 100,
+      "all": [
+        { "viewId": "clips_viewer_view_pager", "onScreen": true },
+        { "viewId": "reply_bar_edittext", "onScreen": true }
+      ],
+      "any": [{ "viewId": "sender_username_or_fullname" }, { "viewId": "sender_timestamp" }],
+      "none": [{ "viewId": "suggested_title" }]
+    },
+    {
+      "surface": "instagram.reels",
+      "priority": 90,
+      "all": [{ "viewId": "clips_viewer_view_pager", "onScreen": true, "minHeightRatio": 0.8 }],
+      "any": [
+        { "viewId": "clips_ufi_component" },
+        { "viewId": "clips_video_container" },
+        { "viewId": "clips_media_component" }
+      ]
+    },
+    {
+      "surface": "instagram.stories",
+      "priority": 80,
+      "all": [{ "viewId": "reel_viewer_root", "onScreen": true }]
+    },
+    {
+      "surface": "instagram.direct",
+      "priority": 70,
+      "any": [
+        { "viewId": "inbox_refreshable_thread_list_recyclerview", "onScreen": true },
+        { "viewId": "row_thread_composer_edittext", "onScreen": true }
+      ]
+    },
+    {
+      "surface": "instagram.search",
+      "priority": 65,
+      "all": [{ "viewId": "action_bar_search_edit_text", "onScreen": true }],
+      "any": [{ "viewId": "row_search_user_username", "onScreen": true }]
+    },
+    {
+      "surface": "instagram.explore",
+      "priority": 60,
+      "all": [
+        { "viewId": "tab_bar", "onScreen": true },
+        { "viewId": "action_bar_search_edit_text", "onScreen": true }
+      ],
+      "none": [{ "viewId": "row_search_user_username", "onScreen": true }]
+    },
+    {
+      "surface": "instagram.home",
+      "priority": 50,
+      "all": [{ "viewId": "tab_bar", "onScreen": true }],
+      "any": [
+        { "viewId": "title_logo", "onScreen": true },
+        { "viewId": "sticky_header_list", "onScreen": true }
+      ]
+    },
+    {
+      "surface": "instagram.home",
+      "priority": 40,
+      "all": [{ "viewId": "tab_bar", "onScreen": true }],
+      "any": [{ "contentDesc": "Instagram Home Feed", "onScreen": true }]
+    }
+  ]
+}

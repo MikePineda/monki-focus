@@ -15,6 +15,13 @@ export const FIXTURE_KINDS = [
 
 export type FixtureKind = (typeof FIXTURE_KINDS)[number]
 
+/**
+ * Directories under `fixtures/` that hold no JSON fixtures of a kind:
+ * `detectors/` keeps the sanitised Android UI dumps (`.xml` + `.expect.json`)
+ * that the `:detectors` module replays. Fixture runners skip them.
+ */
+export const NON_KIND_FIXTURE_DIRECTORIES = ['detectors'] as const
+
 /** Kinds whose fixtures live in this package (`unlock-token` vectors live in packages/protocol). */
 export type LoadableFixtureKind = Exclude<FixtureKind, 'unlock-token'>
 

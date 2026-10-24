@@ -6,8 +6,9 @@ import tseslint from 'typescript-eslint'
 export default defineConfig(
   { ignores: ['dist/**', 'node_modules/**', 'src/generated/**'] },
   js.configs.recommended,
-  tseslint.configs.strictTypeChecked,
   {
+    files: ['**/*.ts', '**/*.mts'],
+    extends: [tseslint.configs.strictTypeChecked],
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -17,5 +18,10 @@ export default defineConfig(
     rules: {
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
     },
+  },
+  {
+    // Dependency-free Node scripts (`scripts/*.mjs`): plain JavaScript rules.
+    files: ['**/*.mjs'],
+    languageOptions: { globals: { console: 'readonly' } },
   }
 )

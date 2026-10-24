@@ -2,10 +2,10 @@
 import { readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { FIXTURE_KINDS, packageRoot } from '@monki-focus/rules'
+import { FIXTURE_KINDS, NON_KIND_FIXTURE_DIRECTORIES, packageRoot } from '@monki-focus/rules'
 import { KINDS_RUN_ELSEWHERE, RUNNER_KINDS } from './FixtureRunner.ts'
 
-const elsewhere = new Set<string>(KINDS_RUN_ELSEWHERE)
+const elsewhere = new Set<string>([...KINDS_RUN_ELSEWHERE, ...NON_KIND_FIXTURE_DIRECTORIES])
 
 describe('fixture runner coverage', () => {
   it('runs_every_non_analytics_fixture_kind_the_rules_package_declares', () => {

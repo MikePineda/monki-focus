@@ -524,7 +524,10 @@ Detectors of a pack run by descending `priority`; equal priorities are
 ordered by surface id ascending. A surface applies when every `all`
 predicate, at least one `any` predicate (when present, never empty) and no
 `none` predicate match; each predicate names a `viewId`, `text` or
-`contentDesc`. `packVersion` (`YYYY.MM.DD.n`) is compared numerically
+`contentDesc`, and all its fields must hold on the same node. Short view ids
+are prefixed with the package on screen (`<package>:id/<id>`); a node whose
+resource id carries no package (a Compose test tag) matches the short id
+verbatim. Text comparisons are literal and case-sensitive. `packVersion` (`YYYY.MM.DD.n`) is compared numerically
 component by component (`2026.10.25.10` > `2026.10.25.9`); a downloaded pack
 is accepted only when signed, newer than the installed one and
 `minSchemaVersion` is supported. `unclassifiedCapMinutes`: when a package has

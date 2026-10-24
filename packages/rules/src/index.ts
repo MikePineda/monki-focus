@@ -9,7 +9,7 @@
 export * from './pure.ts'
 export type { Fixture, FixtureByKind } from './Fixture.ts'
 export type { FixtureKind, LoadableFixtureKind } from './FixtureKind.ts'
-export { FIXTURE_KINDS, isFixtureKind } from './FixtureKind.ts'
+export { FIXTURE_KINDS, NON_KIND_FIXTURE_DIRECTORIES, isFixtureKind } from './FixtureKind.ts'
 export type { FixtureFile } from './FixtureFiles.ts'
 export { listFixtureFiles } from './FixtureFiles.ts'
 export type { LoadFixturesOptions } from './FixtureLoader.ts'

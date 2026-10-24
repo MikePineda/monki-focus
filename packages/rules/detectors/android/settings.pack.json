@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "packId": "settings",
+  "packVersion": "2026.10.25.1",
+  "minSchemaVersion": 1,
+  "packages": [
+    "com.android.settings",
+    "com.google.android.packageinstaller",
+    "com.android.packageinstaller"
+  ],
+  "testedAppVersions": [],
+  "unclassifiedCapMinutes": 0,
+  "keepVisible": [],
+  "surfaces": [
+    {
+      "surface": "guard.device_admin",
+      "priority": 100,
+      "all": [
+        { "viewId": "admin_name", "onScreen": true },
+        { "viewId": "action_button", "onScreen": true }
+      ]
+    },
+    {
+      "surface": "guard.accessibility_detail",
+      "priority": 90,
+      "all": [
+        { "viewId": "switch_text", "onScreen": true },
+        { "viewId": "android:id/switch_widget", "onScreen": true }
+      ],
+      "none": [{ "viewId": "entity_header_title" }]
+    },
+    {
+      "surface": "guard.app_info",
+      "priority": 80,
+      "all": [
+        { "viewId": "entity_header_title", "onScreen": true },
+        { "viewId": "button2", "onScreen": true }
+      ]
+    },
+    {
+      "surface": "guard.uninstall",
+      "priority": 70,
+      "all": [
+        { "viewId": "android:id/alertTitle", "onScreen": true },
+        { "viewId": "android:id/button1", "onScreen": true }
+      ]
+    }
+  ]
+}

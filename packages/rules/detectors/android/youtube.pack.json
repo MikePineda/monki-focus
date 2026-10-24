@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "packId": "youtube",
+  "packVersion": "2026.10.25.1",
+  "minSchemaVersion": 1,
+  "packages": ["com.google.android.youtube"],
+  "testedAppVersions": [],
+  "unclassifiedCapMinutes": 0,
+  "keepVisible": ["pivot_bar"],
+  "surfaces": [
+    {
+      "surface": "youtube.shorts",
+      "priority": 100,
+      "any": [
+        { "viewId": "reel_player_page_container", "onScreen": true, "minHeightRatio": 0.6 },
+        { "viewId": "reel_recycler", "onScreen": true, "minHeightRatio": 0.6 },
+        { "viewId": "reel_player_page_content", "onScreen": true, "minHeightRatio": 0.6 }
+      ]
+    },
+    {
+      "surface": "youtube.shorts",
+      "priority": 90,
+      "all": [{ "viewId": "pivot_bar", "onScreen": true }],
+      "any": [{ "contentDesc": "Shorts", "selected": true }]
+    },
+    {
+      "surface": "youtube.home",
+      "priority": 50,
+      "all": [{ "viewId": "pivot_bar", "onScreen": true }],
+      "any": [
+        { "contentDesc": "Home", "selected": true },
+        { "contentDesc": "Inicio", "selected": true }
+      ]
+    }
+  ]
+}
