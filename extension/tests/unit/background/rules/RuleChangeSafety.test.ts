@@ -167,6 +167,39 @@ describe('a waiting second time zone is never dropped early', () => {
     fakeBrowser.reset()
   })
 
+  it('a_third_zone_while_a_zone_change_waits_is_rejected_and_nothing_is_saved', async () => {
+    const { service } = await waitingZoneChange()
+    const before = {
+      effective: await stored(RULESET_KEY),
+      pending: await stored(PENDING_RULESET_KEY),
+    }
+
+    const outcome = await service.propose({
+      ruleset: makeRuleset({ timeZone: 'Etc/GMT-9' }),
+      baseRevision: 2,
+    })
+
+    expect(outcome).toEqual({ status: 'rejected', code: 'zone_change_pending' })
+    expect({
+      effective: await stored(RULESET_KEY),
+      pending: await stored(PENDING_RULESET_KEY),
+    }).toEqual(before)
+  })
+
+  it('the_stored_or_the_waiting_zone_is_still_accepted', async () => {
+    const { service } = await waitingZoneChange()
+
+    const outcome = await service.propose({
+      ruleset: makeRuleset({
+        timeZone: 'Etc/GMT-5',
+        rules: [makeRule({ dailyBudgetMinutes: 10 })],
+      }),
+      baseRevision: 2,
+    })
+
+    expect(outcome.status).toBe('pending')
+  })
+
   async function waitingZoneChange() {
     const service = await makeService(makeRuleset())
     const proposed = await service.propose({

@@ -377,5 +377,6 @@
   "surface.youtube.watch": "YouTube video",
   "surface.youtube.search": "YouTube search",
   "rules.rejected.too_many_rules": "Today this change would need more than 500 rules at once, so nothing was saved. Make it in smaller steps.",
-  "rules.rejected.invalid_ruleset": "The rules that would apply today would not be valid, so nothing was saved."
+  "rules.rejected.invalid_ruleset": "The rules that would apply today would not be valid, so nothing was saved.",
+  "rules.rejected.zone_change_pending": "A time-zone change is already waiting until {time}, so nothing was saved. Keep that zone or the current one until then."
 }

@@ -25,7 +25,13 @@ export interface RulesSectionProps {
   download: DownloadFile
 }
 
-function feedbackText(feedback: SaveFeedback, t: Translate, locale: Locale, timeZone: string) {
+function feedbackText(
+  feedback: SaveFeedback,
+  t: Translate,
+  locale: Locale,
+  timeZone: string,
+  pendingFrom: string | null
+) {
   switch (feedback.kind) {
     case 'applied':
       return t('rules.feedback.applied')
@@ -36,6 +42,11 @@ function feedbackText(feedback: SaveFeedback, t: Translate, locale: Locale, time
         time: formatInstantIn(feedback.effectiveFrom, timeZone, locale),
       })
     case 'rejected':
+      if (feedback.code === 'zone_change_pending') {
+        return t('rules.rejected.zone_change_pending', {
+          time: pendingFrom === null ? '' : formatInstantIn(pendingFrom, timeZone, locale),
+        })
+      }
       return t(`rules.rejected.${feedback.code}`)
   }
 }
@@ -66,7 +77,13 @@ export function RulesSection({ client, permissions, download }: RulesSectionProp
   const feedback = importProblem
     ? t(`rules.rejected.${importProblem}`)
     : changes.feedback
-      ? feedbackText(changes.feedback, t, locale, configured.timeZone)
+      ? feedbackText(
+          changes.feedback,
+          t,
+          locale,
+          state.effective.timeZone,
+          state.pending?.effectiveFrom ?? null
+        )
       : null
 
   return (

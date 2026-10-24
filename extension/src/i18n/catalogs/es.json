@@ -377,5 +377,6 @@
   "surface.youtube.watch": "Video de YouTube",
   "surface.youtube.search": "Búsqueda de YouTube",
   "rules.rejected.too_many_rules": "Hoy este cambio necesitaría más de 500 reglas a la vez, así que no se guardó nada. Hazlo en pasos más pequeños.",
-  "rules.rejected.invalid_ruleset": "Las reglas que aplicarían hoy no serían válidas, así que no se guardó nada."
+  "rules.rejected.invalid_ruleset": "Las reglas que aplicarían hoy no serían válidas, así que no se guardó nada.",
+  "rules.rejected.zone_change_pending": "Ya hay un cambio de zona horaria en espera hasta el {time}, así que no se guardó nada. Hasta entonces, usa esa zona o la actual."
 }

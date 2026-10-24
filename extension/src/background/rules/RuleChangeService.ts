@@ -95,6 +95,16 @@ export class RuleChangeService {
       if (proposal.baseRevision !== revisionOf(configured)) {
         return { status: 'rejected', code: 'stale_revision' }
       }
+      // Only one zone can wait: a third one would drop the waiting zone at once.
+      const waitingZone = current.effective.pendingTimeZone
+      const zone = proposal.ruleset.timeZone
+      if (
+        waitingZone !== undefined &&
+        zone !== current.effective.timeZone &&
+        zone !== waitingZone
+      ) {
+        return { status: 'rejected', code: 'zone_change_pending' }
+      }
       const nowMs = this.options.clock.now()
       const now = instantOf(nowMs)
       // `pendingTimeZone` belongs to the engine, never to an edit.
