@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Ajv2020 } from 'ajv/dist/2020.js'
 import formatsModule from 'ajv-formats'
-import type { JsonSchemaDocument } from './SchemaFiles.ts'
+import type { JsonSchemaDocument } from './JsonSchemaDocument.ts'
 import type { SchemaName } from './SchemaName.ts'
 import { schemaIdOf } from './SchemaName.ts'
 import type { AliasMap } from './TargetNormaliser.ts'
