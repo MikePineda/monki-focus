@@ -3,7 +3,7 @@
   "kind": "url-normalize",
   "description": "Only the lower-cased host and the path survive.",
   "given": {
-    "urlText": "HTTPS://visitor@Old.Reddit.com:443/r/AskHistorians/comments/xyz789/a_question/?utm_source=share#comment"
+    "urlText": "HTTPS://visitor!@Old.Reddit.com:443/r/AskHistorians/comments/xyz789/a_question/?utm_source=share#comment"
   },
   "then": {
     "host": "old.reddit.com",
