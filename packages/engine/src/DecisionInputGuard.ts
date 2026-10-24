@@ -63,6 +63,9 @@ function assertObservation(observation: Observation): void {
 }
 
 function assertStateInstants(state: DecisionState): void {
+  if (state.pendingEffectiveFrom !== undefined && state.pendingEffectiveFrom !== null) {
+    epochSecondsOf(state.pendingEffectiveFrom)
+  }
   for (const unlock of state.unlocks) {
     epochSecondsOf(unlock.notBefore)
     epochSecondsOf(unlock.expiresAt)
@@ -80,6 +83,21 @@ function assertStateInstants(state: DecisionState): void {
   }
 }
 
+/**
+ * The checks of the inputs every candidate computation reads (the clock, the
+ * pinned zones, the observation); returns the instant in epoch seconds.
+ */
+export function guardCandidateInputs(
+  ruleset: Ruleset,
+  observation: Observation,
+  at: Instant
+): number {
+  const seconds = epochSecondsOf(at)
+  for (const zone of zonesOf(ruleset)) assertResolvableTimeZone(zone)
+  assertObservation(observation)
+  return seconds
+}
+
 /** Throws on the first invalid input; returns `now` in epoch seconds. */
 export function guardDecisionInputs(
   ruleset: Ruleset,
@@ -87,9 +105,7 @@ export function guardDecisionInputs(
   state: DecisionState,
   now: Instant
 ): number {
-  const nowSeconds = epochSecondsOf(now)
-  for (const zone of zonesOf(ruleset)) assertResolvableTimeZone(zone)
-  assertObservation(observation)
+  const nowSeconds = guardCandidateInputs(ruleset, observation, now)
   assertStateInstants(state)
   return nowSeconds
 }
