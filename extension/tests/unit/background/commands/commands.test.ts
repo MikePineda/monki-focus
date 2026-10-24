@@ -20,11 +20,18 @@ function makeHandlers(restrict: string[]) {
     decisions: { feedDecisionFor },
     stylesheets: { inject },
     shortsRedirect: { apply },
+    tracking: UNUSED_TRACKING,
   })
   return { handlers, feedDecisionFor, apply, inject }
 }
 
 const sender = { id: 'own' }
+
+const UNUSED_TRACKING = {
+  today: () => Promise.reject(new Error('not used')),
+  week: () => Promise.reject(new Error('not used')),
+  incognitoAccess: () => Promise.reject(new Error('not used')),
+}
 
 describe('decision.get', () => {
   it('answers_the_feed_decision_of_the_asked_url', async () => {

@@ -15,6 +15,8 @@ import { UserStylesheetInjector } from '../background/feeds/UserStylesheetInject
 import { deviceTimeZone } from '../background/rules/DeviceTimeZone'
 import { RulesetStore } from '../background/rules/RulesetStore'
 import { ShortsRedirectSync } from '../background/shorts/ShortsRedirectSync'
+import { createTrackingModule } from '../background/tracking/TrackingModule'
+import { trackingTimingFor } from '../background/tracking/TrackingTiming'
 import { bundledRulesCatalog } from '../shared/bundledRulesCatalog'
 import { systemClock } from '../shared/clock'
 import { decisionChangedMessage } from '../shared/messages'
@@ -43,6 +45,14 @@ export default defineBackground(() => {
     onChange: decisionsChanged,
   })
 
+  const tracking = createTrackingModule({
+    browser,
+    clock: systemClock,
+    timing: trackingTimingFor(import.meta.env.MODE),
+    catalog,
+    rulesets,
+  })
+
   let decisions: FeedDecisions = decisionService
   if (import.meta.env.MODE === 'e2e') {
     decisions = delayedFeedDecisions(decisionService, browser.storage.local)
@@ -56,6 +66,7 @@ export default defineBackground(() => {
       decisions,
       stylesheets: new UserStylesheetInjector(catalog, browser.scripting),
       shortsRedirect,
+      tracking: tracking.commands,
     })
   )
   router.listen(browser.runtime.onMessage)
@@ -78,4 +89,5 @@ export default defineBackground(() => {
   void browser.alarms.create(RESTRICTION_ALARM, { periodInMinutes: RESTRICTION_CHECK_MINUTES })
   void shortsRedirect.sync().catch(() => undefined)
   void restrictions.check().catch(() => undefined)
+  tracking.start()
 })

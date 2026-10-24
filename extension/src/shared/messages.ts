@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Decision } from '@monki-focus/rules/pure'
 import { isGuardAttributes, type GuardAttributes } from './GuardAttributes'
+import type { IncognitoAccess, TodayStats, WeekStats } from './StatsContract'
 
 /**
  * Typed command contract between the extension contexts (popup, options,
@@ -48,6 +49,12 @@ export interface CommandMap {
     request: { url: string; attributes: GuardAttributes }
     response: { injected: boolean }
   }
+  /** Today's pulse, levels, top sites and intentions (popup). */
+  'stats.today': { request: Record<string, never>; response: TodayStats }
+  /** Seven daily pulses and weekday × hour averages (stats page). */
+  'stats.week': { request: Record<string, never>; response: WeekStats }
+  /** Whether incognito access is allowed (popup warning). */
+  'privacy.incognitoAccess': { request: Record<string, never>; response: IncognitoAccess }
 }
 
 export type CommandType = keyof CommandMap
@@ -114,6 +121,10 @@ export const COMMAND_PAYLOAD_GUARDS: {
     hasOnlyKeys(payload, ['url', 'attributes']) &&
     isHttpUrl((payload as { url?: unknown }).url) &&
     isGuardAttributes((payload as { attributes?: unknown }).attributes),
+  'stats.today': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
+  'stats.week': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
+  'privacy.incognitoAccess': (payload): payload is Record<string, never> =>
+    hasOnlyKeys(payload, []),
 }
 
 /**

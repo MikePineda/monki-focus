@@ -5,6 +5,7 @@ import { feedSurfacesOfHost, pageSurfaceOf } from '../../shared/FeedSurfaces'
 import type { GuardAttributes } from '../../shared/GuardAttributes'
 import type { FeedDecision } from '../../shared/messages'
 import { SHORTS_SURFACE } from '../shorts/ShortsRedirectSync'
+import type { TrackingCommands } from '../tracking/TrackingModule'
 import type { CommandHandlers } from './CommandRouter'
 
 /** The slice of `DecisionService` the feed command needs. */
@@ -28,6 +29,7 @@ export interface CommandDependencies {
   decisions: FeedDecisions
   stylesheets?: FeedStylesheets
   shortsRedirect?: ShortsRedirectState
+  tracking: TrackingCommands
 }
 
 function isShortsSite(url: string, catalog: RulesCatalog): boolean {
@@ -45,6 +47,7 @@ export function createCommandHandlers({
   decisions,
   stylesheets,
   shortsRedirect,
+  tracking,
 }: CommandDependencies): CommandHandlers {
   return {
     'system.ping': () => ({ at: clock.now() }),
@@ -66,5 +69,8 @@ export function createCommandHandlers({
       }
       return { injected: await stylesheets.inject(tabId, tabUrl, attributes) }
     },
+    'stats.today': () => tracking.today(),
+    'stats.week': () => tracking.week(),
+    'privacy.incognitoAccess': () => tracking.incognitoAccess(),
   }
 }

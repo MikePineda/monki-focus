@@ -10,6 +10,7 @@ import {
   type CommandResult,
   type CommandType,
 } from '../../../src/shared/messages'
+import { stubTrackingApis } from '../../support/stubTrackingApis'
 
 function send<T extends CommandType>(
   message: CommandMessage<T>,
@@ -31,6 +32,7 @@ describe('background entrypoint', () => {
 
   beforeEach(() => {
     fakeBrowser.reset()
+    stubTrackingApis()
     updateEnabledRulesets = vi.fn(() => Promise.resolve())
     fakeBrowser.declarativeNetRequest.updateEnabledRulesets =
       updateEnabledRulesets as typeof fakeBrowser.declarativeNetRequest.updateEnabledRulesets
@@ -135,5 +137,30 @@ describe('background entrypoint', () => {
     await vi.waitFor(async () => {
       expect(await fakeBrowser.alarms.get('decision.refresh')).toMatchObject({ periodInMinutes: 1 })
     })
+  })
+
+  it('background_starts_tracking_with_the_pulse_alarm', async () => {
+    background.main()
+
+    await expect.poll(() => fakeBrowser.alarms.get('pulse')).toMatchObject({ periodInMinutes: 0.5 })
+  })
+
+  it('background_answers_stats_today_with_an_empty_day', async () => {
+    background.main()
+
+    const response = await send(commandMessage('stats.today', {}), { id: fakeBrowser.runtime.id })
+
+    expect(response).toMatchObject({ ok: true, data: { pulse: null, totalSeconds: 0 } })
+  })
+
+  it('background_answers_whether_incognito_access_is_allowed', async () => {
+    stubTrackingApis({ incognito: true })
+    background.main()
+
+    const response = await send(commandMessage('privacy.incognitoAccess', {}), {
+      id: fakeBrowser.runtime.id,
+    })
+
+    expect(response).toEqual({ ok: true, data: { allowed: true } })
   })
 })

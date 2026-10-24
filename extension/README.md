@@ -36,10 +36,10 @@ repo (`*.pem` is gitignored).
 
 ```
 src/entrypoints/   background.ts and feed-guard.content/ (wiring only), popup/, options/, gate/
-src/background/    service-worker modules (commands/, decisions/, rules/, shorts/)
+src/background/    service-worker modules (commands/, decisions/, rules/, shorts/, tracking/, storage/, stats/, privacy/)
 src/content/       feed guard: FeedGuard, FeedHider, SpaNavigationWatcher, FeedPlaceholder, ...
 src/sites/         per-site DOM selectors keyed by surface id (reddit, x, youtube, instagram)
-src/shared/        clock.ts, messages.ts (typed commands), bundledRulesCatalog.ts, FeedSurfaces.ts
+src/shared/        clock.ts, messages.ts (typed commands), bundledRulesCatalog.ts, FeedSurfaces.ts, StatsContract.ts
 src/i18n/          catalogs/{en,es}.json, t.ts, locale.ts, LanguagePreference.ts, I18nContext.tsx
 src/theme/         tokens.css (imports @monki-focus/design-tokens), applyTheme.ts, bootTheme.ts
 src/ui/            Preact UI kit, one component per file with its own CSS
@@ -167,6 +167,51 @@ the extension never lists feed paths.
   (`data-mf-e2e-attributes`, `data-mf-e2e-applied`) and opens the shadow
   root, so specs can tamper and look inside; the production bundle drops all
   of it.
+
+## Tracking and local storage (E7)
+
+Focused browsing time is tracked in the service worker, with no content
+script on every site (`src/background/tracking`):
+
+- `PulseScheduler` samples on the `pulse` alarm (30 s; 2 s in the `e2e`
+  build) and at once on a tab switch, a URL change, a window focus change or
+  an idle change (`idle.setDetectionInterval(60)`). Focus moving to
+  `WINDOW_ID_NONE` only counts after a 2 s grace (Brave and DevTools report
+  it briefly) and then closes the open event at the moment focus left.
+- `ActiveTabProbe` turns the active tab of the focused window into a
+  heartbeat with `@monki-focus/analytics` `probeTab`: nothing while idle
+  unless the tab is audible (`tracking.countAudibleWhileIdle`, default on),
+  on a locked screen or on a non-http(s) page. Never the query, fragment or
+  (by default) the title.
+- `HeartbeatRecorder` merges heartbeats (pulsetime 45 s) and writes every
+  change through to IndexedDB; the open event and its row id live in
+  `storage.session` (`tracking.openHeartbeat`), so a restarted worker keeps
+  extending the same row.
+- `AggregationJob` (alarm `aggregate`, every 5 min, on start and before each
+  `stats.*` answer) turns events into 5-minute blocks (`categorise` with the
+  rule set's categories over the bundled defaults, then `toBlocks`), queues
+  changed blocks in the outbox and purges raw events past 30 days.
+- `stats.today` / `stats.week` (`src/shared/StatsContract.ts`) read blocks
+  by local day in the rule set's pinned `timeZone`;
+  `privacy.incognitoAccess` answers `isAllowedIncognitoAccess()`.
+
+IndexedDB `monki` v1 (`src/background/storage/db.ts`, migrations additive):
+
+| Store    | Key                                                                      | Indexes                                                | Kept               |
+| -------- | ------------------------------------------------------------------------ | ------------------------------------------------------ | ------------------ |
+| `events` | `id` (auto)                                                              | `bucketTimestamp` `[bucketId, timestamp]`, `timestamp` | 30 days            |
+| `blocks` | `[deviceId, blockStart, activityKey ?? '', categoryPath, source, level]` | `blockStart`                                           | without limit      |
+| `outbox` | `id` (auto)                                                              | none                                                   | until acknowledged |
+
+The pinned `timeZone` and the category overrides come from E5's
+`RulesetStore` (`rules.ruleset`). `browser.storage.local` keys owned here:
+`privacy.storeTitles` (default `false`), `tracking.countAudibleWhileIdle`
+(default `true`), `device.id` (a random UUID per install) and
+`tracking.aggregatedThrough`.
+
+Incognito: when the user allows the extension there, incognito time counts
+by domain only (`path` `/`, no surface, never a title); without access it
+is not seen at all and the popup warns.
 
 ## Live smoke before release
 
