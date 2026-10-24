@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { GateDnrRule, SessionRulesApi } from './GateRedirectRules'
+import type { SessionRulesApi } from './GateRedirectRules'
 
 /** Session rule ids of the per-tab passes: `[FIRST, FIRST + MAX_PASSES)`. */
 export const PASS_RULE_FIRST_ID = 20_000
@@ -9,7 +9,11 @@ export const PASS_LIFETIME_MS = 60_000
 
 /** `storage.session` key of the passes' bookkeeping. */
 export const TAB_PASSES_NAME = 'gate.passes'
-/** Longer URLs pass by host: a regex literal that long risks Chromium's 2 KB regex budget. */
+/**
+ * Longer URLs get no pass (a regex literal that long risks Chromium's 2 KB
+ * regex budget, and a host-wide pass would let other pages through): they
+ * go through the gate on every redirect.
+ */
 const MAX_EXACT_URL_LENGTH = 1_000
 
 interface StorageArea {
@@ -41,11 +45,13 @@ function escapeRegex(text: string): string {
   return text.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')
 }
 
-function conditionFor(tabId: number, url: string): GateDnrRule['condition'] {
-  if (url.length <= MAX_EXACT_URL_LENGTH) {
-    return { tabIds: [tabId], regexFilter: `^${escapeRegex(url)}$`, resourceTypes: ['main_frame'] }
-  }
-  return { tabIds: [tabId], requestDomains: [new URL(url).hostname], resourceTypes: ['main_frame'] }
+function isPassRuleId(id: number): boolean {
+  return id >= PASS_RULE_FIRST_ID && id < PASS_RULE_FIRST_ID + MAX_PASSES
+}
+
+/** Whether `url` can get an exact pass. */
+export function canPass(url: string): boolean {
+  return url.length <= MAX_EXACT_URL_LENGTH
 }
 
 /**
@@ -54,7 +60,8 @@ function conditionFor(tabId: number, url: string): GateDnrRule['condition'] {
  * an intention just committed), or the gate's search box opens a search, an
  * `allow` session rule of higher priority than the redirects lets exactly
  * that URL load in exactly that tab. The pass goes once the tab has loaded a
- * page, when the tab closes, or after a minute unused.
+ * page, when the tab closes, or after a minute unused (`sweep` runs on
+ * start and on the alarms). Exact URLs only, never a whole host.
  */
 export class TabPasses {
   private lock: Promise<unknown> = Promise.resolve()
@@ -65,9 +72,10 @@ export class TabPasses {
     private readonly now: () => number
   ) {}
 
-  /** Lets `url` load once in `tabId` (replacing the tab's earlier pass). */
-  grant(tabId: number, url: string): Promise<void> {
+  /** Lets `url` load once in `tabId` (replacing the tab's earlier pass); false when it is too long. */
+  grant(tabId: number, url: string): Promise<boolean> {
     return this.exclusive(async () => {
+      if (!canPass(url)) return false
       const passes = await this.live()
       const stale = passes.filter((pass) => pass.tabId === tabId)
       const kept = passes.filter((pass) => pass.tabId !== tabId)
@@ -81,11 +89,29 @@ export class TabPasses {
             id: ruleId,
             priority: 2,
             action: { type: 'allow' },
-            condition: conditionFor(tabId, url),
+            condition: {
+              tabIds: [tabId],
+              regexFilter: `^${escapeRegex(url)}$`,
+              resourceTypes: ['main_frame'],
+            },
           },
         ],
       })
       await this.save([...kept, { ruleId, tabId, createdAt: this.now() }])
+      return true
+    })
+  }
+
+  /** Removes expired passes and pass rules nobody keeps track of (a lost bookkeeping). */
+  sweep(): Promise<void> {
+    return this.exclusive(async () => {
+      const live = await this.live()
+      const tracked = new Set(live.map((pass) => pass.ruleId))
+      const orphans = (await this.dnr.getSessionRules())
+        .map(({ id }) => id)
+        .filter((id) => isPassRuleId(id) && !tracked.has(id))
+      if (orphans.length > 0) await this.dnr.updateSessionRules({ removeRuleIds: orphans })
+      await this.save(live)
     })
   }
 

@@ -13,17 +13,11 @@ interface StorageArea {
   set(items: Record<string, unknown>): Promise<void>
 }
 
-function isStateList(value: unknown): value is EscalationState[] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (state) =>
-        typeof state === 'object' &&
-        state !== null &&
-        typeof (state as { targetGroup?: unknown }).targetGroup === 'string' &&
-        typeof (state as { phase?: unknown }).phase === 'string'
-    )
-  )
+export interface EscalationStoreOptions {
+  /** Whether one stored entry may reach the engine (`escalationEntryGuard`). */
+  isValid?: (entry: unknown) => boolean | Promise<boolean>
+  /** Called once per dropped entry. */
+  onInvalid?: () => void
 }
 
 /**
@@ -32,15 +26,35 @@ function isStateList(value: unknown): value is EscalationState[] {
  * worker that sleeps and a browser restart, so reloading or restarting never
  * resets a pause, a wait, an intention or the counters (`lastFrictionType`
  * included). Writes run one at a time.
+ *
+ * Every entry is checked on read and only invalid entries are dropped, so
+ * one corrupt group never resets the others' levels nor makes `decide` fail
+ * closed for every page.
  */
 export class EscalationStore {
   private lock: Promise<unknown> = Promise.resolve()
 
-  constructor(private readonly storage: StorageArea) {}
+  constructor(
+    private readonly storage: StorageArea,
+    private readonly options: EscalationStoreOptions = {}
+  ) {}
 
   async all(): Promise<EscalationState[]> {
     const stored = (await this.storage.get(ESCALATION_NAME))[ESCALATION_NAME]
-    return isStateList(stored) ? stored : []
+    if (!Array.isArray(stored)) return []
+    const valid: EscalationState[] = []
+    const seen = new Set<string>()
+    for (const entry of stored as unknown[]) {
+      if (await this.isValid(entry)) {
+        const state = entry as EscalationState
+        if (seen.has(state.targetGroup)) continue
+        seen.add(state.targetGroup)
+        valid.push(state)
+      } else {
+        this.options.onInvalid?.()
+      }
+    }
+    return valid
   }
 
   /** The group's state, or the engine's initial idle state. */
@@ -62,6 +76,16 @@ export class EscalationStore {
       }
       await this.storage.set({ [ESCALATION_NAME]: next })
     })
+  }
+
+  private async isValid(entry: unknown): Promise<boolean> {
+    if (typeof entry !== 'object' || entry === null) return false
+    if (typeof (entry as { targetGroup?: unknown }).targetGroup !== 'string') return false
+    try {
+      return this.options.isValid ? await this.options.isValid(entry) : true
+    } catch {
+      return false
+    }
   }
 
   private exclusive<T>(task: () => Promise<T>): Promise<T> {

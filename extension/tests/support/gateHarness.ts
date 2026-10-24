@@ -2,7 +2,10 @@
 import { starterPreset, type DailyUsage, type Ruleset } from '@monki-focus/rules/pure'
 import { fakeBrowser } from 'wxt/testing/fake-browser'
 import { DecisionService } from '../../src/background/decisions/DecisionService'
+import { BypassRecorder } from '../../src/background/gate/BypassRecorder'
+import { escalationEntryGuard } from '../../src/background/gate/EscalationEntryGuard'
 import { EscalationStore } from '../../src/background/gate/EscalationStore'
+import type { GateDiagnosticCode } from '../../src/background/gate/GateDiagnostics'
 import { GateController } from '../../src/background/gate/GateController'
 import { GateTabs } from '../../src/background/gate/GateTabs'
 import { GateTicket } from '../../src/background/gate/GateTicket'
@@ -50,12 +53,30 @@ export function gateHarness(options: GateHarnessOptions = {}) {
     closed: [] as number[],
     navigations: [] as { tabId: number; url: string }[],
     openPages: [] as string[],
+    openTabs: [] as { id: number; url: string }[],
     changes: 0,
+    diagnostics: [] as GateDiagnosticCode[],
+    /** Failure switches: the intention log, the outbox, escalation writes. */
+    logFails: false,
+    outboxFails: false,
+    escalationWritesFail: false,
+  }
+  const diagnose = (code: GateDiagnosticCode) => {
+    state.diagnostics.push(code)
   }
   const rulesets = { load: () => Promise.resolve(state.ruleset) }
 
   const build = () => {
-    const escalation = new EscalationStore(fakeBrowser.storage.local)
+    const store = new EscalationStore(fakeBrowser.storage.local, {
+      isValid: escalationEntryGuard(catalog, rulesets, () => clock.now()),
+      onInvalid: () => diagnose('escalation.invalidEntryDropped'),
+    })
+    const escalation = Object.assign(store, {
+      put: (next: Parameters<EscalationStore['put']>[0]) =>
+        state.escalationWritesFail
+          ? Promise.reject(new Error('storage.full'))
+          : EscalationStore.prototype.put.call(store, next),
+    })
     const decisions = new DecisionService({
       catalog,
       rulesets,
@@ -79,6 +100,7 @@ export function gateHarness(options: GateHarnessOptions = {}) {
       notes: new IntentionNotes(fakeBrowser.storage.session),
       log: {
         record: (entry) => {
+          if (state.logFails) return Promise.reject(new Error('idb.unavailable'))
           state.log.push(entry)
           return Promise.resolve()
         },
@@ -89,16 +111,23 @@ export function gateHarness(options: GateHarnessOptions = {}) {
             Promise.resolve(state.log.filter((entry) => entry.at >= from && entry.at < to)),
         }).today(clock.now(), state.ruleset.timeZone),
       minutesToday: () => Promise.resolve(12),
-      outbox: {
-        enqueueBypass: (event) => {
-          state.bypasses.push(event)
-          return Promise.resolve()
-        },
-      },
+      bypasses: new BypassRecorder(
+        () =>
+          state.outboxFails
+            ? Promise.reject(new Error('idb.unavailable'))
+            : Promise.resolve({
+                enqueueBypass: (event) => {
+                  state.bypasses.push(event)
+                  return Promise.resolve()
+                },
+              }),
+        fakeBrowser.storage.local,
+        diagnose
+      ),
       passes: {
         grant: (tabId, url) => {
           state.passes.push({ tabId, url })
-          return Promise.resolve()
+          return Promise.resolve(url.length <= 1000)
         },
       },
       closer: {
@@ -111,7 +140,13 @@ export function gateHarness(options: GateHarnessOptions = {}) {
         state.navigations.push({ tabId, url })
         return Promise.resolve()
       },
-      openPageUrls: () => Promise.resolve(state.openPages),
+      openTabs: () =>
+        Promise.resolve([
+          ...state.openTabs,
+          ...state.openPages.map((url, index) => ({ id: 100 + index, url })),
+        ]),
+      hasOverlay: (url) => url.includes('reddit.com'),
+      diagnose,
       gateUrl: GATE_URL,
       onChange: () => {
         state.changes += 1

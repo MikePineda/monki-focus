@@ -16,6 +16,11 @@
   z-index: 2147483647;
 }
 
+/* The intention's words are shown, never offered as copy. */
+.mf-session-overlay .mf-overlay__card {
+  user-select: none;
+}
+
 .mf-intention-pill {
   position: fixed;
   right: var(--mf-space-md);

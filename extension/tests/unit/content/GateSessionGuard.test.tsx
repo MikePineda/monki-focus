@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Decision } from '@monki-focus/rules/pure'
 import { screen } from '@testing-library/preact'
 import userEvent from '@testing-library/user-event'
@@ -174,5 +177,15 @@ describe('TimeoutOverlay', () => {
     expect(screen.getByText('Counts as a broken intention · next pause will be 30 s')).toBeVisible()
     await userEvent.setup().click(screen.getByRole('button', { name: '5 more min' }))
     expect(onExtend).toHaveBeenCalledOnce()
+  })
+})
+
+describe('timeout overlay styles', () => {
+  it('the_intention_text_is_never_selectable', () => {
+    const css = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../../../src/content/SessionOverlay.css'),
+      'utf8'
+    )
+    expect(css).toMatch(/\.mf-overlay__card\s*\{\s*user-select:\s*none;/)
   })
 })

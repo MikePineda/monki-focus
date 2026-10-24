@@ -69,6 +69,11 @@
   padding-top: var(--mf-space-xl);
 }
 
+/* The timed-out intention's words are shown, never offered as copy. */
+.mf-gate .mf-overlay__card {
+  user-select: none;
+}
+
 @keyframes mf-gate-breath {
   0%,
   100% {

@@ -127,11 +127,11 @@
   "gate.blocked.budget": "Se acabó el tiempo de hoy para {site}.",
   "gate.blocked.bedtime": "Es hora de dormir.",
   "gate.blocked.rule": "Elegiste bloquear {site}.",
-  "gate.blocked.error": "{site} sigue cerrado por ahora.",
+  "gate.blocked.error": "Algo falló al decidir sobre {site}.",
   "gate.blockedWhy.budget": "Tu presupuesto vuelve a medianoche.",
   "gate.blockedWhy.bedtime": "Los sitios que distraen descansan hasta la mañana. Tú también.",
   "gate.blockedWhy.rule": "Puedes cambiarlo en Ajustes.",
-  "gate.blockedWhy.error": "Algo falló, así que la extensión lo mantuvo cerrado.",
+  "gate.blockedWhy.error": "Puedes continuar; sus feeds siguen ocultos.",
   "gate.none.title": "No hay a dónde continuar",
   "gate.none.body": "Esta página se abrió sin destino.",
   "gate.wait.title": "Acceso de emergencia",
@@ -145,5 +145,6 @@
   "timeout.leave": "Salir de {site}",
   "timeout.more": "5 min más",
   "timeout.note": "Cuenta como intención rota · la próxima pausa será de {seconds} s",
-  "pill.label": "Tiempo restante de tu intención"
+  "pill.label": "Tiempo restante de tu intención",
+  "gate.continueFeedsHidden": "Continuar (los feeds siguen ocultos)"
 }

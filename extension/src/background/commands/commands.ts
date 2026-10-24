@@ -99,6 +99,7 @@ export function createCommandHandlers({
     'gate.emergencyCancel': (_payload, sender) => gateCommands().emergencyCancel(sender),
     'gate.leave': (_payload, sender) => gateCommands().leave(sender),
     'gate.extend': (_payload, sender) => gateCommands().extend(sender),
+    'gate.continue': (_payload, sender) => gateCommands().continueThroughError(sender),
     'gate.search': ({ query }, sender) => gateCommands().search(query, sender),
     'gate.open': ({ url }, sender) => gateCommands().open(url, sender),
     'intention.expired': ({ url }, sender) => gateCommands().expired(url, sender),

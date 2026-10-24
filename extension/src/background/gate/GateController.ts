@@ -2,6 +2,7 @@
 import {
   effectiveEscalationState,
   epochSecondsOf,
+  initialEscalationState,
   instantOf,
   nextEscalation,
   normalizeUrl,
@@ -28,8 +29,10 @@ import { siteFeedProfileFor } from '../../sites'
 import { wordCount } from '../../ui/wordCount'
 import type { IntentionDay } from '../stats/IntentionStatsQuery'
 import type { BypassEventPayload, IntentionEntryKind } from '../storage/db'
+import type { BypassRecord } from './BypassRecorder'
 import type { EscalationStore } from './EscalationStore'
 import { frictionCandidates } from './FrictionCandidates'
+import type { GateDiagnosticCode } from './GateDiagnostics'
 import { groupOf } from './GateGroup'
 import type { GateTabs } from './GateTabs'
 import type { GateTicket } from './GateTicket'
@@ -57,13 +60,19 @@ export interface GateControllerOptions {
   day: () => Promise<IntentionDay>
   /** Minutes tracked today on a normalised host (E7's `stats.today`). */
   minutesToday: (site: string) => Promise<number>
-  outbox: { enqueueBypass(event: BypassEventPayload, enqueuedAt: string): Promise<void> }
-  passes: { grant(tabId: number, url: string): Promise<void> }
+  /** Records an emergency override; never throws (`BypassRecorder`). */
+  bypasses: { record(event: BypassEventPayload, enqueuedAt: string): Promise<BypassRecord> }
+  /** Grants a one-off pass; false when the URL cannot get one. */
+  passes: { grant(tabId: number, url: string): Promise<boolean> }
   closer: { close(tabId: number): Promise<boolean> }
   /** Sends a tab to a URL (`tabs.update`). */
   navigate: (tabId: number, url: string) => Promise<void>
-  /** The URLs of the open tabs (to tell whether a timed-out intention is still on screen). */
-  openPageUrls: () => Promise<string[]>
+  /** The open web tabs (timed-out intentions on screen, tabs to send to the gate). */
+  openTabs: () => Promise<{ id: number; url: string }[]>
+  /** Whether a page has the feed guard, which shows the timeout overlay itself. */
+  hasOverlay: (url: string) => boolean
+  /** Reason codes of recovered failures. */
+  diagnose: (code: GateDiagnosticCode) => void
   /** `chrome-extension://<id>/gate.html`. */
   gateUrl: string
   /** Escalation changed: re-sync the redirects and timers, tell the open pages. */
@@ -151,37 +160,71 @@ export class GateController {
     })
   }
 
-  close(tabId: number): Promise<ClosedAnswer> {
-    return this.serial(async () => {
-      const target = await this.targetOf(tabId)
-      if (target !== null && (await this.step(target.group, { type: 'close' })) !== null) {
-        await this.options.onChange()
-      }
+  /** Close never depends on storage: the tab goes first, the bookkeeping after, best-effort. */
+  async close(tabId: number): Promise<ClosedAnswer> {
+    const closed = await this.options.closer.close(tabId)
+    await this.serial(async () => {
+      const target = await this.targetOf(tabId).catch(() => null)
+      const changed =
+        target === null ? null : await this.trying(this.step(target.group, { type: 'close' }))
       await this.record('closed', target?.group ?? NO_GROUP)
-      await this.options.tabs.forget(tabId)
-      return { closed: await this.options.closer.close(tabId) }
-    })
+      await this.trying(this.options.tabs.forget(tabId))
+      if (changed) await this.options.onChange()
+    }).catch(() => this.options.diagnose('log.unavailable'))
+    return { closed }
   }
 
   emergency(tabId: number): Promise<GateView> {
     return this.serial(async () => {
+      const { destination } = await this.options.tabs.get(tabId)
+      // An engine error cannot be lifted by an override: let the page through, feeds hidden.
+      if (
+        destination !== null &&
+        (await this.options.decide(destination)).reason === 'engine_error'
+      ) {
+        return this.passTo(tabId, destination)
+      }
       await this.stepTab(tabId, { type: 'emergency_request' })
       return this.viewOf(tabId)
     })
   }
 
+  /**
+   * The wait is over: the override is always granted and always recorded.
+   * The bypass is recorded first (outbox, else the fallback queue, else the
+   * unrecorded flag), then the grant is stored; if even that fails the tab
+   * still gets through on a pass. The redirect is re-synced on every path.
+   */
   emergencyDone(tabId: number): Promise<GateView> {
     return this.serial(async () => {
       const target = await this.targetOf(tabId)
       if (target === null) return this.viewOf(tabId)
       const before = await this.options.escalation.get(target.group)
       const result = nextEscalation(before, { type: 'emergency_wait_elapsed' }, this.now(), false)
-      if (result.state !== before) {
+      if (result.state === before) return this.viewOf(tabId)
+      if (result.effects.includes('record_bypass')) await this.recordBypass(before, result.state)
+      let stored = true
+      try {
         await this.options.escalation.put(result.state)
-        if (result.effects.includes('record_bypass')) await this.recordBypass(before, result.state)
-        await this.options.onChange()
+      } catch {
+        stored = false
+        this.options.diagnose('escalation.unsaved')
       }
-      return this.viewOf(tabId)
+      await this.options.onChange()
+      if (stored) return this.viewOf(tabId)
+      await this.options.passes.grant(tabId, target.destination).catch(() => false)
+      return { kind: 'pass', url: target.destination }
+    })
+  }
+
+  /** `engine_error` on the gate page: continue with the feeds hidden, as on the site itself. */
+  continueThroughError(tabId: number): Promise<GateView> {
+    return this.serial(async (): Promise<GateView> => {
+      const { destination } = await this.options.tabs.get(tabId)
+      if (destination === null) return { kind: 'none' }
+      const decision = await this.options.decide(destination)
+      if (decision.reason !== 'engine_error') return this.viewOf(tabId)
+      return this.passTo(tabId, destination)
     })
   }
 
@@ -201,13 +244,15 @@ export class GateController {
     })
   }
 
-  leave(tabId: number): Promise<ClosedAnswer> {
-    return this.serial(async () => {
-      const target = await this.targetOf(tabId)
-      if (target !== null) await this.leaveGroup(target.group)
-      await this.options.tabs.forget(tabId)
-      return { closed: await this.options.closer.close(tabId) }
-    })
+  /** Leave never depends on storage: the tab goes first. */
+  async leave(tabId: number): Promise<ClosedAnswer> {
+    const closed = await this.options.closer.close(tabId)
+    await this.serial(async () => {
+      const target = await this.targetOf(tabId).catch(() => null)
+      if (target !== null) await this.trying(this.leaveGroup(target.group))
+      await this.trying(this.options.tabs.forget(tabId))
+    }).catch(() => this.options.diagnose('log.unavailable'))
+    return { closed }
   }
 
   extend(tabId: number): Promise<GateView> {
@@ -221,12 +266,14 @@ export class GateController {
   /** The gate's search box: the site's own search, let through once and never gated in this tab. */
   search(tabId: number, query: string): Promise<GateView> {
     return this.serial(async (): Promise<GateView> => {
-      const { destination } = await this.options.tabs.get(tabId)
-      const url = destination === null ? null : this.searchUrlOf(destination, query)
+      const target = await this.targetOf(tabId)
+      const phase = target === null ? null : (await this.options.escalation.get(target.group)).phase
+      const inFriction =
+        target?.decision.access === 'gate' && (phase === 'pausing' || phase === 'asking')
+      const url = inFriction ? this.searchUrlOf(target.destination, query) : null
       if (url === null) return this.viewOf(tabId)
       await this.options.tabs.setSearchPass(tabId, url)
-      await this.options.passes.grant(tabId, url)
-      return { kind: 'pass', url }
+      return this.passTo(tabId, url)
     })
   }
 
@@ -262,13 +309,14 @@ export class GateController {
     })
   }
 
-  /** Timeout overlay: Leave. */
-  leaveFromPage(tabId: number, url: string): Promise<ClosedAnswer> {
-    return this.serial(async () => {
+  /** Timeout overlay: Leave (the tab goes first). */
+  async leaveFromPage(tabId: number, url: string): Promise<ClosedAnswer> {
+    const closed = await this.options.closer.close(tabId)
+    await this.serial(async () => {
       const group = groupOf(await this.options.decide(url))
-      if (group !== null) await this.leaveGroup(group)
-      return { closed: await this.options.closer.close(tabId) }
-    })
+      if (group !== null) await this.trying(this.leaveGroup(group))
+    }).catch(() => this.options.diagnose('log.unavailable'))
+    return { closed }
   }
 
   /** Timeout overlay: 5 more min, through the gate's doubled pause. */
@@ -331,17 +379,48 @@ export class GateController {
    */
   tick(): Promise<void> {
     return this.serial(async () => {
-      let changed = false
+      let changed = await this.endRewoundLifts()
       for (const state of await this.options.escalation.all()) {
         const group = state.targetGroup
         if (state.phase === 'active' && (await this.step(group, { type: 'intention_expired' }))) {
           changed = true
-          if (!(await this.isOnScreen(group))) await this.leaveGroup(group)
+          if (!(await this.isOnScreen(group))) await this.trying(this.leaveGroup(group))
         } else if (state.phase === 'override_active') {
           changed = (await this.step(group, { type: 'emergency_expired' })) !== null || changed
         }
       }
       if (changed) await this.options.onChange()
+    })
+  }
+
+  /**
+   * Sends every open tab whose page the engine now gates or blocks to the
+   * gate: tabs whose intention timed out on a site without the feed guard,
+   * tabs restored after a restart, sites without the content script.
+   */
+  sweep(): Promise<number> {
+    return this.serial(async () => {
+      let sent = 0
+      for (const { id, url } of await this.options.openTabs()) {
+        if ((await this.options.tabs.get(id)).searchPass === url) continue
+        const decision = await this.options.decide(url)
+        if (decision.access === 'allow' || decision.reason === 'engine_error') continue
+        const group = groupOf(decision)
+        if (group === null) continue
+        const phase = (await this.options.escalation.get(group)).phase
+        if (phase === 'timed_out' && this.options.hasOverlay(url)) continue
+        await this.options.tabs.setDestination(id, url)
+        await this.options.navigate(id, this.options.gateUrl)
+        sent += 1
+      }
+      return sent
+    })
+  }
+
+  /** Re-checks the clock now (the restriction alarm calls it every minute). */
+  checkClock(): Promise<void> {
+    return this.serial(async () => {
+      if (await this.endRewoundLifts()) await this.options.onChange()
     })
   }
 
@@ -352,13 +431,66 @@ export class GateController {
   }
 
   private serial<T>(task: () => Promise<T>): Promise<T> {
-    const run = this.queue.then(task)
+    const guarded = async () => {
+      if (await this.endRewoundLifts().catch(() => false)) await this.options.onChange()
+      return task()
+    }
+    const run = this.queue.then(guarded)
     this.queue = run.catch(() => undefined)
     return run
   }
 
-  private record(kind: IntentionEntryKind, group: string): Promise<void> {
-    return this.options.log.record({ at: this.now(), kind, group })
+  /** Best-effort bookkeeping: a failure is a diagnostic, never a failed command. */
+  private async trying<T>(work: Promise<T>): Promise<T | null> {
+    try {
+      return await work
+    } catch {
+      this.options.diagnose('log.unavailable')
+      return null
+    }
+  }
+
+  private async record(kind: IntentionEntryKind, group: string): Promise<void> {
+    await this.trying(this.options.log.record({ at: this.now(), kind, group }))
+  }
+
+  /** Grants a pass to `url` and moves on; a URL too long for an exact pass has nothing to continue to. */
+  private async passTo(tabId: number, url: string): Promise<GateView> {
+    if (await this.options.passes.grant(tabId, url)) return { kind: 'pass', url }
+    this.options.diagnose('pass.urlTooLong')
+    return { kind: 'none' }
+  }
+
+  /**
+   * The wall clock went back behind the last escalation event: a lift whose
+   * end is measured on that clock would last longer than chosen, so active
+   * intentions end (the engine's `leave`) and active overrides end with the
+   * engine's idle state; the counters stay. Fails toward friction.
+   */
+  private async endRewoundLifts(): Promise<boolean> {
+    const nowSeconds = epochSecondsOf(this.now())
+    let changed = false
+    for (const state of await this.options.escalation.all()) {
+      if (state.lastActivityAt === null || epochSecondsOf(state.lastActivityAt) <= nowSeconds) {
+        continue
+      }
+      if (state.phase === 'active') {
+        changed = (await this.step(state.targetGroup, { type: 'leave' })) !== null || changed
+      } else if (state.phase === 'override_active') {
+        // The engine has no event that ends an override early; keep its counters.
+        await this.options.escalation.put({
+          ...initialEscalationState(state.targetGroup),
+          attemptCount: state.attemptCount,
+          brokenCount: state.brokenCount,
+          lastAttemptAt: state.lastAttemptAt,
+          lastFrictionType: state.lastFrictionType,
+          lastActivityAt: this.now(),
+        })
+        changed = true
+      }
+      if (changed) this.options.diagnose('clock.rewound')
+    }
+    return changed
   }
 
   /** Applies `event` to the group's stored state; answers the new state, or null when nothing changed. */
@@ -391,7 +523,7 @@ export class GateController {
   }
 
   private async isOnScreen(group: string): Promise<boolean> {
-    for (const url of await this.options.openPageUrls()) {
+    for (const { url } of await this.options.openTabs()) {
       if (groupOf(await this.options.decide(url)) === group) return true
     }
     return false
@@ -473,7 +605,7 @@ export class GateController {
 
   private async recordBypass(before: EscalationState, after: EscalationState): Promise<void> {
     const now = this.now()
-    await this.options.outbox.enqueueBypass(
+    await this.options.bypasses.record(
       {
         dedupeKey: (this.options.randomId ?? (() => crypto.randomUUID()))(),
         kind: 'emergency_override',
@@ -493,17 +625,16 @@ export class GateController {
     const { destination } = await this.options.tabs.get(tabId)
     if (destination === null) return { kind: 'none' }
     const decision = await this.options.decide(destination)
-    if (decision.access === 'allow') {
-      await this.options.passes.grant(tabId, destination)
-      return { kind: 'pass', url: destination }
-    }
+    if (decision.access === 'allow') return this.passTo(tabId, destination)
     const group = groupOf(decision)
     if (group === null) {
+      // An engine error: as on the site, the page may continue with its feeds hidden.
       return {
         kind: 'blocked',
         context: { site: this.siteOf(destination), visitsToday: 0, minutesToday: 0 },
         reason: blockReasonOf(decision),
-        emergencyAvailable: false,
+        emergencyAvailable: true,
+        continueAvailable: decision.reason === 'engine_error',
       }
     }
     let state = await this.options.escalation.get(group)
@@ -520,6 +651,7 @@ export class GateController {
         context: await this.context(destination, group),
         reason: blockReasonOf(decision),
         emergencyAvailable: true,
+        continueAvailable: false,
       }
     }
     if (state.phase === 'timed_out') {
@@ -542,6 +674,7 @@ export class GateController {
         context: await this.context(destination, group),
         reason: 'rule_match',
         emergencyAvailable: true,
+        continueAvailable: false,
       }
     }
     const day = await this.options.day()
