@@ -1,0 +1,50 @@
+{
+  "id": "activity.cross_device_overlap_is_capped_per_block",
+  "kind": "activity",
+  "operation": "cross-device-cap",
+  "description": "Two devices with 200 s each in the same block are scaled to 150 s each.",
+  "given": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 200
+      },
+      {
+        "deviceId": "device-b",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "com.microsoft.VSCode",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "app",
+        "seconds": 200
+      }
+    ]
+  },
+  "then": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 150
+      },
+      {
+        "deviceId": "device-b",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "com.microsoft.VSCode",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "app",
+        "seconds": 150
+      }
+    ]
+  }
+}

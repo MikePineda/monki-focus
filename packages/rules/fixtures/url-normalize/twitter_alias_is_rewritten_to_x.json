@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.twitter_alias_is_rewritten_to_x",
+  "kind": "url-normalize",
+  "description": "Profile aliases are rewritten to the canonical domain.",
+  "given": {
+    "urlText": "https://twitter.com/home"
+  },
+  "then": {
+    "host": "x.com",
+    "path": "/home",
+    "pathKnown": true,
+    "surface": "x.home"
+  }
+}

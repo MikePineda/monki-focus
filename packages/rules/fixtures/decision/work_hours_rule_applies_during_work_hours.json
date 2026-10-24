@@ -1,0 +1,62 @@
+{
+  "id": "decision.work_hours_rule_applies_during_work_hours",
+  "kind": "decision",
+  "description": "A rule that references workHours is active on Monday at 10:00.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit-block",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "block",
+          "schedules": [
+            {
+              "ref": "workHours"
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "reddit.com/r/AskHistorians"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": "r-reddit-block",
+    "reason": "rule_match",
+    "explanationKey": "decision.blocked_by_rule"
+  }
+}

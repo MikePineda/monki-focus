@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.encoded_slash_makes_the_path_unknown",
+  "kind": "url-normalize",
+  "description": "An encoded slash (%2F) inside a segment makes the path unknown, so the strict unknown-path rules apply.",
+  "given": {
+    "urlText": "https://www.reddit.com/r%2fAskHistorians"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/r%2FAskHistorians",
+    "pathKnown": false,
+    "surface": null
+  }
+}

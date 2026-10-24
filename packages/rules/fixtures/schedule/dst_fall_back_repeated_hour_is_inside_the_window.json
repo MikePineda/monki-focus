@@ -1,0 +1,24 @@
+{
+  "id": "schedule.dst_fall_back_repeated_hour_is_inside_the_window",
+  "kind": "schedule",
+  "description": "On 2026-04-05 02:00-03:00 happens twice; the second pass is still inside.",
+  "given": {
+    "schedules": [
+      {
+        "days": ["sun"],
+        "start": "02:00",
+        "end": "03:00"
+      }
+    ],
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "now": "2026-04-05T02:30:00+10:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "active": true
+  }
+}

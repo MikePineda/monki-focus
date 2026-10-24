@@ -1,0 +1,23 @@
+{
+  "id": "activity.idle_silent_tab_counts_nothing",
+  "kind": "activity",
+  "operation": "probe",
+  "description": "An idle user with a silent tab produces no heartbeat.",
+  "given": {
+    "now": "2026-10-26T09:00:00Z",
+    "settings": {
+      "countAudibleWhileIdle": true,
+      "storeTitles": false
+    },
+    "windowFocused": true,
+    "idleState": "idle",
+    "tab": {
+      "url": "https://www.reddit.com/r/MachineLearning/",
+      "audible": false,
+      "incognito": false
+    }
+  },
+  "then": {
+    "heartbeat": null
+  }
+}

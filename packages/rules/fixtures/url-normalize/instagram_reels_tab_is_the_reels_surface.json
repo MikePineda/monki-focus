@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.instagram_reels_tab_is_the_reels_surface",
+  "kind": "url-normalize",
+  "description": "The Reels tab is a feed surface.",
+  "given": {
+    "urlText": "instagram.com/reels/"
+  },
+  "then": {
+    "host": "instagram.com",
+    "path": "/reels",
+    "pathKnown": true,
+    "surface": "instagram.reels"
+  }
+}

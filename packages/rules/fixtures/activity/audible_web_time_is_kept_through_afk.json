@@ -1,0 +1,45 @@
+{
+  "id": "activity.audible_web_time_is_kept_through_afk",
+  "kind": "activity",
+  "operation": "active-time",
+  "description": "A web event recorded as audible is not cut by AFK (a recorded lecture playing).",
+  "given": {
+    "events": [
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 600,
+        "data": {
+          "domain": "youtube.com",
+          "path": "/watch",
+          "surface": "youtube.watch",
+          "audible": true,
+          "incognito": false
+        }
+      }
+    ],
+    "afk": [
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 600,
+        "data": {
+          "status": "afk"
+        }
+      }
+    ]
+  },
+  "then": {
+    "events": [
+      {
+        "timestamp": "2026-10-26T09:00:00Z",
+        "duration": 600,
+        "data": {
+          "domain": "youtube.com",
+          "path": "/watch",
+          "surface": "youtube.watch",
+          "audible": true,
+          "incognito": false
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "id": "decision.budget_exhausted_yields_to_an_emergency_override",
+  "kind": "decision",
+  "description": "An emergency override for the budgeted rule's group lifts the budget block.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-yt-budget",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com"
+          },
+          "mode": "allow",
+          "schedules": [],
+          "enabled": true,
+          "dailyBudgetMinutes": 30
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [
+        {
+          "targetGroup": "r-yt-budget",
+          "phase": "override_active",
+          "attemptCount": 0,
+          "lastAttemptAt": null,
+          "lastActivityAt": null,
+          "brokenCount": 0,
+          "lastFrictionType": null,
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": "2026-10-25T22:55:00Z",
+          "overrideEndsAt": "2026-10-25T23:10:00Z"
+        }
+      ],
+      "usage": {
+        "localDate": "2026-10-26",
+        "secondsByRule": {
+          "r-yt-budget": 1800
+        }
+      },
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.youtube.com/watch?v=abc123DEF45"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "show",
+    "ruleId": "r-yt-budget",
+    "reason": "emergency_active",
+    "explanationKey": "decision.emergency_active"
+  }
+}

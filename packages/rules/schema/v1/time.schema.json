@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/time.schema.json",
+  "title": "TimeValues",
+  "description": "Time value formats shared by every schema. Instants never carry fractional seconds.",
+  "$defs": {
+    "instant": {
+      "title": "Instant",
+      "description": "RFC 3339 instant with an explicit offset and whole seconds (inputs may use any offset).",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "utcInstant": {
+      "title": "UtcInstant",
+      "description": "RFC 3339 instant in UTC (`Z`) with whole seconds. Every computed instant is written this way.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "localDate": {
+      "title": "LocalDate",
+      "description": "Calendar date in the user's time zone.",
+      "type": "string",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "timeZone": {
+      "title": "TimeZone",
+      "description": "IANA time zone name, for example `Australia/Sydney` or `UTC`.",
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^(UTC|[A-Z][A-Za-z_-]+(/[A-Za-z0-9_+-]+){1,2})$"
+    }
+  }
+}

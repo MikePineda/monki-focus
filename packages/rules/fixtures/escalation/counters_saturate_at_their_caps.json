@@ -1,0 +1,139 @@
+{
+  "id": "escalation.counters_saturate_at_their_caps",
+  "kind": "escalation",
+  "description": "attemptCount stops at 1000 and brokenCount at 16; the pause stays capped at 60 s.",
+  "given": {
+    "state": {
+      "targetGroup": "r-x-friction",
+      "phase": "timed_out",
+      "attemptCount": 1000,
+      "lastAttemptAt": "2026-10-25T22:50:00Z",
+      "lastActivityAt": "2026-10-25T23:00:00Z",
+      "brokenCount": 16,
+      "lastFrictionType": "countdown",
+      "gate": null,
+      "pauseEndsAt": null,
+      "pendingExtension": false,
+      "intentionExpiresAt": "2026-10-25T23:00:00Z",
+      "overrideReadyAt": null,
+      "overrideEndsAt": null
+    },
+    "guardianLinked": true
+  },
+  "steps": [
+    {
+      "at": "2026-10-26T10:00:05+11:00",
+      "event": {
+        "type": "extend"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "pausing",
+          "attemptCount": 1000,
+          "lastAttemptAt": "2026-10-25T22:50:00Z",
+          "lastActivityAt": "2026-10-25T23:00:05Z",
+          "brokenCount": 16,
+          "lastFrictionType": "breath",
+          "gate": {
+            "level": 3,
+            "pauseSeconds": 60,
+            "frictionType": "breath",
+            "requiresTypedIntention": true,
+            "requiresGuardianKey": true
+          },
+          "pauseEndsAt": "2026-10-25T23:01:05Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:01:05+11:00",
+      "event": {
+        "type": "pause_elapsed"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "asking",
+          "attemptCount": 1000,
+          "lastAttemptAt": "2026-10-25T22:50:00Z",
+          "lastActivityAt": "2026-10-25T23:01:05Z",
+          "brokenCount": 16,
+          "lastFrictionType": "breath",
+          "gate": {
+            "level": 3,
+            "pauseSeconds": 60,
+            "frictionType": "breath",
+            "requiresTypedIntention": true,
+            "requiresGuardianKey": true
+          },
+          "pauseEndsAt": "2026-10-25T23:01:05Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:01:10+11:00",
+      "event": {
+        "type": "close"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "idle",
+          "attemptCount": 1000,
+          "lastAttemptAt": "2026-10-25T22:50:00Z",
+          "lastActivityAt": "2026-10-25T23:01:10Z",
+          "brokenCount": 16,
+          "lastFrictionType": "breath",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:02:00+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "pausing",
+          "attemptCount": 1000,
+          "lastAttemptAt": "2026-10-25T23:02:00Z",
+          "lastActivityAt": "2026-10-25T23:02:00Z",
+          "brokenCount": 16,
+          "lastFrictionType": "reflect",
+          "gate": {
+            "level": 3,
+            "pauseSeconds": 60,
+            "frictionType": "reflect",
+            "requiresTypedIntention": true,
+            "requiresGuardianKey": true
+          },
+          "pauseEndsAt": "2026-10-25T23:03:00Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    }
+  ]
+}

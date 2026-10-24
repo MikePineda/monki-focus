@@ -1,0 +1,24 @@
+{
+  "id": "schedule.window_inside_spring_forward_gap_never_occurs",
+  "kind": "schedule",
+  "description": "A 02:00-03:00 window does not exist on the spring-forward day.",
+  "given": {
+    "schedules": [
+      {
+        "days": ["sun"],
+        "start": "02:00",
+        "end": "03:00"
+      }
+    ],
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "now": "2026-10-04T03:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "active": false
+  }
+}

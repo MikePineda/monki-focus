@@ -1,0 +1,21 @@
+{
+  "id": "activity.pulse_rounds_half_up",
+  "kind": "activity",
+  "operation": "pulse",
+  "description": "12.5 rounds to 13.",
+  "given": {
+    "entries": [
+      {
+        "seconds": 1,
+        "level": 0
+      },
+      {
+        "seconds": 1,
+        "level": 25
+      }
+    ]
+  },
+  "then": {
+    "pulse": 13
+  }
+}

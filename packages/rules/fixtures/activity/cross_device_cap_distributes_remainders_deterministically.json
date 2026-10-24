@@ -1,0 +1,68 @@
+{
+  "id": "activity.cross_device_cap_distributes_remainders_deterministically",
+  "kind": "activity",
+  "operation": "cross-device-cap",
+  "description": "100 + 100 + 101 s scale to exactly 300 by largest remainder, ties by device id.",
+  "given": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 100
+      },
+      {
+        "deviceId": "device-b",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 100
+      },
+      {
+        "deviceId": "device-c",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 101
+      }
+    ]
+  },
+  "then": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 100
+      },
+      {
+        "deviceId": "device-b",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 100
+      },
+      {
+        "deviceId": "device-c",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "github.com",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "web",
+        "seconds": 100
+      }
+    ]
+  }
+}

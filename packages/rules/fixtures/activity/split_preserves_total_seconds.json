@@ -1,0 +1,60 @@
+{
+  "id": "activity.split_preserves_total_seconds",
+  "kind": "activity",
+  "operation": "blocks",
+  "description": "1000 s from 09:01:30 split into 210 + 300 + 300 + 190.",
+  "given": {
+    "deviceId": "device-a",
+    "syncActivityKey": true,
+    "events": [
+      {
+        "timestamp": "2026-10-26T09:01:30Z",
+        "duration": 1000,
+        "source": "app",
+        "activityKey": "com.microsoft.VSCode",
+        "categoryPath": "development",
+        "level": 100
+      }
+    ]
+  },
+  "then": {
+    "blocks": [
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:00:00Z",
+        "activityKey": "com.microsoft.VSCode",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "app",
+        "seconds": 210
+      },
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:05:00Z",
+        "activityKey": "com.microsoft.VSCode",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "app",
+        "seconds": 300
+      },
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:10:00Z",
+        "activityKey": "com.microsoft.VSCode",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "app",
+        "seconds": 300
+      },
+      {
+        "deviceId": "device-a",
+        "blockStart": "2026-10-26T09:15:00Z",
+        "activityKey": "com.microsoft.VSCode",
+        "categoryPath": "development",
+        "level": 100,
+        "source": "app",
+        "seconds": 190
+      }
+    ]
+  }
+}

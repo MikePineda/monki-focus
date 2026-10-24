@@ -1,0 +1,33 @@
+{
+  "id": "activity.audible_active_tab_counts_while_idle",
+  "kind": "activity",
+  "operation": "probe",
+  "description": "An audible tab in the focused window still produces heartbeats while the user is idle.",
+  "given": {
+    "now": "2026-10-26T09:00:00Z",
+    "settings": {
+      "countAudibleWhileIdle": true,
+      "storeTitles": false
+    },
+    "windowFocused": true,
+    "idleState": "idle",
+    "tab": {
+      "url": "https://www.youtube.com/watch?v=abc123DEF45",
+      "audible": true,
+      "incognito": false
+    }
+  },
+  "then": {
+    "heartbeat": {
+      "timestamp": "2026-10-26T09:00:00Z",
+      "duration": 0,
+      "data": {
+        "domain": "youtube.com",
+        "path": "/watch",
+        "surface": "youtube.watch",
+        "audible": true,
+        "incognito": false
+      }
+    }
+  }
+}

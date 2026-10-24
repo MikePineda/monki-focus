@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.youtube_subscriptions_is_a_feed",
+  "kind": "url-normalize",
+  "description": "The subscriptions page is its own feed surface.",
+  "given": {
+    "urlText": "https://www.youtube.com/feed/subscriptions"
+  },
+  "then": {
+    "host": "youtube.com",
+    "path": "/feed/subscriptions",
+    "pathKnown": true,
+    "surface": "youtube.subscriptions"
+  }
+}

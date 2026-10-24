@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.trailing_dot_host_is_normalised",
+  "kind": "url-normalize",
+  "description": "A fully qualified host with a trailing dot is the same host.",
+  "given": {
+    "urlText": "https://www.reddit.com./r/AskHistorians"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/r/AskHistorians",
+    "pathKnown": true,
+    "surface": "reddit.feed"
+  }
+}

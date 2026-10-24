@@ -1,0 +1,81 @@
+{
+  "id": "decision.decide_in_timed_out_returns_the_current_gate",
+  "kind": "decision",
+  "description": "After an intention timed out, visiting again shows the gate of the current state without counting a new attempt.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-x-friction",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [
+        {
+          "targetGroup": "r-x-friction",
+          "phase": "timed_out",
+          "attemptCount": 2,
+          "lastAttemptAt": "2026-10-25T22:45:00Z",
+          "lastActivityAt": "2026-10-25T22:59:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "breath",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": "2026-10-25T22:59:00Z",
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        }
+      ],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "x.com/home"
+    }
+  },
+  "then": {
+    "access": "gate",
+    "content": "show",
+    "ruleId": "r-x-friction",
+    "reason": "intention_required",
+    "gate": {
+      "level": 1,
+      "pauseSeconds": 15,
+      "frictionType": "breath",
+      "requiresTypedIntention": false,
+      "requiresGuardianKey": false
+    },
+    "explanationKey": "decision.intention_required"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "activity.user_assignment_beats_default_on_equal_specificity",
+  "kind": "activity",
+  "operation": "categorise",
+  "description": "At equal specificity the user's assignment overrides the default.",
+  "given": {
+    "activity": {
+      "source": "web",
+      "activityKey": "reddit.com",
+      "path": "/r/MachineLearning",
+      "surface": "reddit.feed"
+    },
+    "assignments": [
+      {
+        "target": {
+          "kind": "site",
+          "domain": "reddit.com"
+        },
+        "level": 75,
+        "category": "learning"
+      }
+    ],
+    "includeDefaults": true
+  },
+  "then": {
+    "level": 75,
+    "categoryPath": "learning"
+  }
+}

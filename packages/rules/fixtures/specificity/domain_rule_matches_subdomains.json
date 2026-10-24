@@ -1,0 +1,58 @@
+{
+  "id": "specificity.domain_rule_matches_subdomains",
+  "kind": "specificity",
+  "description": "A domain rule also matches its subdomains.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-yt-block",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://music.youtube.com/"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": "r-yt-block",
+    "reason": "rule_match",
+    "explanationKey": "decision.blocked_by_rule"
+  }
+}

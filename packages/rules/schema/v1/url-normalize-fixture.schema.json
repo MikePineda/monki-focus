@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/url-normalize-fixture.schema.json",
+  "title": "UrlNormalizeFixture",
+  "description": "One `normalizeUrl(urlText, siteProfiles)` case (SEMANTICS.md §2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "description", "given", "then"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^url-normalize\\.[a-z0-9]+(_[a-z0-9]+)*$"
+    },
+    "kind": { "const": "url-normalize" },
+    "description": { "type": "string", "minLength": 1, "maxLength": 300 },
+    "given": {
+      "title": "UrlNormalizeGiven",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["urlText"],
+      "properties": {
+        "urlText": { "type": "string", "maxLength": 2048 }
+      }
+    },
+    "then": {
+      "oneOf": [{ "$ref": "#/$defs/normalizedUrl" }, { "$ref": "#/$defs/rejectedUrl" }]
+    }
+  },
+  "$defs": {
+    "normalizedUrl": {
+      "title": "NormalizedUrl",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "path", "pathKnown", "surface"],
+      "properties": {
+        "host": { "$ref": "target.schema.json#/$defs/domain" },
+        "path": { "type": "string", "maxLength": 2048, "pattern": "^/" },
+        "pathKnown": { "type": "boolean" },
+        "surface": {
+          "oneOf": [{ "$ref": "target.schema.json#/$defs/surfaceId" }, { "type": "null" }]
+        }
+      }
+    },
+    "rejectedUrl": {
+      "title": "RejectedUrl",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rejected"],
+      "properties": {
+        "rejected": { "type": "string", "enum": ["not_http", "invalid_host"] }
+      }
+    }
+  }
+}

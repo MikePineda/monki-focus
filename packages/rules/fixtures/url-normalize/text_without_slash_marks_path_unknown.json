@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.text_without_slash_marks_path_unknown",
+  "kind": "url-normalize",
+  "description": "A bare domain (what a mobile URL bar shows) has an unknown path and no surface.",
+  "given": {
+    "urlText": "reddit.com"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/",
+    "pathKnown": false,
+    "surface": null
+  }
+}

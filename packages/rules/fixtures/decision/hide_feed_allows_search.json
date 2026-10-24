@@ -1,0 +1,58 @@
+{
+  "id": "decision.hide_feed_allows_search",
+  "kind": "decision",
+  "description": "Search is a utility surface and is never hidden.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit-hide",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.reddit.com/search/?q=transformers"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "show",
+    "ruleId": "r-reddit-hide",
+    "reason": "permalink_never_hidden",
+    "explanationKey": "decision.permalink_never_hidden"
+  }
+}

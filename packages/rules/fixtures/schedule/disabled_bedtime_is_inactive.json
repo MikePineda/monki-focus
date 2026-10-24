@@ -1,0 +1,19 @@
+{
+  "id": "schedule.disabled_bedtime_is_inactive",
+  "kind": "schedule",
+  "description": "A disabled bedtime never applies.",
+  "given": {
+    "bedtime": {
+      "enabled": false,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "now": "2026-10-26T23:00:00+11:00",
+    "timeZone": "Australia/Sydney"
+  },
+  "then": {
+    "phase": "inactive"
+  }
+}

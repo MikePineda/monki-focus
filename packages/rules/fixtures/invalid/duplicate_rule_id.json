@@ -1,0 +1,51 @@
+{
+  "id": "invalid.duplicate_rule_id",
+  "kind": "invalid",
+  "description": "Rule ids are unique.",
+  "schema": "ruleset",
+  "document": {
+    "schemaVersion": 1,
+    "revision": 1,
+    "updatedAt": "2026-10-01T00:00:00Z",
+    "timeZone": "Australia/Sydney",
+    "rules": [
+      {
+        "id": "r-x",
+        "target": {
+          "kind": "site",
+          "domain": "x.com"
+        },
+        "mode": "block",
+        "schedules": [],
+        "enabled": true
+      },
+      {
+        "id": "r-x",
+        "target": {
+          "kind": "site",
+          "domain": "reddit.com"
+        },
+        "mode": "block",
+        "schedules": [],
+        "enabled": true
+      }
+    ],
+    "categories": [],
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    }
+  },
+  "then": {
+    "rejected": true,
+    "code": "duplicate_key"
+  }
+}

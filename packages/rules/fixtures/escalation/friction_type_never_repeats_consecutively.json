@@ -1,0 +1,217 @@
+{
+  "id": "escalation.friction_type_never_repeats_consecutively",
+  "kind": "escalation",
+  "description": "The friction type rotates countdown, breath, reflect, type-intention and never repeats, not even across a session reset.",
+  "given": {
+    "state": {
+      "targetGroup": "r-x-friction",
+      "phase": "idle",
+      "attemptCount": 2,
+      "lastAttemptAt": "2026-10-25T20:00:00Z",
+      "lastActivityAt": "2026-10-25T20:00:00Z",
+      "brokenCount": 0,
+      "lastFrictionType": "countdown",
+      "gate": null,
+      "pauseEndsAt": null,
+      "pendingExtension": false,
+      "intentionExpiresAt": null,
+      "overrideReadyAt": null,
+      "overrideEndsAt": null
+    },
+    "guardianLinked": false
+  },
+  "steps": [
+    {
+      "at": "2026-10-26T10:00:00+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "pausing",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "breath",
+          "gate": {
+            "level": 0,
+            "pauseSeconds": 5,
+            "frictionType": "breath",
+            "requiresTypedIntention": false,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:00:05Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:00:02+11:00",
+      "event": {
+        "type": "close"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "idle",
+          "attemptCount": 1,
+          "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:02Z",
+          "brokenCount": 0,
+          "lastFrictionType": "breath",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:01:00+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "pausing",
+          "attemptCount": 2,
+          "lastAttemptAt": "2026-10-25T23:01:00Z",
+          "lastActivityAt": "2026-10-25T23:01:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "reflect",
+          "gate": {
+            "level": 1,
+            "pauseSeconds": 15,
+            "frictionType": "reflect",
+            "requiresTypedIntention": false,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:01:15Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:01:02+11:00",
+      "event": {
+        "type": "close"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "idle",
+          "attemptCount": 2,
+          "lastAttemptAt": "2026-10-25T23:01:00Z",
+          "lastActivityAt": "2026-10-25T23:01:02Z",
+          "brokenCount": 0,
+          "lastFrictionType": "reflect",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:02:00+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "pausing",
+          "attemptCount": 3,
+          "lastAttemptAt": "2026-10-25T23:02:00Z",
+          "lastActivityAt": "2026-10-25T23:02:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "type-intention",
+          "gate": {
+            "level": 2,
+            "pauseSeconds": 15,
+            "frictionType": "type-intention",
+            "requiresTypedIntention": true,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:02:15Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:02:02+11:00",
+      "event": {
+        "type": "close"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "idle",
+          "attemptCount": 3,
+          "lastAttemptAt": "2026-10-25T23:02:00Z",
+          "lastActivityAt": "2026-10-25T23:02:02Z",
+          "brokenCount": 0,
+          "lastFrictionType": "type-intention",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:03:00+11:00",
+      "event": {
+        "type": "visit"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "pausing",
+          "attemptCount": 4,
+          "lastAttemptAt": "2026-10-25T23:03:00Z",
+          "lastActivityAt": "2026-10-25T23:03:00Z",
+          "brokenCount": 0,
+          "lastFrictionType": "countdown",
+          "gate": {
+            "level": 3,
+            "pauseSeconds": 60,
+            "frictionType": "countdown",
+            "requiresTypedIntention": true,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:04:00Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    }
+  ]
+}

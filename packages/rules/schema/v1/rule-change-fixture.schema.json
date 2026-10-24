@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/rule-change-fixture.schema.json",
+  "title": "RuleChangeFixture",
+  "description": "One `effectiveRuleSet(old, new, now, pendingEffectiveFrom)` case: `old` is the currently effective set; tightening applies at once, anything else waits for the next local midnight (or the end of a bedtime or schedule window active then) and never earlier than a pending change (SEMANTICS.md §8).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "description", "given", "then"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^rule-change\\.[a-z0-9]+(_[a-z0-9]+)*$"
+    },
+    "kind": {
+      "const": "rule-change"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "given": {
+      "title": "RuleChangeGiven",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["old", "new", "now", "pendingEffectiveFrom"],
+      "properties": {
+        "old": {
+          "$ref": "ruleset.schema.json"
+        },
+        "new": {
+          "$ref": "ruleset.schema.json"
+        },
+        "now": {
+          "$ref": "time.schema.json#/$defs/instant"
+        },
+        "pendingEffectiveFrom": {
+          "description": "effectiveFrom of the pending change this one replaces, or null.",
+          "oneOf": [
+            {
+              "$ref": "time.schema.json#/$defs/utcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "then": {
+      "title": "RuleChangeThen",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effectiveToday", "effectiveFrom"],
+      "properties": {
+        "effectiveToday": {
+          "$ref": "ruleset.schema.json"
+        },
+        "effectiveFrom": {
+          "description": "Next local midnight when `new` takes full effect; null when it already applies entirely.",
+          "oneOf": [
+            {
+              "$ref": "time.schema.json#/$defs/utcInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

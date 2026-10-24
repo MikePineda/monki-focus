@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.reddit_user_page_is_a_user_feed",
+  "kind": "url-normalize",
+  "description": "A user overview page is that user's feed.",
+  "given": {
+    "urlText": "https://www.reddit.com/u/example_user"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/u/example_user",
+    "pathKnown": true,
+    "surface": "reddit.user_feed"
+  }
+}

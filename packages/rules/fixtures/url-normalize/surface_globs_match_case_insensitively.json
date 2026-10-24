@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.surface_globs_match_case_insensitively",
+  "kind": "url-normalize",
+  "description": "Paths keep their case but surface globs compare ASCII case-insensitively.",
+  "given": {
+    "urlText": "https://www.youtube.com/Shorts/abc123DEF45"
+  },
+  "then": {
+    "host": "youtube.com",
+    "path": "/Shorts/abc123DEF45",
+    "pathKnown": true,
+    "surface": "youtube.shorts"
+  }
+}

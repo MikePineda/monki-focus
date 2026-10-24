@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/category-catalog.schema.json",
+  "title": "CategoryCatalog",
+  "description": "Factory category assignments (data/categories/default.json). A rule set's `categories` override these.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "assignments"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "assignments": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "$ref": "category-assignment.schema.json"
+      },
+      "x-uniqueBy": "/target"
+    }
+  }
+}

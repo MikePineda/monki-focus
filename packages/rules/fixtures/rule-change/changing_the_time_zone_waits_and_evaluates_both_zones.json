@@ -1,0 +1,73 @@
+{
+  "id": "rule-change.changing_the_time_zone_waits_and_evaluates_both_zones",
+  "kind": "rule-change",
+  "description": "Moving from Sydney to London waits and both zones apply meanwhile; it takes effect at the later local midnight (London), then after the bedtime window running there (07:00 London).",
+  "given": {
+    "old": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "new": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Europe/London",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T15:00:00+11:00",
+    "pendingEffectiveFrom": null
+  },
+  "then": {
+    "effectiveToday": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      },
+      "pendingTimeZone": "Europe/London"
+    },
+    "effectiveFrom": "2026-10-27T07:00:00Z"
+  }
+}

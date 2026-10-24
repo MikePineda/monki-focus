@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.semicolon_inside_a_feed_path_makes_it_unknown",
+  "kind": "url-normalize",
+  "description": "Matrix parameters cannot disguise a feed path.",
+  "given": {
+    "urlText": "https://www.youtube.com/feed;x/trending"
+  },
+  "then": {
+    "host": "youtube.com",
+    "path": "/feed;x/trending",
+    "pathKnown": false,
+    "surface": null
+  }
+}
