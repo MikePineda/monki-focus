@@ -9,4 +9,75 @@
     <string name="app_name" translatable="false">monki-focus</string>
     <string name="home_scaffold_message">monki-focus is getting ready. Blocking rules arrive in the next updates.</string>
     <string name="action_close">Close</string>
+
+    <!-- Countdown (core-ui). -->
+    <string name="countdown_unit_seconds">s</string>
+    <string name="countdown_announcement_seconds">Seconds left: %1$d</string>
+    <string name="countdown_announcement_time">Time left: %1$s</string>
+
+    <!--
+      Explanation keys of the decision engine: `decision.<name>` maps to
+      `decision_<name>` (dots become underscores). One per ExplanationKey.
+    -->
+    <string name="decision_no_rule">No rule applies here.</string>
+    <string name="decision_allowed_by_rule">A rule you set allows this.</string>
+    <string name="decision_blocked_by_rule">You chose to block this.</string>
+    <string name="decision_feed_hidden">The feed is hidden by a rule you set.</string>
+    <string name="decision_intention_required">You chose to pause before this.</string>
+    <string name="decision_intention_active">Your intention is still running.</string>
+    <string name="decision_schedule_bedtime">It’s bedtime. Apps you limited stay closed until morning.</string>
+    <string name="decision_budget_exhausted">Today’s time for this is used up. It resets at midnight.</string>
+    <string name="decision_unlock_active">Your guardian’s unlock is active.</string>
+    <string name="decision_emergency_active">Emergency access is active.</string>
+    <string name="decision_permalink_never_hidden">Single posts, search and messages are never hidden.</string>
+    <string name="decision_path_unknown_allow">This page can’t be told apart from a single post, so it stays visible.</string>
+    <string name="decision_not_a_feed">This page is not a feed.</string>
+    <string name="decision_engine_error">Something went wrong, so this stays closed to be safe.</string>
+
+    <!-- Why lines, one per pause type. -->
+    <string name="why_countdown">A short pause before you decide.</string>
+    <string name="why_breath">A few slow breaths before you decide.</string>
+    <string name="why_reflect">What would you do instead?</string>
+    <string name="why_type_intention">Writing it down turns a habit into a choice.</string>
+
+    <!-- Friction gate. -->
+    <string name="gate_level">Level %1$d of %2$d</string>
+    <string name="gate_emergency">Emergency access</string>
+    <string name="gate_breathe_in">Breathe in</string>
+    <string name="gate_breathe_out">Breathe out</string>
+    <string name="gate_breath_rhythm">%1$d s in · %1$d s out · %2$d s left</string>
+    <string name="gate_intention_title">What are you here for?</string>
+    <string name="gate_intention_label_optional">Your intention (optional)</string>
+    <string name="gate_intention_label_required">Your intention</string>
+    <string name="gate_intention_placeholder_reply">Reply to one message</string>
+    <string name="gate_intention_placeholder_hours">Check the opening hours</string>
+    <string name="gate_intention_placeholder_lecture">Watch the lecture recording</string>
+    <string name="gate_intention_hint_required">At least %1$d words, different from last time.</string>
+    <string name="gate_intention_hint_optional">Optional at this level.</string>
+    <string name="gate_intention_word_count">Words: %1$d</string>
+    <string name="gate_duration_label">For how long?</string>
+    <string name="gate_duration_minutes">%1$d min</string>
+    <string name="gate_continue">Continue to %1$s</string>
+    <string name="gate_continue_needs_duration">Choose how long first.</string>
+    <string name="gate_continue_needs_intention">Write your intention first.</string>
+    <string name="gate_continue_needs_guardian_key">This step needs your guardian’s key.</string>
+    <string name="gate_blocked_title_rule">%1$s is blocked</string>
+    <string name="gate_blocked_title_budget">Time’s up for %1$s today</string>
+    <string name="gate_blocked_title_error">%1$s stays closed for now</string>
+    <string name="gate_emergency_wait_body">Emergency access opens when the wait ends.</string>
+    <string name="gate_emergency_guardian_notice">Your guardian will be notified.</string>
+    <string name="gate_emergency_recorded_notice">This is recorded as emergency access.</string>
+    <string name="gate_emergency_cancel">Cancel emergency</string>
+
+    <!-- Timeout card. -->
+    <string name="timeout_title_with_intention">Your %1$d min for “%2$s” are up.</string>
+    <string name="timeout_title_minutes">Your %1$d min are up.</string>
+    <string name="timeout_title">Your time is up.</string>
+    <string name="timeout_leave">Leave</string>
+    <string name="timeout_extend">%1$d more min</string>
+    <string name="timeout_extend_note">Counts as a broken intention · next pause will be %1$d s</string>
+
+    <!-- Bedtime cover. -->
+    <string name="bedtime_title">It’s bedtime</string>
+    <string name="bedtime_body_until">Apps you limited stay closed until %1$s.</string>
 </resources>

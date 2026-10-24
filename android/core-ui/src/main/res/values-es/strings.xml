@@ -4,4 +4,72 @@
 <resources>
     <string name="home_scaffold_message">monki-focus se está preparando. Las reglas de bloqueo llegan en las próximas actualizaciones.</string>
     <string name="action_close">Cerrar</string>
+
+    <!-- Countdown (core-ui). -->
+    <string name="countdown_unit_seconds">s</string>
+    <string name="countdown_announcement_seconds">Segundos restantes: %1$d</string>
+    <string name="countdown_announcement_time">Tiempo restante: %1$s</string>
+
+    <!-- Explanation keys of the decision engine. -->
+    <string name="decision_no_rule">Aquí no aplica ninguna regla.</string>
+    <string name="decision_allowed_by_rule">Una regla tuya lo permite.</string>
+    <string name="decision_blocked_by_rule">Elegiste bloquear esto.</string>
+    <string name="decision_feed_hidden">Una regla tuya oculta el feed.</string>
+    <string name="decision_intention_required">Elegiste hacer una pausa antes de esto.</string>
+    <string name="decision_intention_active">Tu intención sigue en curso.</string>
+    <string name="decision_schedule_bedtime">Es hora de dormir. Las apps que limitaste siguen cerradas hasta la mañana.</string>
+    <string name="decision_budget_exhausted">Se acabó el tiempo de hoy para esto. Se reinicia a medianoche.</string>
+    <string name="decision_unlock_active">El desbloqueo de tu guardián está activo.</string>
+    <string name="decision_emergency_active">El acceso de emergencia está activo.</string>
+    <string name="decision_permalink_never_hidden">Las publicaciones sueltas, la búsqueda y los mensajes nunca se ocultan.</string>
+    <string name="decision_path_unknown_allow">Esta página no se distingue de una publicación suelta, así que sigue visible.</string>
+    <string name="decision_not_a_feed">Esta página no es un feed.</string>
+    <string name="decision_engine_error">Algo salió mal, así que esto sigue cerrado por seguridad.</string>
+
+    <!-- Why lines, one per pause type. -->
+    <string name="why_countdown">Una pausa breve antes de decidir.</string>
+    <string name="why_breath">Unas respiraciones lentas antes de decidir.</string>
+    <string name="why_reflect">¿Qué harías en su lugar?</string>
+    <string name="why_type_intention">Escribirlo convierte un hábito en una decisión.</string>
+
+    <!-- Friction gate. -->
+    <string name="gate_level">Nivel %1$d de %2$d</string>
+    <string name="gate_emergency">Acceso de emergencia</string>
+    <string name="gate_breathe_in">Inhala</string>
+    <string name="gate_breathe_out">Exhala</string>
+    <string name="gate_breath_rhythm">%1$d s inhalar · %1$d s exhalar · quedan %2$d s</string>
+    <string name="gate_intention_title">¿A qué vienes?</string>
+    <string name="gate_intention_label_optional">Tu intención (opcional)</string>
+    <string name="gate_intention_label_required">Tu intención</string>
+    <string name="gate_intention_placeholder_reply">Responder un mensaje</string>
+    <string name="gate_intention_placeholder_hours">Revisar el horario de apertura</string>
+    <string name="gate_intention_placeholder_lecture">Ver la grabación de la clase</string>
+    <string name="gate_intention_hint_required">Al menos %1$d palabras, distintas de la última vez.</string>
+    <string name="gate_intention_hint_optional">Opcional en este nivel.</string>
+    <string name="gate_intention_word_count">Palabras: %1$d</string>
+    <string name="gate_duration_label">¿Por cuánto tiempo?</string>
+    <string name="gate_duration_minutes">%1$d min</string>
+    <string name="gate_continue">Continuar a %1$s</string>
+    <string name="gate_continue_needs_duration">Primero elige cuánto tiempo.</string>
+    <string name="gate_continue_needs_intention">Primero escribe tu intención.</string>
+    <string name="gate_continue_needs_guardian_key">Este paso necesita la clave de tu guardián.</string>
+    <string name="gate_blocked_title_rule">%1$s está bloqueado</string>
+    <string name="gate_blocked_title_budget">Se acabó el tiempo de hoy para %1$s</string>
+    <string name="gate_blocked_title_error">%1$s sigue cerrado por ahora</string>
+    <string name="gate_emergency_wait_body">El acceso de emergencia se abre cuando termine la espera.</string>
+    <string name="gate_emergency_guardian_notice">Se avisará a tu guardián.</string>
+    <string name="gate_emergency_recorded_notice">Esto queda registrado como acceso de emergencia.</string>
+    <string name="gate_emergency_cancel">Cancelar emergencia</string>
+
+    <!-- Timeout card. -->
+    <string name="timeout_title_with_intention">Tus %1$d min para «%2$s» terminaron.</string>
+    <string name="timeout_title_minutes">Tus %1$d min terminaron.</string>
+    <string name="timeout_title">Se acabó tu tiempo.</string>
+    <string name="timeout_leave">Salir</string>
+    <string name="timeout_extend">%1$d min más</string>
+    <string name="timeout_extend_note">Cuenta como intención rota · la próxima pausa será de %1$d s</string>
+
+    <!-- Bedtime cover. -->
+    <string name="bedtime_title">Es hora de dormir</string>
+    <string name="bedtime_body_until">Las apps que limitaste siguen cerradas hasta las %1$s.</string>
 </resources>
