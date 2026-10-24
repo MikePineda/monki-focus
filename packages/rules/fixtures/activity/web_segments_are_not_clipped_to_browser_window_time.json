@@ -1,0 +1,56 @@
+{
+  "id": "activity.web_segments_are_not_clipped_to_browser_window_time",
+  "kind": "activity",
+  "operation": "browser-dedupe",
+  "description": "A web event that outlasts the browser window keeps its whole length; the next app keeps its own window time.",
+  "given": {
+    "browserApps": ["com.brave.Browser", "com.google.Chrome"],
+    "staleAfterSeconds": 60,
+    "windowEvents": [
+      {
+        "timestamp": "2026-10-26T10:00:00Z",
+        "duration": 300,
+        "data": {
+          "app": "com.brave.Browser"
+        }
+      },
+      {
+        "timestamp": "2026-10-26T10:05:00Z",
+        "duration": 300,
+        "data": {
+          "app": "com.microsoft.VSCode"
+        }
+      }
+    ],
+    "webEvents": [
+      {
+        "timestamp": "2026-10-26T10:00:00Z",
+        "duration": 420,
+        "data": {
+          "domain": "github.com",
+          "path": "/",
+          "surface": null,
+          "audible": false,
+          "incognito": false
+        }
+      }
+    ],
+    "extensionLastHeartbeatAt": "2026-10-26T10:07:00Z"
+  },
+  "then": {
+    "segments": [
+      {
+        "start": "2026-10-26T10:00:00Z",
+        "end": "2026-10-26T10:07:00Z",
+        "source": "web",
+        "activityKey": "github.com"
+      },
+      {
+        "start": "2026-10-26T10:05:00Z",
+        "end": "2026-10-26T10:10:00Z",
+        "source": "app",
+        "activityKey": "com.microsoft.VSCode"
+      }
+    ]
+  }
+}

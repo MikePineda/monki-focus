@@ -219,7 +219,8 @@ rule counts as `friction` when it can cover a `feed` surface of that profile
 (a site rule of the domain, or a surface rule on a feed surface), and a
 surface `block` counts as `friction` too (remove the feed, not the tool; a
 site `block` stays a block). The access winner is the unknown-path candidate
-with the strictest effective mode (`block > friction > allow`; ties by §4).
+with the strictest effective mode (`block > friction > allow`; ties by §4,
+with step 5 using the rule's own mode, not the effective mode).
 `block` → `rule_match`; `friction` → the gate of its group (a promoted rule
 is its own group). All unknown-path candidates take part in the budget step
 (§5.2.2). For
@@ -324,7 +325,8 @@ short extension path; the third and later require a full gate.
   required and not verified.
 - **`intention_expired`** in `active` with `now ≥ intentionExpiresAt`:
   `timed_out`.
-- **`leave`** in `active` or `timed_out`: `idle`, intention ended (kept).
+- **`leave`** in `active` or `timed_out`: `idle`; the intention ends and
+  `intentionExpiresAt` becomes null (the attempt still counts).
 - **`extend`** in `timed_out`: `brokenCount += 1`; the next friction type;
   phase `pausing`. If `brokenCount` was < 2: the gate at the current level
   with the doubled pause and no typing or key, `pendingExtension` true (then 5
@@ -339,6 +341,10 @@ short extension path; the third and later require a full gate.
 - **`emergency_expired`** in `override_active` with `now ≥ overrideEndsAt`:
   `idle`, override timers cleared.
 
+Every transition to `idle` clears `gate`, `pauseEndsAt`, `pendingExtension`
+(false), `intentionExpiresAt`, `overrideReadyAt` and `overrideEndsAt`; only
+the counters, `lastAttemptAt`, `lastActivityAt` and `lastFrictionType` survive.
+
 ### 7.4 Gate in `decide`
 
 For a friction restriction without a lift, `decide` returns:
@@ -352,7 +358,8 @@ For a friction restriction without a lift, `decide` returns:
   rule id never resets it. For each matching friction candidate's group apply
   the session check of §7.2; the effective `attemptCount` and `brokenCount`
   are the maxima, `lastFrictionType` comes from the group with the latest
-  `lastActivityAt` (ties: the winner's). Adapters MUST call `nextEscalation`
+  `lastActivityAt` (ties: the winner's group, then the smallest rule id,
+  code-unit order). Adapters MUST call `nextEscalation`
   for the winner's group with that effective state, so the stored gate equals
   the returned one.
 
@@ -405,11 +412,22 @@ version (added loosening rules left out, removed restrictive rules kept), with
 
 1. the next local midnight after `now` (with a waiting `timeZone` change, the
    later of the next midnights in both zones);
-2. if a waiting change touches bedtime, categories (they decide bedtime), a
-   schedule of a rule, `workHours` or `timeZone`, and an old bedtime or
-   schedule window of a changed part is active at that instant (in either
-   zone; for categories the bedtime window), move to the end of that window;
-   repeat while one is active;
+2. if an old window of a waiting part is active at that instant (in either
+   zone), move to the end of that window; repeat while one is active, for at
+   most 7 days: the result is never later than the local midnight 7 local
+   days after the next local midnight of step 1 (with a waiting `timeZone`
+   change, the later of the two zones' such midnights), even when windows
+   still chain there (24-hour windows on every day never end). The old
+   windows of the waiting parts are (an old bedtime window only while the old
+   bedtime is enabled; a `workHours` reference resolves to the old
+   `workHours`):
+   - bedtime or categories (they decide bedtime): the old bedtime window;
+   - a rule whose `schedules` changed: its old schedule windows. Removed or
+     disabled rules add no window (the rule fields above decide whether they
+     wait); a rule without schedules has no window;
+   - `workHours`: the old `workHours` window;
+   - `timeZone`: the old bedtime window and the schedule windows of every
+     enabled old rule;
 3. never earlier than `pendingEffectiveFrom`.
 
 The result is a UTC instant (turning bedtime off at 23:00 takes effect at
@@ -457,22 +475,30 @@ hb.timestamp + hb.duration − last.timestamp)`; otherwise append the
    device's blocks in a `blockStart` exceed 300 s they are scaled by the
    largest-remainder rule of step 9. Blocks carry no title, URL or path
    (enforced by the schema). Output sorted by `blockStart`, `deviceId`,
-   `activityKey` (null first), `categoryPath`.
+   `activityKey` (null first), `categoryPath`, `source`, `level` (ascending;
+   strings in code-unit order), a total order.
 7. **`daily-totals`**: intervals are split at local midnight in the time zone
    (days last 23, 24 or 25 hours); per local date: total seconds, seconds by
    level and the pulse. Only dates with time appear, ascending.
 8. **`browser-dedupe`** (macOS, one aggregator per device). Window events of a
    browser app (`browserApps`) minus the union of web events are uncovered
-   time. Uncovered time up to `extensionLastHeartbeatAt + staleAfterSeconds`
-   is `browser-unknown` (source `app`, neutral); later uncovered time (a
-   silent extension) is attributed to the browser app itself. Web events become
-   `web` segments with their domain; other window events stay `app` segments.
-   Output sorted by start.
+   time. The extension's known heartbeats are the end of every web event
+   (`timestamp + duration`) and `extensionLastHeartbeatAt` (when not null).
+   An uncovered instant `t` is `browser-unknown` (source `app`, neutral) when
+   the latest known heartbeat at or before `t` is less than
+   `staleAfterSeconds` earlier (`h ≤ t < h + staleAfterSeconds`); otherwise
+   (a silent extension, or no heartbeat yet) it is attributed to the browser
+   app itself. Each stretch is judged against its own latest heartbeat, never
+   against one global `extensionLastHeartbeatAt`: a later heartbeat does not
+   cover earlier silence. Web events become `web` segments with their domain
+   and are **not** clipped to browser-window time; other window events stay
+   `app` segments. Output sorted by start, then end, `source` and
+   `activityKey`.
 9. **`cross-device-cap`** (server). Per `blockStart`, if the devices' seconds
    add up to more than 300, each becomes `floor(s × 300 / total)` and the
    remaining seconds go one each to the largest fractional parts (ties by
-   `deviceId`, `activityKey`, `categoryPath` ascending). Blocks that reach 0
-   are dropped.
+   `deviceId`, `activityKey` (null first), `categoryPath`, `source`, `level`
+   ascending, a total order). Blocks that reach 0 are dropped.
 
 The guardian only ever sees per-level totals and the pulse.
 

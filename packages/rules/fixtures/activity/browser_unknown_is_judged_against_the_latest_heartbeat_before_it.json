@@ -1,0 +1,61 @@
+{
+  "id": "activity.browser_unknown_is_judged_against_the_latest_heartbeat_before_it",
+  "kind": "activity",
+  "operation": "browser-dedupe",
+  "description": "A later extension heartbeat does not cover earlier silence: each uncovered stretch counts as `browser-unknown` only within 60 s of the latest heartbeat at or before it.",
+  "given": {
+    "browserApps": ["com.brave.Browser", "com.google.Chrome"],
+    "staleAfterSeconds": 60,
+    "windowEvents": [
+      {
+        "timestamp": "2026-10-26T10:00:00Z",
+        "duration": 600,
+        "data": {
+          "app": "com.brave.Browser"
+        }
+      }
+    ],
+    "webEvents": [
+      {
+        "timestamp": "2026-10-26T10:00:00Z",
+        "duration": 300,
+        "data": {
+          "domain": "github.com",
+          "path": "/",
+          "surface": null,
+          "audible": false,
+          "incognito": false
+        }
+      }
+    ],
+    "extensionLastHeartbeatAt": "2026-10-26T10:09:30Z"
+  },
+  "then": {
+    "segments": [
+      {
+        "start": "2026-10-26T10:00:00Z",
+        "end": "2026-10-26T10:05:00Z",
+        "source": "web",
+        "activityKey": "github.com"
+      },
+      {
+        "start": "2026-10-26T10:05:00Z",
+        "end": "2026-10-26T10:06:00Z",
+        "source": "app",
+        "activityKey": "browser-unknown"
+      },
+      {
+        "start": "2026-10-26T10:06:00Z",
+        "end": "2026-10-26T10:09:30Z",
+        "source": "app",
+        "activityKey": "com.brave.Browser"
+      },
+      {
+        "start": "2026-10-26T10:09:30Z",
+        "end": "2026-10-26T10:10:00Z",
+        "source": "app",
+        "activityKey": "browser-unknown"
+      }
+    ]
+  }
+}

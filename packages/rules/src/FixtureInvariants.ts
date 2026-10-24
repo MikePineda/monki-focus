@@ -240,6 +240,63 @@ function checkBlockCap(
   }
 }
 
+type BrowserDedupe = Extract<ActivityFixture, { operation: 'browser-dedupe' }>
+
+/**
+ * §10.8 shape: web events appear whole (never clipped), and every
+ * `browser-unknown` instant lies within `staleAfterSeconds` of the latest
+ * known heartbeat at or before it (web event ends and the last heartbeat).
+ */
+function checkBrowserDedupe(fixture: BrowserDedupe, problems: string[]): void {
+  const { given, then } = fixture
+  const segments = then.segments
+  segments.forEach((segment, index) => {
+    if (epochSeconds(segment.start) >= epochSeconds(segment.end)) {
+      problems.push(`then.segments[${index}] must end after it starts`)
+    }
+  })
+  const order = (segment: (typeof segments)[number]) =>
+    `${segment.start}|${segment.end}|${segment.source}|${segment.activityKey}`
+  if (!sortedBy(segments, order)) {
+    problems.push('then.segments must be sorted by start, end, source, activityKey')
+  }
+  for (const event of given.webEvents) {
+    const start = epochSeconds(event.timestamp)
+    const domain = (event.data as { domain?: unknown }).domain
+    const whole = segments.some(
+      (segment) =>
+        segment.source === 'web' &&
+        segment.activityKey === domain &&
+        epochSeconds(segment.start) === start &&
+        epochSeconds(segment.end) === start + event.duration
+    )
+    if (!whole) problems.push(`then.segments must keep the web event at ${event.timestamp} whole`)
+  }
+  const heartbeats = given.webEvents.map((event) => epochSeconds(event.timestamp) + event.duration)
+  if (given.extensionLastHeartbeatAt !== null) {
+    heartbeats.push(epochSeconds(given.extensionLastHeartbeatAt))
+  }
+  const freshUntil = (instant: number): number => {
+    const latest = Math.max(...heartbeats.filter((heartbeat) => heartbeat <= instant))
+    return latest + given.staleAfterSeconds
+  }
+  segments.forEach((segment, index) => {
+    if (segment.activityKey !== 'browser-unknown') return
+    const end = epochSeconds(segment.end)
+    let instant = epochSeconds(segment.start)
+    while (instant < end) {
+      const until = freshUntil(instant)
+      if (until <= instant) {
+        problems.push(
+          `then.segments[${index}]: browser-unknown more than staleAfterSeconds after the latest heartbeat`
+        )
+        return
+      }
+      instant = until
+    }
+  })
+}
+
 function checkActivity(fixture: ActivityFixture, problems: string[]): void {
   switch (fixture.operation) {
     case 'pulse': {
@@ -264,10 +321,10 @@ function checkActivity(fixture: ActivityFixture, problems: string[]): void {
       const blocks = fixture.then.blocks
       checkBlockCap(blocks, fixture.operation === 'blocks', problems)
       const order = (b: (typeof blocks)[number]) =>
-        `${b.blockStart}|${b.deviceId}|${b.activityKey ?? ''}|${b.categoryPath}`
+        `${b.blockStart}|${b.deviceId}|${b.activityKey ?? ''}|${b.categoryPath}|${b.source}|${String(b.level).padStart(3, '0')}`
       if (!sortedBy(blocks, order))
         problems.push(
-          'then.blocks must be sorted by blockStart, deviceId, activityKey, categoryPath'
+          'then.blocks must be sorted by blockStart, deviceId, activityKey, categoryPath, source, level'
         )
       break
     }
@@ -279,15 +336,7 @@ function checkActivity(fixture: ActivityFixture, problems: string[]): void {
       break
     }
     case 'browser-dedupe': {
-      const segments = fixture.then.segments
-      segments.forEach((segment, index) => {
-        if (epochSeconds(segment.start) >= epochSeconds(segment.end)) {
-          problems.push(`then.segments[${index}] must end after it starts`)
-        }
-      })
-      if (!sortedBy(segments, (segment) => `${segment.start}|${segment.activityKey}`)) {
-        problems.push('then.segments must be sorted by start')
-      }
+      checkBrowserDedupe(fixture, problems)
       break
     }
     case 'probe': {
