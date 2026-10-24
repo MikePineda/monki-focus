@@ -15,6 +15,7 @@ import dev.monkifocus.android.core.data.repository.RoomRulesetRepository
 import dev.monkifocus.android.core.data.repository.RoomUnlockLedgerRepository
 import dev.monkifocus.android.core.data.settings.DataStoreSettingsRepository
 import dev.monkifocus.android.core.data.settings.SettingsDataStoreFactory
+import dev.monkifocus.android.core.data.usage.AppOpsUsageAccess
 import dev.monkifocus.android.core.data.usage.UsageEventsSource
 import dev.monkifocus.android.core.data.usage.UsageStatsEventsSource
 import dev.monkifocus.android.core.domain.ports.ActivityEventRepository
@@ -57,6 +58,9 @@ class CoreDataGraph(
     val ingestCursors: IngestCursorRepository by lazy { RoomIngestCursorRepository(database.ingestCursors()) }
 
     val usageEvents: UsageEventsSource by lazy {
-        UsageStatsEventsSource(requireNotNull(appContext.getSystemService(UsageStatsManager::class.java)) { "No UsageStatsManager" })
+        UsageStatsEventsSource(
+            usageStats = requireNotNull(appContext.getSystemService(UsageStatsManager::class.java)) { "No UsageStatsManager" },
+            access = AppOpsUsageAccess(appContext),
+        )
     }
 }

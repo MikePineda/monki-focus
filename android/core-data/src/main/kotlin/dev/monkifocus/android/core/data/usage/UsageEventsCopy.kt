@@ -8,7 +8,8 @@ import dev.monkifocus.android.core.domain.ports.IngestCursorRepository
  * [overlapMillis] (so an event the system wrote late is not lost) up to
  * `now`, hands the events to [sink] and only then advances the cursor. The
  * first copy reaches back [firstCopyLookbackMillis]. A wall clock set back
- * before the cursor reads nothing and leaves the cursor where it is.
+ * before the cursor, or usage access not granted, reads nothing and leaves
+ * the cursor where it is.
  */
 class UsageEventsCopy(
     private val source: UsageEventsSource,
@@ -22,7 +23,11 @@ class UsageEventsCopy(
         val cursor = cursors.get(CURSOR_SOURCE)
         val from = maxOf(0L, if (cursor == null) nowEpochMillis - firstCopyLookbackMillis else cursor - overlapMillis)
         if (cursor != null && nowEpochMillis <= cursor) return UsageCopyResult(from, nowEpochMillis, 0, cursor)
-        val events = source.read(from, nowEpochMillis)
+        val events =
+            when (val read = source.read(from, nowEpochMillis)) {
+                is UsageEventsRead.Events -> read.events
+                UsageEventsRead.AccessNotGranted -> return UsageCopyResult(from, nowEpochMillis, 0, cursor, accessGranted = false)
+            }
         sink.accept(events)
         val stored = cursors.advance(CURSOR_SOURCE, nowEpochMillis)
         return UsageCopyResult(from, nowEpochMillis, events.size, stored)

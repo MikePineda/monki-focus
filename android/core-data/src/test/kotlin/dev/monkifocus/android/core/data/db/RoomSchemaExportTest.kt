@@ -60,7 +60,7 @@ class RoomSchemaExportTest {
     @Test
     fun every_schema_version_up_to_the_current_one_is_committed() {
         val versions =
-            schemaFile.parentFile
+            requireNotNull(schemaFile.parentFile)
                 .listFiles()
                 .orEmpty()
                 .map { it.nameWithoutExtension.toInt() }
