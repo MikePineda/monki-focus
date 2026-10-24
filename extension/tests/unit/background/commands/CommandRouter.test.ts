@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it, vi } from 'vitest'
-import { CommandRouter } from '../../../../src/background/commands/CommandRouter'
+import {
+  CommandRouter,
+  type CommandHandlers,
+} from '../../../../src/background/commands/CommandRouter'
 import { ENGINE_ERROR_DECISION } from '@monki-focus/engine'
 import { commandMessage, type FeedDecision } from '../../../../src/shared/messages'
 
 const OWN_ID = 'own-extension-id'
+
+/** The router only needs the handlers a test sends; the rest stay absent. */
+function handlers(partial: Partial<CommandHandlers>): CommandHandlers {
+  return partial as CommandHandlers
+}
 const REDDIT_HOME = 'https://www.reddit.com/'
 
 const FEED_DECISION: FeedDecision = {
@@ -19,11 +27,10 @@ function makeRouter() {
   const decide = vi.fn(() => FEED_DECISION)
   const attach = vi.fn(() => ({ injected: true }))
   return {
-    router: new CommandRouter(OWN_ID, {
-      'system.ping': ping,
-      'decision.get': decide,
-      'feedGuard.attach': attach,
-    }),
+    router: new CommandRouter(
+      OWN_ID,
+      handlers({ 'system.ping': ping, 'decision.get': decide, 'feedGuard.attach': attach })
+    ),
     ping,
     decide,
     attach,
@@ -85,13 +92,16 @@ describe('CommandRouter', () => {
   })
 
   it('handler_failure_is_reported_without_its_details', async () => {
-    const router = new CommandRouter(OWN_ID, {
-      'system.ping': () => {
-        throw new Error('internal detail')
-      },
-      'decision.get': () => FEED_DECISION,
-      'feedGuard.attach': () => ({ injected: false }),
-    })
+    const router = new CommandRouter(
+      OWN_ID,
+      handlers({
+        'system.ping': () => {
+          throw new Error('internal detail')
+        },
+        'decision.get': () => FEED_DECISION,
+        'feedGuard.attach': () => ({ injected: false }),
+      })
+    )
 
     expect(await router.route(commandMessage('system.ping', {}), { id: OWN_ID })).toEqual({
       ok: false,
