@@ -1,15 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { PLACEHOLDER_TAG, PlaceholderMount } from '../../../src/content/PlaceholderMount'
+import { PlaceholderMount, randomPlaceholderTag } from '../../../src/content/PlaceholderMount'
 import { reddit } from '../../../src/sites/reddit'
+import { youtube } from '../../../src/sites/youtube'
 
-function makeMount() {
+const PLACEHOLDER_TAG = 'abcd-efghij'
+
+function makeMount(site = reddit, shadowMode: ShadowRootMode = 'open') {
   const unmount = vi.fn()
   const render = vi.fn((container: HTMLElement) => {
     container.textContent = 'placeholder'
     return unmount
   })
-  const mount = new PlaceholderMount({ document, site: reddit, css: '.x{}', render })
+  const mount = new PlaceholderMount({
+    document,
+    site,
+    css: '.x{}',
+    render,
+    tag: PLACEHOLDER_TAG,
+    shadowMode,
+  })
   return { mount, render, unmount }
 }
 
@@ -87,5 +97,45 @@ describe('PlaceholderMount', () => {
     mount.show('reddit.permalink')
 
     expect(document.querySelector(PLACEHOLDER_TAG)).toBeNull()
+  })
+
+  it('the_shadow_root_is_closed_by_default_and_the_host_has_no_attributes', () => {
+    document.body.append(document.createElement('shreddit-feed'))
+    mount = new PlaceholderMount({
+      document,
+      site: reddit,
+      css: '',
+      render: () => () => undefined,
+      tag: PLACEHOLDER_TAG,
+    })
+
+    mount.show('reddit.feed')
+
+    const host = document.querySelector(PLACEHOLDER_TAG)
+    expect(host?.shadowRoot).toBeNull()
+    expect(host?.attributes).toHaveLength(0)
+  })
+
+  it('mounts_before_a_page_container_too', () => {
+    const browse = document.createElement('ytd-browse')
+    browse.setAttribute('page-subtype', 'home')
+    const grid = document.createElement('ytd-rich-grid-renderer')
+    browse.append(grid)
+    document.body.append(browse)
+    mount = makeMount(youtube).mount
+
+    mount.show('youtube.home')
+
+    expect(grid.previousElementSibling?.tagName.toLowerCase()).toBe(PLACEHOLDER_TAG)
+  })
+})
+
+describe('randomPlaceholderTag', () => {
+  it('is_a_valid_custom_element_name_that_changes_per_page', () => {
+    const tag = randomPlaceholderTag()
+
+    expect(tag).toMatch(/^[a-z]{4}-[a-z]{6}$/)
+    expect(() => document.createElement(tag)).not.toThrow()
+    expect(randomPlaceholderTag()).not.toBe(tag)
   })
 })

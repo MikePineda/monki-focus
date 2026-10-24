@@ -26,12 +26,20 @@ async function storedRuleset(): Promise<Ruleset | undefined> {
 
 describe('background entrypoint', () => {
   let updateEnabledRulesets: ReturnType<typeof vi.fn>
+  let executeScript: ReturnType<typeof vi.fn>
+  let sendMessage: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     fakeBrowser.reset()
     updateEnabledRulesets = vi.fn(() => Promise.resolve())
     fakeBrowser.declarativeNetRequest.updateEnabledRulesets =
       updateEnabledRulesets as typeof fakeBrowser.declarativeNetRequest.updateEnabledRulesets
+    executeScript = vi.fn(() => Promise.resolve([]))
+    fakeBrowser.scripting.executeScript =
+      executeScript as unknown as typeof fakeBrowser.scripting.executeScript
+    sendMessage = vi.fn(() => Promise.resolve(undefined))
+    vi.spyOn(fakeBrowser.tabs, 'query').mockResolvedValue([{ id: 4 }] as never)
+    fakeBrowser.tabs.sendMessage = sendMessage as unknown as typeof fakeBrowser.tabs.sendMessage
   })
 
   it('background_registers_command_router_on_start', () => {
@@ -91,5 +99,41 @@ describe('background entrypoint', () => {
 
     expect(response.ok).toBe(true)
     if (response.ok) expect(response.data.surface).toBe('reddit.feed')
+  })
+
+  it('an_update_reinjects_the_feed_guard_into_open_site_tabs', async () => {
+    background.main()
+
+    await fakeBrowser.runtime.onInstalled.trigger({ reason: 'update', previousVersion: '0.0.0' })
+
+    await vi.waitFor(() => {
+      expect(executeScript).toHaveBeenCalledWith({
+        target: { tabId: 4 },
+        files: ['/content-scripts/feed-guard.js'],
+      })
+    })
+  })
+
+  it('a_rule_set_change_tells_open_site_tabs_to_ask_again', async () => {
+    background.main()
+    await vi.waitFor(async () => {
+      expect(await storedRuleset()).toBeDefined()
+    })
+    sendMessage.mockClear()
+
+    const ruleset = (await storedRuleset()) as Ruleset
+    await fakeBrowser.storage.local.set({ [RULESET_KEY]: { ...ruleset, rules: [] } })
+
+    await vi.waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledWith(4, { v: 1, type: 'decision.changed' })
+    })
+  })
+
+  it('start_up_schedules_the_restriction_check_alarm', async () => {
+    background.main()
+
+    await vi.waitFor(async () => {
+      expect(await fakeBrowser.alarms.get('decision.refresh')).toMatchObject({ periodInMinutes: 1 })
+    })
   })
 })

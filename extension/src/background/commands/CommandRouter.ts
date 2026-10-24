@@ -14,7 +14,9 @@ export interface CommandSender {
   id?: string | undefined
   url?: string | undefined
   /** Present when the message comes from a tab (a content script). */
-  tab?: { url?: string | undefined } | undefined
+  tab?: { id?: number | undefined; url?: string | undefined } | undefined
+  /** 0 for the tab's top frame. */
+  frameId?: number | undefined
 }
 
 export type CommandHandler<T extends CommandType> = (

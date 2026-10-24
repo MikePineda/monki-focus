@@ -29,6 +29,8 @@ describe('siteForHost', () => {
     expect(siteForHost('www.reddit.com')).toBe('reddit')
     expect(siteForHost('new.reddit.com:443')).toBe('reddit')
     expect(siteForHost('twitter.com')).toBe('x')
+    expect(siteForHost('www.youtube.com')).toBe('youtube')
+    expect(siteForHost('m.youtube.com')).toBe('youtube-mobile')
   })
 
   it('lookalike_hosts_do_not_resolve_to_a_site', () => {

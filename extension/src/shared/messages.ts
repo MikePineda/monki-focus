@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Decision } from '@monki-focus/rules/pure'
+import { isGuardAttributes, type GuardAttributes } from './GuardAttributes'
 
 /**
  * Typed command contract between the extension contexts (popup, options,
@@ -39,6 +40,14 @@ export interface CommandMap {
   'system.ping': { request: Record<string, never>; response: { at: number } }
   /** Feed decision for the page a content script runs in. */
   'decision.get': { request: { url: string }; response: FeedDecision }
+  /**
+   * The feed guard of a page asks for its stylesheet with the `USER` origin
+   * (`scripting.insertCSS`), keyed on the page's random attribute names.
+   */
+  'feedGuard.attach': {
+    request: { url: string; attributes: GuardAttributes }
+    response: { injected: boolean }
+  }
 }
 
 export type CommandType = keyof CommandMap
@@ -101,6 +110,10 @@ export const COMMAND_PAYLOAD_GUARDS: {
   'system.ping': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
   'decision.get': (payload): payload is { url: string } =>
     hasOnlyKeys(payload, ['url']) && isHttpUrl((payload as { url?: unknown }).url),
+  'feedGuard.attach': (payload): payload is { url: string; attributes: GuardAttributes } =>
+    hasOnlyKeys(payload, ['url', 'attributes']) &&
+    isHttpUrl((payload as { url?: unknown }).url) &&
+    isGuardAttributes((payload as { attributes?: unknown }).attributes),
 }
 
 /**
@@ -110,4 +123,27 @@ export const COMMAND_PAYLOAD_GUARDS: {
  */
 export const TAB_URL_COMMANDS: { [T in CommandType]?: (payload: CommandRequest<T>) => string } = {
   'decision.get': (payload) => payload.url,
+  'feedGuard.attach': (payload) => payload.url,
+}
+
+/**
+ * Pushed by the service worker to the feed guards of open site tabs when a
+ * decision may have changed (rule set edited, a schedule edge passed): each
+ * guard asks again for its page.
+ */
+export const DECISION_CHANGED = 'decision.changed'
+
+export interface DecisionChangedMessage {
+  v: typeof MESSAGE_VERSION
+  type: typeof DECISION_CHANGED
+}
+
+export function decisionChangedMessage(): DecisionChangedMessage {
+  return { v: MESSAGE_VERSION, type: DECISION_CHANGED }
+}
+
+export function isDecisionChangedMessage(value: unknown): value is DecisionChangedMessage {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as Record<string, unknown>
+  return candidate.v === MESSAGE_VERSION && candidate.type === DECISION_CHANGED
 }

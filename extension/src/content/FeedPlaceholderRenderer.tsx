@@ -17,23 +17,24 @@ export interface FeedPlaceholderRendererOptions {
 const SYSTEM_PREFERENCES: UiPreferences = { theme: 'system', language: 'system' }
 
 /**
- * Renders `FeedPlaceholder` into the shadow root with the user's theme (on
- * the shadow host) and language (explicit choice first, then the browser).
+ * Renders `FeedPlaceholder` into the shadow root with the user's theme and
+ * language (explicit choice first, then the browser), both set on the
+ * container inside the shadow root, never on the host the page can see.
  */
 export function feedPlaceholderRenderer({
   site,
   window,
   storage,
 }: FeedPlaceholderRendererOptions): PlaceholderRenderer {
-  return (container, host) => {
+  return (container) => {
     let mounted = true
     void readUiPreferences(storage)
       .catch(() => SYSTEM_PREFERENCES)
       .then((preferences) => {
         if (!mounted) return
-        applyTheme(preferences.theme, host)
+        applyTheme(preferences.theme, container)
         const locale = preferredLocale(preferences.language, window.navigator.languages)
-        host.setAttribute('lang', locale)
+        container.setAttribute('lang', locale)
         render(
           <I18nProvider locale={locale}>
             <FeedPlaceholder

@@ -2,6 +2,7 @@
 import type { RulesCatalog } from '@monki-focus/engine'
 import type { Clock } from '../../shared/clock'
 import { feedSurfacesOfHost, pageSurfaceOf } from '../../shared/FeedSurfaces'
+import type { GuardAttributes } from '../../shared/GuardAttributes'
 import type { FeedDecision } from '../../shared/messages'
 import { SHORTS_SURFACE } from '../shorts/ShortsRedirectSync'
 import type { CommandHandlers } from './CommandRouter'
@@ -16,10 +17,16 @@ export interface ShortsRedirectState {
   apply(enabled: boolean): Promise<void>
 }
 
+/** The slice of `UserStylesheetInjector` the attach command uses. */
+export interface FeedStylesheets {
+  inject(tabId: number, tabUrl: string, attributes: GuardAttributes): Promise<boolean>
+}
+
 export interface CommandDependencies {
   clock: Clock
   catalog: RulesCatalog
   decisions: FeedDecisions
+  stylesheets?: FeedStylesheets
   shortsRedirect?: ShortsRedirectState
 }
 
@@ -36,6 +43,7 @@ export function createCommandHandlers({
   clock,
   catalog,
   decisions,
+  stylesheets,
   shortsRedirect,
 }: CommandDependencies): CommandHandlers {
   return {
@@ -48,6 +56,15 @@ export function createCommandHandlers({
         await shortsRedirect.apply(answer.restrict.includes(SHORTS_SURFACE)).catch(() => undefined)
       }
       return answer
+    },
+    'feedGuard.attach': async ({ attributes }, sender) => {
+      // Top frame of a tab only; the router has checked the tab's host.
+      const tabId = sender.tab?.id
+      const tabUrl = sender.tab?.url
+      if (!stylesheets || typeof tabId !== 'number' || !tabUrl || sender.frameId !== 0) {
+        return { injected: false }
+      }
+      return { injected: await stylesheets.inject(tabId, tabUrl, attributes) }
     },
   }
 }

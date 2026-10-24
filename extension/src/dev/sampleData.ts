@@ -9,7 +9,8 @@ import type { LevelIndex, MinutesByLevel } from '../ui/LevelIndex'
 export const SAMPLE_SITE = 'news.example'
 
 export const SAMPLE_PULSE = 56
-export const SAMPLE_TRACKED = '4 h 12 min'
+/** Tracked time behind the sample pulse; its text comes from the catalogs. */
+export const SAMPLE_TRACKED = { hours: 4, minutes: 12 }
 
 export const SAMPLE_MINUTES_BY_LEVEL: MinutesByLevel = [42, 18, 31, 25, 61]
 export const SAMPLE_UNCATEGORISED_MINUTES = 9

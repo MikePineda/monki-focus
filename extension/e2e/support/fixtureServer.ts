@@ -8,10 +8,12 @@ import { generate } from 'selfsigned'
 
 /** Site id (folder under `e2e/fixtures/sites`) -> hosts it answers for. */
 export const FIXTURE_SITES = {
-  reddit: ['reddit.com', 'www.reddit.com', 'old.reddit.com'],
-  x: ['x.com', 'twitter.com'],
-  youtube: ['youtube.com', 'www.youtube.com', 'm.youtube.com'],
-  instagram: ['instagram.com', 'www.instagram.com'],
+  'reddit': ['reddit.com', 'www.reddit.com', 'old.reddit.com'],
+  'x': ['x.com', 'twitter.com'],
+  'youtube': ['youtube.com', 'www.youtube.com'],
+  // The mobile site has its own DOM (`ytm-*`), so its own fixture folder.
+  'youtube-mobile': ['m.youtube.com'],
+  'instagram': ['instagram.com', 'www.instagram.com'],
 } as const
 
 export type FixtureSite = keyof typeof FIXTURE_SITES
@@ -35,6 +37,10 @@ export interface FixtureServerOptions {
 
 export function siteForHost(host: string | undefined): FixtureSite | undefined {
   const hostname = (host ?? '').split(':')[0]?.toLowerCase() ?? ''
+  // An exact host wins over a parent domain (`m.youtube.com` over `youtube.com`).
+  for (const [site, hosts] of Object.entries(FIXTURE_SITES)) {
+    if ((hosts as readonly string[]).includes(hostname)) return site as FixtureSite
+  }
   for (const [site, hosts] of Object.entries(FIXTURE_SITES)) {
     if (hosts.some((candidate) => hostname === candidate || hostname.endsWith(`.${candidate}`))) {
       return site as FixtureSite

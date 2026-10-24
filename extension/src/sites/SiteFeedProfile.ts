@@ -29,14 +29,22 @@ export interface SiteFeedProfile {
   /** Catalog key of the site's name, shown in the placeholder. */
   nameKey: SimpleKey
   /**
-   * Page content of a surface, hidden while the page itself is that surface
-   * and the engine hides it (`html[data-mf-hide~="<surface>"]`). The first
-   * element that matches is where the placeholder mounts.
+   * Generic page content of a surface (it also appears on other pages),
+   * hidden only while the URL is that surface and the engine hides it (the
+   * hide attribute on `<html>` lists the surface). Placeholder anchors.
    */
   hide: Readonly<Record<string, readonly string[]>>
   /**
+   * Containers that only ever render that surface (YouTube's
+   * `ytd-browse[page-subtype="home"]`), hidden on every page of the site
+   * while the rule set restricts the surface (the restrict attribute lists
+   * it), so an SPA cannot show them between a navigation and its decision.
+   * Placeholder anchors too.
+   */
+  pageContainers: Readonly<Record<string, readonly string[]>>
+  /**
    * Entry points of a surface (nav links, shelves), hidden on every page of
-   * the site while the rule set restricts it (`html[data-mf-restrict~="<surface>"]`).
+   * the site while the rule set restricts it. Never placeholder anchors.
    */
   entryPoints: Readonly<Record<string, readonly string[]>>
   /** What the placeholder offers instead of the feed. */

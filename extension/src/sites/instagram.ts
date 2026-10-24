@@ -17,6 +17,7 @@ export const instagram: SiteFeedProfile = {
     'instagram.reels': [MAIN],
     'instagram.explore': [MAIN],
   },
+  pageContainers: {},
   entryPoints: {
     'instagram.reels': ['a[href="/reels/"]'],
     'instagram.explore': ['a[href="/explore/"]'],
