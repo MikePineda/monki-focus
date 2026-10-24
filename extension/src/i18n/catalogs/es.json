@@ -335,7 +335,7 @@
   "stats.data.exportCsv": "Exportar (CSV)",
   "stats.data.delete": "Borrar todos los datos locales",
   "stats.data.confirmTitle": "¿Borrar todos los datos locales?",
-  "stats.data.confirmBody": "Tu tiempo medido, bloques e historial en este dispositivo se borran para siempre. Tus reglas y preferencias se quedan.",
+  "stats.data.confirmBody": "Tu tiempo medido y tu historial anteriores a hoy se borran para siempre. Hoy se queda, así que tus límites diarios siguen contando; tus reglas y preferencias también se quedan.",
   "stats.data.confirmDelete": "Borrar todo",
   "stats.data.cancel": "Conservar mis datos",
   "stats.data.deleted": "Datos locales borrados.",
@@ -375,5 +375,7 @@
   "surface.youtube.explore": "Explorar y tendencias de YouTube",
   "surface.youtube.shorts": "Shorts de YouTube",
   "surface.youtube.watch": "Video de YouTube",
-  "surface.youtube.search": "Búsqueda de YouTube"
+  "surface.youtube.search": "Búsqueda de YouTube",
+  "rules.rejected.too_many_rules": "Hoy este cambio necesitaría más de 500 reglas a la vez, así que no se guardó nada. Hazlo en pasos más pequeños.",
+  "rules.rejected.invalid_ruleset": "Las reglas que aplicarían hoy no serían válidas, así que no se guardó nada."
 }

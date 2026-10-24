@@ -31,6 +31,8 @@ describe('LocalDataService', () => {
       bucketId: BUCKET,
       session: fakeBrowser.storage.session,
       local: fakeBrowser.storage.local,
+      // UTC+2 all year: "today" starts at 2026-01-05T22:00:00Z.
+      timeZone: () => Promise.resolve('Etc/GMT-2'),
       quiesce,
     })
   })
@@ -94,6 +96,47 @@ describe('LocalDataService', () => {
     await service.deleteAll()
 
     expect(await db.count('blocks')).toBe(0)
+  })
+})
+
+describe('LocalDataService today', () => {
+  it('delete_all_keeps_todays_usage', async () => {
+    fakeBrowser.reset()
+    const db = await freshDb()
+    const service = new LocalDataService({
+      db,
+      clock: fixedClock('2026-01-06T08:00:00Z'),
+      deviceId: 'device-a',
+      bucketId: BUCKET,
+      session: fakeBrowser.storage.session,
+      local: fakeBrowser.storage.local,
+      timeZone: () => Promise.resolve('Etc/GMT-2'),
+      quiesce: () => Promise.resolve(),
+    })
+    const events = new IdbEventRepository(db)
+    await events.add(BUCKET, makeEvent({ timestamp: '2026-01-05T09:00:00Z' }))
+    // Started yesterday, runs past local midnight (22:00Z): part of today.
+    const crossing = makeEvent({ timestamp: '2026-01-05T21:50:00Z', duration: 1200 })
+    await events.add(BUCKET, crossing)
+    const today = makeEvent({ timestamp: '2026-01-06T07:00:00Z' })
+    const openId = await events.add(BUCKET, today)
+    const todayBlock = makeBlock({ blockStart: '2026-01-05T22:00:00Z' })
+    await new IdbBlockRepository(db).upsert([makeBlock(), todayBlock])
+    await new Outbox(db).enqueueBlocks([makeBlock(), todayBlock], '2026-01-06T07:00:00Z')
+    const open = { id: openId, bucketId: BUCKET, event: today }
+    await fakeBrowser.storage.session.set({ [OPEN_HEARTBEAT_STORAGE_NAME]: open })
+
+    await service.deleteAll()
+
+    const range = ['2026-01-01T00:00:00Z', '2026-01-07T00:00:00Z'] as const
+    expect(await new IdbEventRepository(db).between(BUCKET, ...range)).toEqual([crossing, today])
+    expect(await new IdbBlockRepository(db).between(...range)).toEqual([todayBlock])
+    expect((await db.getAll('outbox')).map((entry) => entry.payload.blockStart)).toEqual([
+      '2026-01-05T22:00:00Z',
+    ])
+    expect(await fakeBrowser.storage.session.get(OPEN_HEARTBEAT_STORAGE_NAME)).toEqual({
+      [OPEN_HEARTBEAT_STORAGE_NAME]: open,
+    })
   })
 })
 

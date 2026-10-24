@@ -335,7 +335,7 @@
   "stats.data.exportCsv": "Export (CSV)",
   "stats.data.delete": "Delete all local data",
   "stats.data.confirmTitle": "Delete all local data?",
-  "stats.data.confirmBody": "Your tracked time, blocks and history on this device are erased for good. Your rules and preferences stay.",
+  "stats.data.confirmBody": "Your tracked time and history before today are erased for good. Today stays, so your daily limits keep counting; your rules and preferences stay too.",
   "stats.data.confirmDelete": "Delete everything",
   "stats.data.cancel": "Keep my data",
   "stats.data.deleted": "Local data deleted.",
@@ -375,5 +375,7 @@
   "surface.youtube.explore": "YouTube Explore and trending",
   "surface.youtube.shorts": "YouTube Shorts",
   "surface.youtube.watch": "YouTube video",
-  "surface.youtube.search": "YouTube search"
+  "surface.youtube.search": "YouTube search",
+  "rules.rejected.too_many_rules": "Today this change would need more than 500 rules at once, so nothing was saved. Make it in smaller steps.",
+  "rules.rejected.invalid_ruleset": "The rules that would apply today would not be valid, so nothing was saved."
 }

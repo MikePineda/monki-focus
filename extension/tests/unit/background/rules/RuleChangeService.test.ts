@@ -110,7 +110,14 @@ describe('RuleChangeService', () => {
 
     expect(state.pending).toBeNull()
     expect(await storedPending()).toBeUndefined()
-    expect(await storedEffective()).toEqual(effectiveBefore)
+    const after = await storedEffective()
+    // Same rules; only the revision moves on (stale pages are refused).
+    expect({
+      ...after,
+      revision: effectiveBefore.revision,
+      updatedAt: effectiveBefore.updatedAt,
+    }).toEqual(effectiveBefore)
+    expect(after.revision).toBe(effectiveBefore.revision + 1)
     expect(onPendingChanged).toHaveBeenLastCalledWith(null)
   })
 
@@ -210,12 +217,13 @@ describe('RuleChangeService', () => {
     expect(outcome).toEqual({ status: 'rejected', code: 'stale_revision' })
   })
 
-  it('an_unreadable_stored_rule_set_makes_any_change_wait_for_midnight', async () => {
+  it('an_unreadable_stored_rule_set_without_a_zone_makes_any_change_wait_a_full_day', async () => {
     const { service } = await makeService({ broken: true } as unknown as Ruleset)
 
     const outcome = await service.propose({ ruleset: makeRuleset(), baseRevision: 0 })
 
-    expect(outcome).toMatchObject({ status: 'pending', effectiveFrom: '2026-10-27T22:00:00Z' })
+    expect(outcome).toMatchObject({ status: 'pending', effectiveFrom: '2026-10-28T10:00:00Z' })
+    expect(await storedEffective()).toEqual({ broken: true })
   })
 
   it('the_pending_alarm_follows_effective_from', async () => {

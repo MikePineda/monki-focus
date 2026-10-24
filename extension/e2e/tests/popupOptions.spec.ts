@@ -143,12 +143,16 @@ test.describe('popup and options', () => {
     expect(await page.evaluate(() => getComputedStyle(document.body).colorScheme)).toBe('dark')
   })
 
-  test('delete_all_local_data_requires_confirmation', async ({ page, extensionUrl }) => {
+  test('delete_all_local_data_requires_confirmation', async ({ context, page, extensionUrl }) => {
     await page.goto(extensionUrl('options.html#stats'))
-    await seedBlocks(
-      page,
-      recentBlocks([{ activityKey: 'news.example', level: 0, categoryPath: 'social', count: 2 }])
-    )
+    await pinMiddayZone(context, page)
+    const [today] = recentBlocks([
+      { activityKey: 'news.example', level: 0, categoryPath: 'social', count: 1 },
+    ])
+    if (!today) throw new Error('needs a block')
+    const threeDaysAgo = new Date(Date.parse(today.blockStart) - 3 * 86_400_000)
+    const old = { ...today, blockStart: threeDaysAgo.toISOString().replace('.000Z', 'Z') }
+    await seedBlocks(page, [today, old])
 
     await page.getByRole('button', { name: en['stats.data.delete'] }).click()
 
@@ -159,7 +163,8 @@ test.describe('popup and options', () => {
     await page.getByRole('button', { name: en['stats.data.confirmDelete'] }).click()
 
     await expect(page.getByText(en['stats.data.deleted'])).toBeVisible()
-    expect(await countBlocks(page)).toBe(0)
+    // History goes; today's block stays so a delete cannot reset a daily budget.
+    expect(await countBlocks(page)).toBe(1)
   })
 
   for (const colorScheme of ['light', 'dark'] as const) {
