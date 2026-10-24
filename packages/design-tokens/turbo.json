@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/docs/design/**", "$TURBO_ROOT$/.prettierrc.json"],
+      "outputs": []
+    }
+  }
+}
