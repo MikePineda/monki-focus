@@ -360,7 +360,7 @@ jobs:
             echo '::error::no .app in the archive'
             exit 1
           fi
-          codesign --force --deep --sign - "$app"
+          codesign --force --deep --options runtime --sign - "$app"
           codesign --verify --deep --strict "$app"
           mkdir -p dist
           ditto -c -k --keepParent "$app" "dist/monki-focus-macos-${VERSION}.zip"

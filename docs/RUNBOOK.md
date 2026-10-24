@@ -85,8 +85,11 @@ quality: it always runs, fails when a needed job (`changes`, `node`,
 `format`, `android`, `macos`, `docker`, `privacy`, `no-node-text-logging`)
 failed or was cancelled and passes when the paths filter skipped it. Never
 require a path-filtered job directly: a required check that does not run
-blocks the PR forever. `main` accepts **squash merges only**, so the PR title
-(linted by `commitlint`) becomes the commit release-please reads.
+blocks the PR forever. `main` accepts **rebase merges only**: every PR commit lands as written
+(each one linted by `commitlint`), keeping the original commit author. Squash
+merges are disabled because GitHub would rewrite the author to the merging
+account's public profile name. Keep branches free of merge commits: rebase on
+`main` instead of merging it.
 
 Apply `.github/rulesets/main.json` **after** the workflows are on `main` and
 each required check has run at least once, and the release-tag ruleset
