@@ -1,0 +1,3 @@
+# The generated outputs are committed: Android and macOS read them by relative
+# path, and a test fails when they drift from src/tokens.source.mjs.
+!dist/
