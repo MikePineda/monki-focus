@@ -18,6 +18,8 @@ import dev.monkifocus.android.core.domain.rules.Ruleset
  * each choose a winner among the enabled, scheduled, matching rules. Access
  * restrictions are checked in order (bedtime, budget, rule block, friction);
  * each one either applies or is lifted (unlock, emergency override, intention).
+ * `validUntil` (§5.6) evaluates the same inputs again at the instants where
+ * the outcome can change (`DecisionValidity.kt`).
  */
 
 /** The friction part of a restriction: an active intention lifts it and an unlifted one shows a gate. */
@@ -42,25 +44,21 @@ private data class AccessOutcome(
     val gate: Gate? = null,
 )
 
-private data class DecisionInputs(
-    val ruleset: Ruleset,
+/** Everything a decision reads: the subject, the state, and the time-independent bedtime level. */
+internal data class DecisionInputs(
+    val subject: DecisionSubject,
     val state: DecisionState,
-    val observation: ResolvedObservation,
-    val nowSeconds: Long,
-    val catalog: RulesCatalog,
+    val categoryLevel: Int,
 )
-
-/** Enabled rules whose schedules are active now (§5.1, in both zones while one waits, §6.3). */
-private fun scheduledRules(inputs: DecisionInputs): List<Rule> =
-    inputs.ruleset.rules.filter { rule -> rule.enabled && isRuleScheduledAt(rule, inputs.ruleset, inputs.nowSeconds) }
 
 private fun liftOf(
     restriction: Restriction,
     inputs: DecisionInputs,
+    nowSeconds: Long,
 ): ReasonCode? {
-    val (_, state, observation, nowSeconds, catalog) = inputs
+    val (subject, state) = inputs
     return when {
-        hasActiveUnlock(state.unlocks, observation, nowSeconds, catalog) -> ReasonCode.UNLOCK_ACTIVE
+        hasActiveUnlock(state.unlocks, subject.observation, nowSeconds, subject.catalog) -> ReasonCode.UNLOCK_ACTIVE
         isOverrideActive(state.escalation, restriction.group, nowSeconds) -> ReasonCode.EMERGENCY_ACTIVE
         restriction.friction != null && isIntentionActive(state.escalation, restriction.group, nowSeconds) -> ReasonCode.INTENTION_ACTIVE
         else -> null
@@ -69,15 +67,16 @@ private fun liftOf(
 
 private fun restrictionsOf(
     inputs: DecisionInputs,
+    nowSeconds: Long,
     budgetCandidates: List<Rule>,
     access: List<AccessCandidate>,
     winner: AccessCandidate?,
 ): List<Restriction> {
-    val (ruleset, state, observation, nowSeconds, catalog) = inputs
+    val (subject, state, categoryLevel) = inputs
+    val ruleset = subject.ruleset
+    val catalog = subject.catalog
     val restrictions = mutableListOf<Restriction>()
-    if (isBedtimeActive(ruleset.bedtime, nowSeconds, zonesOf(ruleset)) &&
-        categoryLevelOf(observation, ruleset.categories, catalog) <= BEDTIME_MAX_LEVEL
-    ) {
+    if (isBedtimeActive(ruleset.bedtime, nowSeconds, zonesOf(ruleset)) && categoryLevel <= BEDTIME_MAX_LEVEL) {
         restrictions += Restriction(Access.BLOCK, ReasonCode.SCHEDULE_BEDTIME, null, BEDTIME_GROUP)
     }
     val budget = exhaustedBudgetRule(budgetCandidates, state.usage, localDatesAt(ruleset, nowSeconds), catalog)
@@ -86,14 +85,13 @@ private fun restrictionsOf(
         restrictions += Restriction(Access.BLOCK, ReasonCode.RULE_MATCH, winner.rule.id, winner.rule.id)
     }
     if (winner?.mode == AccessMode.FRICTION) {
-        val frictionRules = access.filter { it.mode == AccessMode.FRICTION }.map { it.rule }
         restrictions +=
             Restriction(
                 Access.GATE,
                 ReasonCode.INTENTION_REQUIRED,
                 winner.rule.id,
                 winner.rule.id,
-                FrictionRestriction(winner.rule, frictionRules),
+                FrictionRestriction(winner.rule, frictionRulesOf(access)),
             )
     }
     return restrictions
@@ -101,12 +99,13 @@ private fun restrictionsOf(
 
 private fun accessOutcome(
     inputs: DecisionInputs,
+    nowSeconds: Long,
     restrictions: List<Restriction>,
     winner: AccessCandidate?,
 ): AccessOutcome {
     var firstLift: AccessOutcome? = null
     for (restriction in restrictions) {
-        val lift = liftOf(restriction, inputs)
+        val lift = liftOf(restriction, inputs, nowSeconds)
         if (lift != null) {
             if (firstLift == null) firstLift = AccessOutcome(Access.ALLOW, lift, restriction.ruleId)
             continue
@@ -117,7 +116,7 @@ private fun accessOutcome(
                 friction.winner,
                 friction.frictionRules,
                 inputs.state.escalation,
-                inputs.nowSeconds,
+                nowSeconds,
                 inputs.state.guardianLinked,
             )
         return AccessOutcome(restriction.access, restriction.reason, restriction.ruleId, gate)
@@ -141,30 +140,33 @@ private fun primaryOutcome(
     return access.reason to access.ruleId
 }
 
-internal fun decideOrThrow(
+/** Validates the inputs (§14) and resolves what does not depend on the instant; returns them with `now` in epoch seconds. */
+internal fun decisionInputsOf(
     ruleset: Ruleset,
     observation: Observation,
     state: DecisionState,
     now: String,
     catalog: RulesCatalog,
-): Decision {
+): Pair<DecisionInputs, Long> {
     val nowSeconds = guardDecisionInputs(ruleset, observation, state, now)
     val resolved = resolveObservation(observation, catalog)
-    val inputs = DecisionInputs(ruleset, state, resolved, nowSeconds, catalog)
-    val scheduled = scheduledRules(inputs)
-    val matching = scheduled.filter { matchesTarget(it.target, resolved, catalog) }
-    val unknownPath = hasUnknownPath(resolved)
-    // §5.5: with an unknown path every rule of the host's domain and profile competes for access.
-    val accessPool =
-        if (resolved is ResolvedObservation.Site && unknownPath) {
-            scheduled.filter { matchesHostOfUnknownPath(it.target, resolved.host, catalog) }
-        } else {
-            matching
-        }
-    val access = accessCandidates(accessPool, resolved, catalog)
-    val winner = accessWinner(access, unknownPath, catalog)
-    val outcome = accessOutcome(inputs, restrictionsOf(inputs, accessPool, access, winner), winner)
-    val content = contentOutcome(matching, resolved, catalog)
+    val subject = decisionSubject(ruleset, resolved, catalog)
+    val categoryLevel = categoryLevelOf(resolved, ruleset.categories, catalog)
+    return DecisionInputs(subject, state, categoryLevel) to nowSeconds
+}
+
+/** The decision at an instant, with `validUntil` still null. */
+internal fun decisionAt(
+    inputs: DecisionInputs,
+    nowSeconds: Long,
+): Decision {
+    val subject = inputs.subject
+    val pools = candidatePoolsAt(subject, nowSeconds)
+    val access = accessCandidates(pools.access, subject.observation, subject.catalog)
+    val winner = accessWinner(access, subject.unknownPath, subject.catalog)
+    val restrictions = restrictionsOf(inputs, nowSeconds, pools.access, access, winner)
+    val outcome = accessOutcome(inputs, nowSeconds, restrictions, winner)
+    val content = contentOutcome(pools.matching, subject.observation, subject.catalog)
     val (reason, ruleId) = primaryOutcome(outcome, content)
     return Decision(
         access = outcome.access,
@@ -173,5 +175,19 @@ internal fun decideOrThrow(
         reason = reason,
         gate = outcome.gate,
         explanationKey = explanationKeyOf(outcome.access, content.content, reason),
+        validUntil = null,
     )
+}
+
+internal fun decideOrThrow(
+    ruleset: Ruleset,
+    observation: Observation,
+    state: DecisionState,
+    now: String,
+    catalog: RulesCatalog,
+): Decision {
+    val (inputs, nowSeconds) = decisionInputsOf(ruleset, observation, state, now, catalog)
+    val decision = decisionAt(inputs, nowSeconds)
+    val validUntil = validUntilOf(inputs.subject, inputs.state, decision, nowSeconds) { seconds -> decisionAt(inputs, seconds) }
+    return decision.copy(validUntil = validUntil)
 }

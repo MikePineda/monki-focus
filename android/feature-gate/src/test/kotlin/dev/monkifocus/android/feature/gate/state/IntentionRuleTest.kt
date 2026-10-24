@@ -11,9 +11,11 @@ class IntentionRuleTest {
     private val required = optional.copy(level = 2, requiresTypedIntention = true, previousIntention = "check the opening hours")
 
     @Test
-    fun words_are_runs_of_non_space_characters() {
+    fun words_are_counted_like_the_engine_so_punctuation_is_not_a_word() {
         assertEquals(0, IntentionRule.wordCount("   "))
         assertEquals(3, IntentionRule.wordCount("  reply   to\tone "))
+        assertEquals(2, IntentionRule.wordCount("reply , now !"))
+        assertFalse(IntentionRule.canContinue(required, "reply , now !", minutes = 5))
     }
 
     @Test

@@ -12,14 +12,14 @@ import org.junit.Test
 
 /**
  * Cross-implementation parity: the Kotlin `decide` returns, for every
- * `decision` fixture, exactly the `Decision` the TypeScript engine is checked
+ * `decision` and `specificity` fixture, exactly the `Decision` the TypeScript engine is checked
  * against. Compared field by field and as JSON (so an absent `gate` must be
  * absent and no field can be left out), never partially.
  */
 class DecisionParityTest {
     @Test
-    fun every_decision_fixture_matches_then_field_by_field() {
-        val fixtures = FixtureLoader.load("decision")
+    fun every_decision_and_specificity_fixture_matches_then_field_by_field() {
+        val fixtures = listOf("decision", "specificity").flatMap { FixtureLoader.load(it) }
         val mismatches =
             fixtures.flatMap { fixture ->
                 val case = RulesJson.decodeFromString(DecisionFixture.serializer(), fixture.text)
@@ -43,6 +43,7 @@ class DecisionParityTest {
             "reason".takeIf { expected.reason != actual.reason },
             "gate".takeIf { expected.gate != actual.gate },
             "explanationKey".takeIf { expected.explanationKey != actual.explanationKey },
+            "validUntil".takeIf { expected.validUntil != actual.validUntil },
         )
 
     private fun jsonMismatch(
