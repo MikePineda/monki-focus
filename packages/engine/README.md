@@ -46,6 +46,12 @@ Always build `now` with `instantOf(Date.now())`: it floors to whole seconds
 and writes `YYYY-MM-DDTHH:MM:SSZ`. `new Date().toISOString()` carries
 milliseconds, which is invalid input and fails closed on every decision.
 
+Observations are checked against their schema shape (`urlText` of 1…2048
+characters, a reverse-DNS `package`, a surface id or null); a schema-invalid
+observation fails closed. Adapters must not call `decide` when no URL or
+package is known (for example an empty or focused URL bar): skip the
+decision instead.
+
 `decide` fails closed: any exception or invalid input (garbage URL text, an
 unknown observation, an instant without an explicit offset, an unresolvable
 time zone, an internal error) returns `ENGINE_ERROR_DECISION`, i.e. `block`,
