@@ -5,7 +5,7 @@ export function markdownTable(
   rows: readonly (readonly string[])[]
 ): string {
   const line = (cells: readonly string[]): string =>
-    `| ${cells.map((cell) => cell.replace(/\|/g, '\\|')).join(' | ')} |`
+    `| ${cells.map((cell) => cell.replace(/\\/g, '\\\\').replace(/\|/g, '\\|')).join(' | ')} |`
   return [line(header), line(header.map(() => '---')), ...rows.map(line)].join('\n')
 }
 
