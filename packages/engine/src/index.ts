@@ -10,6 +10,15 @@ export { createRulesCatalog } from './RulesCatalog.ts'
 export { epochSecondsOf, instantOf, utcInstantOf } from './Instant.ts'
 export { normalizeUrl } from './UrlNormalizer.ts'
 export { ENGINE_ERROR_DECISION, decide } from './FailClosedDecision.ts'
+export { frictionCandidates } from './FrictionCandidates.ts'
+export { budgetedRulesFor } from './BudgetedRules.ts'
+export type { IntentionRequirements } from './TypedIntentionRule.ts'
+export {
+  MIN_INTENTION_WORDS,
+  intentionRequirements,
+  intentionWordCount,
+  isIntentionAcceptable,
+} from './TypedIntentionRule.ts'
 export type { EscalationResult } from './EscalationPolicy.ts'
 export { nextEscalation } from './EscalationPolicy.ts'
 export { effectiveEscalationState } from './DecisionGate.ts'

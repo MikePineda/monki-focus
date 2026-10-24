@@ -4,16 +4,19 @@ The pure TypeScript decision engine shared by the extension and the server.
 It implements the normative semantics in
 [`packages/rules/SEMANTICS.md`](../rules/SEMANTICS.md) and runs every shared
 fixture of kinds `decision`, `specificity`, `url-normalize`, `schedule`,
-`escalation`, `rule-change` and `invalid`. Categorisation and analytics
+`escalation`, `rule-change`, `candidates` and `invalid`. Categorisation and analytics
 (`activity` fixtures) live in `@monki-focus/analytics`.
 
 ## API
 
 ```ts
 import {
+  budgetedRulesFor,
   createRulesCatalog,
   decide,
   effectiveRuleSet,
+  frictionCandidates,
+  isIntentionAcceptable,
   isScheduleActive,
   bedtimePhase,
   nextEscalation,
@@ -25,7 +28,10 @@ import {
 const catalog = createRulesCatalog({ siteProfiles, surfaces, defaultCategories })
 
 normalizeUrl('https://www.reddit.com/r/AskHistorians/', catalog) // §2
-decide(ruleset, observation, state, now, catalog) // §5 → Decision
+decide(ruleset, observation, state, now, catalog) // §5 → Decision (with validUntil, §5.6)
+frictionCandidates(ruleset, observation, now, catalog) // §5.7 → RuleId[]
+budgetedRulesFor(ruleset, observation, at, catalog) // §5.7 → RuleId[]
+isIntentionAcceptable(text, previousText, gate) // §7.5 (intentionRequirements(gate))
 nextEscalation(escalationState, event, now, guardianLinked) // §7 → {state, effects}
 effectiveRuleSet(old, next, now, pendingEffectiveFrom, catalog) // §8 → {effectiveToday, effectiveFrom}
 isScheduleActive(schedules, workHours, now, timeZone) // §6.1
@@ -37,8 +43,11 @@ Schemas). Validate rule sets with the rules package validator first
 (`@monki-focus/rules/pure` is the browser-safe entry point for the bundled
 data, schemas and validator). When `decide` returns a gate computed from the
 shared escalation of several friction rules (§7.4), the adapter passes
-`effectiveEscalationState(...)` to `nextEscalation` so the stored gate equals
-the returned one.
+`effectiveEscalationState(winner, frictionCandidates(...) as rules, ...)` to
+`nextEscalation` so the stored gate equals the returned one. Usage accrues to
+every id `budgetedRulesFor` returns. `Decision.validUntil` is the instant to
+decide again at the latest (one timer, no polling); decide again sooner when
+an input changes (events, usage, a new rule set or unlock).
 
 ## Failure handling (§14)
 
@@ -55,7 +64,7 @@ decision instead.
 `decide` fails closed: any exception or invalid input (garbage URL text, an
 unknown observation, an instant without an explicit offset, an unresolvable
 time zone, an internal error) returns `ENGINE_ERROR_DECISION`, i.e. `block`,
-`hide-feed`, reason `engine_error`, no gate. Instants are parsed strictly
+`hide-feed`, reason `engine_error`, no gate and `validUntil: null`. Instants are parsed strictly
 (RFC 3339 with `Z` or `±HH:MM`, never `Date.parse` leniency) and every input
 instant is checked up front, so the outcome does not depend on which rule
 reads it. Rule ids, target groups and usage keys are data: lookups use maps

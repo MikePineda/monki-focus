@@ -6,6 +6,8 @@
  * winner among the enabled, scheduled, matching rules. Access restrictions
  * are checked in order (bedtime, budget, rule block, friction); each one
  * either applies or is lifted (unlock, emergency override, intention).
+ * `validUntil` (§5.6) evaluates the same inputs again at the instants where
+ * the outcome can change (`DecisionValidity.ts`).
  */
 import type {
   Access,
@@ -26,16 +28,18 @@ import { exhaustedBudgetRule } from './BudgetPolicy.ts'
 import { categoryLevelOf } from './CategoryLevelResolver.ts'
 import { contentOutcome } from './ContentAxis.ts'
 import type { ContentOutcome } from './ContentAxis.ts'
+import { candidatePoolsAt, decisionSubject, frictionRulesOf } from './DecisionCandidates.ts'
+import type { DecisionSubject } from './DecisionCandidates.ts'
 import { decisionGate } from './DecisionGate.ts'
 import { guardDecisionInputs } from './DecisionInputGuard.ts'
+import { validUntilOf } from './DecisionValidity.ts'
+import type { TimedDecision } from './DecisionValidity.ts'
 import { isOverrideActive } from './EmergencyOverridePolicy.ts'
 import { explanationKeyOf } from './ExplanationKey.ts'
 import { isIntentionActive } from './IntentionPolicy.ts'
-import { isRuleScheduledAt, localDatesAt, zonesOf } from './PinnedTimeZones.ts'
-import { hasUnknownPath, resolveObservation } from './ResolvedObservation.ts'
-import type { ResolvedObservation } from './ResolvedObservation.ts'
+import { localDatesAt, zonesOf } from './PinnedTimeZones.ts'
+import { resolveObservation } from './ResolvedObservation.ts'
 import type { RulesCatalog } from './RulesCatalog.ts'
-import { matchesHostOfUnknownPath, matchesTarget } from './TargetMatcher.ts'
 import { hasActiveUnlock } from './UnlockPolicy.ts'
 
 /** A restriction of §5.2 that matched; `group` is its escalation group. */
@@ -55,24 +59,18 @@ interface AccessOutcome {
   gate?: Gate
 }
 
-interface DecisionInputs {
-  ruleset: Ruleset
+/** Everything a decision reads: the subject, the state, and the time-independent bedtime level. */
+export interface DecisionInputs {
+  subject: DecisionSubject
   state: DecisionState
-  observation: ResolvedObservation
-  nowSeconds: number
-  catalog: RulesCatalog
+  categoryLevel: number
 }
 
-/** Enabled rules whose schedules are active now (§5.1, in both zones while one waits, §6.3). */
-function scheduledRules({ ruleset, nowSeconds }: DecisionInputs): Rule[] {
-  return ruleset.rules.filter(
-    (rule) => rule.enabled && isRuleScheduledAt(rule, ruleset, nowSeconds)
-  )
-}
-
-function liftOf(restriction: Restriction, inputs: DecisionInputs): ReasonCode | null {
-  const { state, observation, nowSeconds, catalog } = inputs
-  if (hasActiveUnlock(state.unlocks, observation, nowSeconds, catalog)) return 'unlock_active'
+function liftOf(restriction: Restriction, inputs: DecisionInputs, nowSeconds: number) {
+  const { state, subject } = inputs
+  if (hasActiveUnlock(state.unlocks, subject.observation, nowSeconds, subject.catalog)) {
+    return 'unlock_active'
+  }
   if (isOverrideActive(state.escalation, restriction.group, nowSeconds)) return 'emergency_active'
   if (
     restriction.friction !== undefined &&
@@ -85,15 +83,17 @@ function liftOf(restriction: Restriction, inputs: DecisionInputs): ReasonCode | 
 
 function restrictionsOf(
   inputs: DecisionInputs,
+  nowSeconds: number,
   budgetCandidates: readonly Rule[],
   access: readonly AccessCandidate[],
   winner: AccessCandidate | null
 ): Restriction[] {
-  const { ruleset, state, observation, nowSeconds, catalog } = inputs
+  const { subject, state, categoryLevel } = inputs
+  const { ruleset, catalog } = subject
   const restrictions: Restriction[] = []
   if (
     isBedtimeActive(ruleset.bedtime, nowSeconds, zonesOf(ruleset)) &&
-    categoryLevelOf(observation, ruleset.categories, catalog) <= BEDTIME_MAX_LEVEL
+    categoryLevel <= BEDTIME_MAX_LEVEL
   ) {
     restrictions.push({
       access: 'block',
@@ -125,13 +125,12 @@ function restrictionsOf(
     })
   }
   if (winner?.mode === 'friction') {
-    const frictionRules = access.filter(({ mode }) => mode === 'friction').map(({ rule }) => rule)
     restrictions.push({
       access: 'gate',
       reason: 'intention_required',
       ruleId: winner.rule.id,
       group: winner.rule.id,
-      friction: { winner: winner.rule, frictionRules },
+      friction: { winner: winner.rule, frictionRules: frictionRulesOf(access) },
     })
   }
   return restrictions
@@ -139,19 +138,20 @@ function restrictionsOf(
 
 function accessOutcome(
   inputs: DecisionInputs,
+  nowSeconds: number,
   restrictions: readonly Restriction[],
   winner: AccessCandidate | null
 ): AccessOutcome {
   let firstLift: AccessOutcome | null = null
   for (const restriction of restrictions) {
-    const lift = liftOf(restriction, inputs)
+    const lift = liftOf(restriction, inputs, nowSeconds)
     if (lift !== null) {
       firstLift ??= { access: 'allow', reason: lift, ruleId: restriction.ruleId }
       continue
     }
     const { access, reason, ruleId, friction } = restriction
     if (friction === undefined) return { access, reason, ruleId }
-    const { state, nowSeconds } = inputs
+    const { state } = inputs
     const gate = decisionGate(
       friction.winner,
       friction.frictionRules,
@@ -180,34 +180,30 @@ function primaryOutcome(
   return { reason: access.reason, ruleId: access.ruleId }
 }
 
-export function decideOrThrow(
+/** Validates the inputs (§14) and resolves what does not depend on the instant. */
+export function decisionInputsOf(
   ruleset: Ruleset,
   observation: Observation,
   state: DecisionState,
   now: Instant,
   catalog: RulesCatalog
-): Decision {
+): { inputs: DecisionInputs; nowSeconds: number } {
   const nowSeconds = guardDecisionInputs(ruleset, observation, state, now)
   const resolved = resolveObservation(observation, catalog)
-  const inputs: DecisionInputs = {
-    ruleset,
-    state,
-    observation: resolved,
-    nowSeconds,
-    catalog,
-  }
-  const scheduled = scheduledRules(inputs)
-  const matching = scheduled.filter((rule) => matchesTarget(rule.target, resolved, catalog))
-  const unknownPath = hasUnknownPath(resolved)
-  // §5.5: with an unknown path every rule of the host's domain and profile competes for access.
-  const accessPool =
-    resolved.kind === 'site' && unknownPath
-      ? scheduled.filter((rule) => matchesHostOfUnknownPath(rule.target, resolved.host, catalog))
-      : matching
-  const access = accessCandidates(accessPool, resolved, catalog)
-  const winner = accessWinner(access, unknownPath, catalog)
-  const outcome = accessOutcome(inputs, restrictionsOf(inputs, accessPool, access, winner), winner)
-  const content = contentOutcome(matching, resolved, catalog)
+  const subject = decisionSubject(ruleset, resolved, catalog)
+  const categoryLevel = categoryLevelOf(resolved, ruleset.categories, catalog)
+  return { inputs: { subject, state, categoryLevel }, nowSeconds }
+}
+
+/** The decision at an instant, without `validUntil`. */
+export function decisionAt(inputs: DecisionInputs, nowSeconds: number): TimedDecision {
+  const { subject } = inputs
+  const pools = candidatePoolsAt(subject, nowSeconds)
+  const access = accessCandidates(pools.access, subject.observation, subject.catalog)
+  const winner = accessWinner(access, subject.unknownPath, subject.catalog)
+  const restrictions = restrictionsOf(inputs, nowSeconds, pools.access, access, winner)
+  const outcome = accessOutcome(inputs, nowSeconds, restrictions, winner)
+  const content = contentOutcome(pools.matching, subject.observation, subject.catalog)
   const primary = primaryOutcome(outcome, content)
   return {
     access: outcome.access,
@@ -217,4 +213,19 @@ export function decideOrThrow(
     ...(outcome.gate === undefined ? {} : { gate: outcome.gate }),
     explanationKey: explanationKeyOf(outcome.access, content.content, primary.reason),
   }
+}
+
+export function decideOrThrow(
+  ruleset: Ruleset,
+  observation: Observation,
+  state: DecisionState,
+  now: Instant,
+  catalog: RulesCatalog
+): Decision {
+  const { inputs, nowSeconds } = decisionInputsOf(ruleset, observation, state, now, catalog)
+  const decision = decisionAt(inputs, nowSeconds)
+  const validUntil = validUntilOf(inputs, decision, nowSeconds, (seconds) =>
+    decisionAt(inputs, seconds)
+  )
+  return { ...decision, validUntil }
 }

@@ -40,8 +40,23 @@ export function assertResolvableTimeZone(timeZone: string): void {
   formatterFor(timeZone)
 }
 
+/**
+ * The last reading per zone: one decision reads the same instant in the same
+ * zone once per rule, and `validUntil` re-reads it per candidate instant. A
+ * pure memo (the reading depends only on its arguments).
+ */
+const lastReadings = new Map<string, { epochSeconds: number; wall: number }>()
+
 /** The local wall second of an instant (epoch seconds) in `timeZone`. */
 export function wallSecondsAt(epochSeconds: number, timeZone: string): number {
+  const last = lastReadings.get(timeZone)
+  if (last?.epochSeconds === epochSeconds) return last.wall
+  const wall = readWallSeconds(epochSeconds, timeZone)
+  lastReadings.set(timeZone, { epochSeconds, wall })
+  return wall
+}
+
+function readWallSeconds(epochSeconds: number, timeZone: string): number {
   const fields: Record<string, string> = {}
   for (const part of formatterFor(timeZone).formatToParts(new Date(epochSeconds * 1000))) {
     fields[part.type] = part.value
@@ -133,4 +148,40 @@ export function wallSecondsOfDay(dayNumber: number): number {
 export function nextLocalMidnight(epochSeconds: number, timeZone: string): number {
   const today = localTimeAt(epochSeconds, timeZone).dayNumber
   return firstInstantReachingWall(epochSeconds, wallSecondsOfDay(today + 1), timeZone)
+}
+
+/** Whole seconds a zone's wall clock is ahead of UTC at an instant. */
+function offsetSecondsAt(epochSeconds: number, timeZone: string): number {
+  return wallSecondsAt(epochSeconds, timeZone) - epochSeconds
+}
+
+/** Zones change their offset at most once an hour (in practice twice a year). */
+const TRANSITION_PROBE_SECONDS = 3600
+
+/**
+ * Instants in `(from, to]` at which the zone's UTC offset changes (DST
+ * transitions): the first second with the new offset. The wall clock is
+ * monotonic between two of them, so a wall time is reached at most once per
+ * stretch (a fall-back repeats the hour after the transition).
+ */
+export function offsetTransitionsBetween(from: number, to: number, timeZone: string): number[] {
+  const transitions: number[] = []
+  let before = from
+  let offset = offsetSecondsAt(from, timeZone)
+  while (before < to) {
+    const probe = Math.min(before + TRANSITION_PROBE_SECONDS, to)
+    if (offsetSecondsAt(probe, timeZone) !== offset) {
+      let low = before
+      let high = probe
+      while (high - low > 1) {
+        const middle = Math.floor((low + high) / 2)
+        if (offsetSecondsAt(middle, timeZone) === offset) low = middle
+        else high = middle
+      }
+      transitions.push(high)
+      offset = offsetSecondsAt(probe, timeZone)
+    }
+    before = probe
+  }
+  return transitions
 }
