@@ -1,35 +1,35 @@
 {
   "schemaVersion": 1,
   "packId": "youtube",
-  "packVersion": "2026.10.25.1",
+  "packVersion": "2026.10.25.2",
   "minSchemaVersion": 1,
   "packages": ["com.google.android.youtube"],
   "testedAppVersions": [],
-  "unclassifiedCapMinutes": 0,
+  "unclassifiedCapMinutes": 10,
   "keepVisible": ["pivot_bar"],
   "surfaces": [
     {
       "surface": "youtube.shorts",
       "priority": 100,
       "any": [
-        { "viewId": "reel_player_page_container", "onScreen": true, "minHeightRatio": 0.6 },
-        { "viewId": "reel_recycler", "onScreen": true, "minHeightRatio": 0.6 },
-        { "viewId": "reel_player_page_content", "onScreen": true, "minHeightRatio": 0.6 }
+        {"viewId": "reel_player_page_container", "onScreen": true, "minHeightRatio": 0.6},
+        {"viewId": "reel_recycler", "onScreen": true, "minHeightRatio": 0.6},
+        {"viewId": "reel_player_page_content", "onScreen": true, "minHeightRatio": 0.6}
       ]
     },
     {
       "surface": "youtube.shorts",
       "priority": 90,
-      "all": [{ "viewId": "pivot_bar", "onScreen": true }],
-      "any": [{ "contentDesc": "Shorts", "selected": true }]
+      "all": [{"viewId": "pivot_bar", "onScreen": true}],
+      "any": [{"viewId": "pivot_bar_item_tab", "contentDesc": "Shorts", "selected": true}]
     },
     {
       "surface": "youtube.home",
       "priority": 50,
-      "all": [{ "viewId": "pivot_bar", "onScreen": true }],
+      "all": [{"viewId": "pivot_bar", "onScreen": true}],
       "any": [
-        { "contentDesc": "Home", "selected": true },
-        { "contentDesc": "Inicio", "selected": true }
+        {"viewId": "pivot_bar_item_tab", "contentDesc": "Home", "selected": true},
+        {"viewId": "pivot_bar_item_tab", "contentDesc": "Inicio", "selected": true}
       ]
     }
   ]

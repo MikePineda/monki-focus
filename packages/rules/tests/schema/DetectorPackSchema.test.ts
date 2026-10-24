@@ -52,6 +52,21 @@ describe('detector pack schema', () => {
     expect(isValidPack(pack({ packVersion: '1.2.3' }))).toBe(false)
   })
 
+  it('pack_version_names_a_month_and_day_and_a_serial_without_leading_zeros', () => {
+    for (const version of [
+      '2026.13.01.1',
+      '2026.00.10.1',
+      '2026.10.32.1',
+      '2026.10.00.1',
+      '2026.10.25.01',
+    ]) {
+      expect(isValidPack(pack({ packVersion: version })), version).toBe(false)
+    }
+    for (const version of ['2026.12.31.0', '2026.01.01.999']) {
+      expect(isValidPack(pack({ packVersion: version })), version).toBe(true)
+    }
+  })
+
   it('min_schema_version_is_bounded', () => {
     expect(isValidPack(pack({ minSchemaVersion: 100 }))).toBe(false)
   })

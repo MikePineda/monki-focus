@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "packId": "browsers",
-  "packVersion": "2026.10.25.1",
+  "packVersion": "2026.10.25.2",
   "minSchemaVersion": 1,
   "packages": [
     "com.android.chrome",

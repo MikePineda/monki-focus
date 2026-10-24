@@ -1,6 +1,40 @@
 {
-  "description": "Text a sanitised UI dump may keep: generic UI labels that detector packs compare, our own app label, and URLs on the reserved example hosts (RFC 2606). Every other text and content-desc becomes the placeholder.",
+  "description": "What a sanitised UI dump may keep. Text-bearing attributes hold only the placeholder, a generic UI label a pack compares, our own app label or a URL on a reserved example host (RFC 2606). Every other attribute must be a known uiautomator attribute. scripts/sanitize-uidump.mjs and the Kotlin uidump_fixtures_are_sanitized test both read this file.",
   "placeholder": "⟨t⟩",
   "labels": ["Home", "Inicio", "Instagram Home Feed", "Reels", "Shorts", "monki-focus"],
-  "placeholderHosts": ["example.com", "example.net", "example.org"]
+  "placeholderHosts": ["example.com", "example.net", "example.org"],
+  "textAttributes": [
+    "text",
+    "content-desc",
+    "hint",
+    "tooltip-text",
+    "pane-title",
+    "state-description",
+    "error",
+    "container-title"
+  ],
+  "knownAttributes": {
+    "hierarchy": ["rotation", "monki-sanitized"],
+    "node": [
+      "index",
+      "resource-id",
+      "class",
+      "package",
+      "checkable",
+      "checked",
+      "clickable",
+      "enabled",
+      "focusable",
+      "focused",
+      "scrollable",
+      "long-clickable",
+      "password",
+      "selected",
+      "visible-to-user",
+      "important-for-accessibility",
+      "drawing-order",
+      "display-id",
+      "bounds"
+    ]
+  }
 }

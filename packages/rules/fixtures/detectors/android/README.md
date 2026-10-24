@@ -19,7 +19,8 @@ packs of `detectors/android/`.
 }
 ```
 
-- `surface`: what `SurfaceClassifier` returns (`null`: nothing recognised);
+- `surface`: what the stateless `SurfaceClassifier` returns (`null`: nothing
+  recognised; `DmReelSession` may still turn a `reel_from_dm` into `reels`);
   `basis` (optional): the deciding tier, `view_id` or `label`.
 - `guarded` (Settings and package-installer dumps): what
   `SettingsScreenClassifier` returns with our app label `monki-focus`.

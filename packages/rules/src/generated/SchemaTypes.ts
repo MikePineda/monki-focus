@@ -741,7 +741,7 @@ export interface DetectorPack {
   schemaVersion: 1
   packId: string
   /**
-   * CalVer `YYYY.MM.DD.n`.
+   * CalVer `YYYY.MM.DD.n`: month 01-12, day 01-31 (clients also reject dates missing from the calendar), `n` 0-999 without leading zeros. Compared numerically per component.
    */
   packVersion: string
   minSchemaVersion: number
