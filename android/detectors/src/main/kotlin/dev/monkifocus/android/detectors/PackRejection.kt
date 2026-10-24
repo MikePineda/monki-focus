@@ -14,6 +14,9 @@ enum class PackRejection(
     /** Not UTF-8 or not JSON. */
     INVALID_JSON("invalid_json"),
 
+    /** An object names the same key twice (parsers disagree on which one wins). */
+    DUPLICATE_KEY("duplicate_key"),
+
     /** Fails `detector-pack.schema.json` (unknown fields, regex-like keys, bad shapes). */
     SCHEMA("schema"),
 
@@ -26,6 +29,15 @@ enum class PackRejection(
     /** A different pack id than the installed pack it would replace. */
     PACK_ID_MISMATCH("pack_id_mismatch"),
 
-    /** Not newer than the installed pack of the same id. */
+    /** Breaks a compiled [PackInvariants] rule (family, evidence, safety net, coverage). */
+    INVARIANT("invariant"),
+
+    /** Not newer than the installed pack of the same id, or than the version bundled with this build. */
     NOT_NEWER("not_newer"),
+
+    /** Dated more than [PackVersionPolicy.MAX_FUTURE_DAYS] days after the trusted time. */
+    FUTURE_VERSION("future_version"),
+
+    /** A version on the compiled revocation list. */
+    REVOKED("revoked"),
 }

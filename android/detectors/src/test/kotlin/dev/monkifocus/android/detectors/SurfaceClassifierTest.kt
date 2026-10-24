@@ -146,4 +146,46 @@ class SurfaceClassifierTest {
             classifier.classify(window("com.instagram.android", deepest.children.single()), listOf(pack))?.surface,
         )
     }
+
+    private fun ig(
+        name: String,
+        vararg children: TestNode,
+    ) = TestNode("com.instagram.android:id/$name", children = children.toList())
+
+    /** A DM reel as the classifier sees it: pager, UFI, sender and reply bar, plus [extra] nodes. */
+    private fun dmReel(vararg extra: TestNode): Screen =
+        window(
+            "com.instagram.android",
+            ig("clips_viewer_view_pager"),
+            ig("clips_ufi_component"),
+            ig("sender_timestamp"),
+            ig("reply_bar_edittext"),
+            *extra,
+        )
+
+    @Test
+    fun a_suggested_title_after_node_2500_cannot_hide_behind_the_cap() {
+        val filler = TestNode(children = List(3_000) { TestNode() })
+        val screen = dmReel(filler, TestNode(children = listOf(ig("suggested_title"))))
+
+        assertEquals("instagram.reel_from_dm", classifier.classify(dmReel(), packs)?.surface)
+        assertEquals("instagram.reels", classifier.classify(screen, packs)?.surface)
+    }
+
+    @Test
+    fun a_suggested_title_below_depth_40_cannot_hide_behind_the_cap() {
+        var deep = ig("suggested_title")
+        repeat(BoundedTraversal.MAX_DEPTH + 5) { deep = TestNode(children = listOf(deep)) }
+
+        assertEquals("instagram.reels", classifier.classify(dmReel(deep), packs)?.surface)
+    }
+
+    @Test
+    fun a_truncated_read_never_recognises_an_allow_only_surface() {
+        val filler = TestNode(children = List(3_000) { TestNode() })
+        val stories = window("com.instagram.android", ig("reel_viewer_root"), filler)
+
+        assertNull(classifier.classify(stories, packs))
+        assertEquals("instagram.stories", classifier.classify(window("com.instagram.android", ig("reel_viewer_root")), packs)?.surface)
+    }
 }

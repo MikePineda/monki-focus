@@ -21,7 +21,14 @@ class BoundedTraversal(
         val truncated: Boolean,
     )
 
-    fun walk(root: UiNode): Result {
+    /**
+     * Walks from [root]. The children of a node for which [skipChildrenOf]
+     * holds are not visited at all (they do not count against the bounds).
+     */
+    fun walk(
+        root: UiNode,
+        skipChildrenOf: (UiNode) -> Boolean = { false },
+    ): Result {
         val visited = ArrayList<UiNode>()
         val queue = ArrayDeque<Pair<UiNode, Int>>()
         queue.addLast(root to 0)
@@ -33,6 +40,7 @@ class BoundedTraversal(
             }
             val (node, depth) = queue.removeFirst()
             visited += node
+            if (skipChildrenOf(node)) continue
             val children = node.children
             if (children.isEmpty()) continue
             if (depth == maxDepth) {

@@ -29,9 +29,18 @@ object RulesResources {
 
     val validator: RulesetValidator by lazy { RulesetValidator(schemas, aliases = emptyMap()) }
 
+    /** The surface ids of `data/surfaces.json`. */
+    val registeredSurfaces: Set<String> by lazy {
+        RulesJson
+            .decodeFromString(SurfaceRegistry.serializer(), file("data/surfaces.json").readText())
+            .surfaces
+            .map { it.id }
+            .toSet()
+    }
+
     /** Bundled packs need no signature; a verifier that is never asked is enough. */
     val bundledLoader: DetectorPackLoader by lazy {
-        DetectorPackLoader(validator, SignatureVerifier { _, _ -> error("bundled packs are not signature-checked") })
+        DetectorPackLoader(validator, SignatureVerifier { _, _ -> error("bundled packs are not signature-checked") }, registeredSurfaces)
     }
 
     fun packBytes(packId: String): ByteArray = file("detectors/android/$packId.pack.json").readBytes()

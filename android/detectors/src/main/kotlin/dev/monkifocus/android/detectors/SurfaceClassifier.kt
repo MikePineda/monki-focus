@@ -11,6 +11,11 @@ package dev.monkifocus.android.detectors
  * per-language label lists, so ids decide whenever they still exist. When
  * nothing matches the result is null and [UnclassifiedTimeCap] is the safety
  * net.
+ *
+ * When the traversal bound cut the read short, detectors with a `none` list
+ * and allow-only surfaces ([AllowOnlySurfaces]) never match: classification
+ * falls to the block-capable surfaces or to null. The result is stateless;
+ * [DmReelSession] decides whether a `reel_from_dm` really came from a DM.
  */
 class SurfaceClassifier(
     private val traversal: BoundedTraversal = BoundedTraversal(),
@@ -33,6 +38,9 @@ class SurfaceClassifier(
         detector: SurfaceDetector,
         index: ScreenIndex,
     ): MatchBasis? {
+        // A cut-short read proves no absence: a `none` veto or the missing counter-evidence of an
+        // allow-only surface may sit in the part that was not read, so those detectors stay silent.
+        if (index.truncated && (!detector.none.isNullOrEmpty() || AllowOnlySurfaces.isAllowOnly(detector.surface))) return null
         val all = detector.all.orEmpty()
         if (!all.all { PredicateEvaluator.matches(it, index) }) return null
         val decidingAny =
