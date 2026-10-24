@@ -3,7 +3,10 @@ import type { RulesCatalog } from '@monki-focus/engine'
 import type { Clock } from '../../shared/clock'
 import { feedSurfacesOfHost, pageSurfaceOf } from '../../shared/FeedSurfaces'
 import type { GuardAttributes } from '../../shared/GuardAttributes'
+import type { Decision } from '@monki-focus/rules/pure'
+import type { ActiveSession } from '../../shared/GateContract'
 import type { FeedDecision } from '../../shared/messages'
+import type { GateCommands } from '../gate/GateCommands'
 import { SHORTS_SURFACE } from '../shorts/ShortsRedirectSync'
 import type { TrackingCommands } from '../tracking/TrackingModule'
 import type { CommandHandlers } from './CommandRouter'
@@ -23,6 +26,12 @@ export interface FeedStylesheets {
   inject(tabId: number, tabUrl: string, attributes: GuardAttributes): Promise<boolean>
 }
 
+/** The intention gate's command side (E6) plus the session a page is inside. */
+export interface GateCommandDependencies {
+  commands: GateCommands
+  sessionFor(url: string, decision: Decision): Promise<ActiveSession | undefined>
+}
+
 export interface CommandDependencies {
   clock: Clock
   catalog: RulesCatalog
@@ -30,6 +39,7 @@ export interface CommandDependencies {
   stylesheets?: FeedStylesheets
   shortsRedirect?: ShortsRedirectState
   tracking: TrackingCommands
+  gate?: GateCommandDependencies
 }
 
 function isShortsSite(url: string, catalog: RulesCatalog): boolean {
@@ -48,7 +58,13 @@ export function createCommandHandlers({
   stylesheets,
   shortsRedirect,
   tracking,
+  gate,
 }: CommandDependencies): CommandHandlers {
+  // Without the gate (unit tests of the other commands) its commands fail.
+  const gateCommands = (): GateCommands => {
+    if (!gate) throw new Error('gate.unavailable')
+    return gate.commands
+  }
   return {
     'system.ping': () => ({ at: clock.now() }),
     'decision.get': async ({ url }) => {
@@ -58,7 +74,8 @@ export function createCommandHandlers({
       if (shortsRedirect && isShortsSite(url, catalog)) {
         await shortsRedirect.apply(answer.restrict.includes(SHORTS_SURFACE)).catch(() => undefined)
       }
-      return answer
+      const session = await gate?.sessionFor(url, answer.decision).catch(() => undefined)
+      return session ? { ...answer, session } : answer
     },
     'feedGuard.attach': async ({ attributes }, sender) => {
       // Top frame of a tab only; the router has checked the tab's host.
@@ -72,5 +89,20 @@ export function createCommandHandlers({
     'stats.today': () => tracking.today(),
     'stats.week': () => tracking.week(),
     'privacy.incognitoAccess': () => tracking.incognitoAccess(),
+    'gate.load': ({ handoff }, sender) => gateCommands().load(handoff, sender),
+    'gate.pauseDone': (_payload, sender) => gateCommands().pauseDone(sender),
+    'gate.commit': ({ minutes, intention }, sender) =>
+      gateCommands().commit(minutes, intention, sender),
+    'gate.close': (_payload, sender) => gateCommands().close(sender),
+    'gate.emergency': (_payload, sender) => gateCommands().emergency(sender),
+    'gate.emergencyDone': (_payload, sender) => gateCommands().emergencyDone(sender),
+    'gate.emergencyCancel': (_payload, sender) => gateCommands().emergencyCancel(sender),
+    'gate.leave': (_payload, sender) => gateCommands().leave(sender),
+    'gate.extend': (_payload, sender) => gateCommands().extend(sender),
+    'gate.search': ({ query }, sender) => gateCommands().search(query, sender),
+    'gate.open': ({ url }, sender) => gateCommands().open(url, sender),
+    'intention.expired': ({ url }, sender) => gateCommands().expired(url, sender),
+    'intention.leave': ({ url }, sender) => gateCommands().leaveFromPage(url, sender),
+    'intention.extend': ({ url }, sender) => gateCommands().extendFromPage(url, sender),
   }
 }

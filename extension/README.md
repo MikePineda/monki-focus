@@ -36,7 +36,8 @@ repo (`*.pem` is gitignored).
 
 ```
 src/entrypoints/   background.ts and feed-guard.content/ (wiring only), popup/, options/, gate/
-src/background/    service-worker modules (commands/, decisions/, rules/, shorts/, tracking/, storage/, stats/, privacy/)
+src/gate/          the intention gate page (GatePage, PauseBlock, IntentionForm, GateClient)
+src/background/    service-worker modules (commands/, decisions/, gate/, rules/, shorts/, tracking/, storage/, stats/, privacy/)
 src/content/       feed guard: FeedGuard, FeedHider, SpaNavigationWatcher, FeedPlaceholder, ...
 src/sites/         per-site DOM selectors keyed by surface id (reddit, x, youtube, instagram)
 src/shared/        clock.ts, messages.ts (typed commands), bundledRulesCatalog.ts, FeedSurfaces.ts, StatsContract.ts
@@ -212,6 +213,92 @@ The pinned `timeZone` and the category overrides come from E5's
 Incognito: when the user allows the extension there, incognito time counts
 by domain only (`path` `/`, no surface, never a title); without access it
 is not seen at all and the popup warns.
+
+## Intention gate (E6)
+
+When the engine's decision for a page is `gate` (friction) or `block`
+(a block rule, a spent budget, bedtime), the tab lands on `gate.html`. Every
+state and transition is `@monki-focus/engine`'s (`decide`,
+`effectiveEscalationState`, `nextEscalation`); `src/background/gate` stores
+what it returns and turns it into the page's view (`src/shared/GateContract.ts`).
+
+- **Redirect.** `GateRedirectRules` keeps one session DNR rule per gated
+  escalation group: `main_frame` requests to the group's domains (and their
+  aliases, `twitter.com` for `x.com`) redirect with `regexSubstitution` to
+  `chrome-extension://<id>/gate.html?t=<ticket>&to=\0` before the request
+  leaves. Which domains are gated, and by which group, is `decide` for the
+  domain's root page with the stored escalation, so a committed intention or
+  an emergency override drops its group's rule and the expiry (or the next
+  sync) restores it. Syncs run on start, on every escalation change, on rule
+  set changes and on the per-minute `decision.refresh` alarm (schedule
+  edges, budgets). `engine_error` never redirects (the feed guard already
+  hides every feed). Verified in Chromium: a DNR redirect to the static
+  `chrome-extension://<id>/` URL loads the page although `gate.html` is
+  `use_dynamic_url`; `extensionPath` loads too, but it loses the original
+  URL (no `tabs.onUpdated` event carries it), so it cannot bring the user
+  back to a permalink.
+- **Open-redirect guard.** The ticket is a random secret per browser
+  session (`storage.session`), written only into the session rule; pages can
+  read neither. The gate forwards `{ticket, to}` once (`gate.load`) and
+  removes the query from the address bar; the service worker stores `to` as
+  the destination of the sending tab only when the ticket matches. Every
+  later answer uses the tab's stored destination (`sender.tab.id`), never the
+  page's URL, so `gate.html?to=…` opened by anyone else has nothing to
+  continue to. `gate.*` commands are answered only from the extension's own
+  `gate.html` in a tab (static or dynamic id).
+- **Passes.** A page the engine allows inside a gated domain (an allowed
+  community), or the gate's search box, gets a one-off `allow` session rule
+  for that exact URL in that tab (`TabPasses`); it is spent once the tab has
+  loaded, when the tab closes or after a minute.
+- **SPA navigations** inside a site: the feed guard's answer for the new URL
+  says `gate`/`block` and it sends `gate.open`; the service worker records the
+  destination for the tab and `tabs.update`s it to `gate.html`.
+- **State.** `EscalationStore` keeps every group's `EscalationState` in
+  `storage.local` (`gate.escalation`): pauses, waits, intentions, overrides,
+  the counters and `lastFrictionType` survive the worker sleeping and a
+  browser restart (SEMANTICS §7), and reloading never resets a pause. The
+  per-tab destinations (`gate.tabs`), the ticket, the passes and the words of
+  each intention (`gate.intentions`, for the overlay and the "different from
+  last time" check) live in `storage.session`. The intention text never
+  reaches the engine (only its word count), IndexedDB or the outbox.
+  `visit` is fed on the effective state of every matching friction group;
+  the matching friction rules come from the engine itself (`decide` with
+  each rule alone, `FrictionCandidates`). Budgets: `DailyUsageQuery` sums
+  today's tracked web events (E7) per budgeted rule with the engine's
+  `normalizeUrl` + `matchesTarget` into `DecisionState.usage`.
+- **Timers.** One alarm (`gate.timers`) at the earliest intention or
+  override end. The page's own timer shows the overlay on time (alarms can
+  run ~30 s late); the alarm restores the redirect and ends what nobody is
+  looking at (an intention that ends with no page of its group open counts as
+  kept).
+- **Emergency.** `emergency_request` from any gating phase (also an active
+  intention) → a 2:00 wait with Cancel → 15 minutes; the engine's
+  `record_bypass` effect queues a `BypassEvent` in the outbox
+  (`kind: 'emergency_override'`, details: the rule group and timestamps,
+  never a URL).
+- **Page** (`src/gate`, 02 §8.1): context line (visits today from the
+  intention log, minutes today from `stats.today`), the pause (Countdown,
+  1px progress, the breath circle, a "why" line per friction type), Close
+  (the one accent, enabled and focused from the first frame; closes the tab,
+  or opens a new tab first when it is the last one), "What are you here
+  for?" (required from L2: ≥ 3 words and different from the previous one),
+  5/10/15 with no default, "Continue to <site>" disabled until valid, the
+  level line with the engine's next pause, L3's disabled "Ask your guardian"
+  (phase 3), Emergency, and a search box on Reddit and YouTube. Blocked
+  states offer only Close and Emergency.
+- **Timeout overlay and pill** (`src/content`): a closed shadow root (open in
+  the e2e build) with the UI kit: "Your N min for «…» are up", **Leave**
+  (accent) or "5 more min" with the engine's next pause; media is paused. The
+  `mm:ss` pill derives from `expiresAt - now`; `gate.intentionPill` in
+  `storage.local` turns it off (default on).
+- **Stats.** IndexedDB v2 adds `intentions` (`{at, kind, group}`: visit,
+  committed, kept, broken, closed; 30 days), which feeds
+  `stats.today.intentions` and the gate's context line.
+- **e2e build.** `e2e.clockOffsetMs` in `storage.local` shifts the clock of
+  the gate, the decisions and the pages (`RuntimeClock`), so specs skip a
+  pause, a 5-minute intention or the 2-minute wait. Specs start from a rule
+  set without friction and bedtime unless they ask for `startingRuleset:
+'gated'` (`e2e/support/extensionTest.ts`).
 
 ## Live smoke before release
 

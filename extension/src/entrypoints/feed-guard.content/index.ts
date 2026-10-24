@@ -4,6 +4,9 @@ import { defineContentScript } from 'wxt/utils/define-content-script'
 import { SITE_HOST_PERMISSIONS } from '../../../config/extensionManifest'
 import { requestFeedDecision } from '../../content/DecisionClient'
 import { FeedGuard } from '../../content/FeedGuard'
+import { GateSessionGuard } from '../../content/GateSessionGuard'
+import { SessionOverlayMount } from '../../content/SessionOverlayMount'
+import { SESSION_OVERLAY_CSS } from '../../content/sessionOverlayStyles'
 import { feedPlaceholderRenderer } from '../../content/FeedPlaceholderRenderer'
 import { PlaceholderMount, randomPlaceholderTag } from '../../content/PlaceholderMount'
 import { PLACEHOLDER_CSS } from '../../content/placeholderStyles'
@@ -12,7 +15,9 @@ import { SpaNavigationWatcher } from '../../content/SpaNavigationWatcher'
 import { bundledRulesCatalog } from '../../shared/bundledRulesCatalog'
 import { pageSurfaceOf } from '../../shared/FeedSurfaces'
 import { randomGuardAttributes } from '../../shared/GuardAttributes'
-import { commandMessage } from '../../shared/messages'
+import { readIntentionPillPreference } from '../../shared/IntentionPillPreference'
+import { commandMessage, type CommandMessage } from '../../shared/messages'
+import { runtimeClock } from '../../shared/RuntimeClock'
 import { siteFeedProfileFor } from '../../sites'
 
 const E2E = import.meta.env.MODE === 'e2e'
@@ -56,6 +61,28 @@ export default defineContentScript({
       shadowMode: E2E ? 'open' : 'closed',
       render: feedPlaceholderRenderer({ site, window, storage: browser.storage.local }),
     })
+    const send = (message: CommandMessage) => browser.runtime.sendMessage(message)
+    const clock = runtimeClock()
+    const overlay = new SessionOverlayMount({
+      document,
+      css: SESSION_OVERLAY_CSS,
+      tag: randomPlaceholderTag(),
+      shadowMode: E2E ? 'open' : 'closed',
+      storage: browser.storage.local,
+      navigatorLanguages: navigator.languages,
+      clock,
+      onLeave: () => void session.leave().catch(() => undefined),
+      onExtend: () => void session.extend().catch(() => undefined),
+    })
+    const session = new GateSessionGuard({
+      clock,
+      send,
+      overlay,
+      // `guard` exists by the time a session ends.
+      reevaluate: () => void guard.evaluate(location.href),
+      pillEnabled: () => readIntentionPillPreference(browser.storage.local),
+      currentUrl: () => location.href,
+    })
     let applied = 0
     const guard = new FeedGuard({
       window,
@@ -69,6 +96,7 @@ export default defineContentScript({
         browser.runtime.sendMessage(
           commandMessage('feedGuard.attach', { url: location.href, attributes })
         ),
+      onDecision: (answer, url) => session.apply(answer, url),
       ...(E2E
         ? { onApplied: () => root.setAttribute('data-mf-e2e-applied', String(++applied)) }
         : {}),
@@ -90,6 +118,7 @@ export default defineContentScript({
       clearInterval(orphanCheck)
       watcher.stop()
       stopTriggers()
+      session.destroy()
       guard.destroy()
     }, ORPHAN_CHECK_MS)
 

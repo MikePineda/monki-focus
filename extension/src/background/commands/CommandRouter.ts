@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import {
   COMMAND_PAYLOAD_GUARDS,
+  GATE_PAGE_COMMANDS,
   isCommandEnvelope,
   TAB_URL_COMMANDS,
   type CommandRequest,
@@ -57,6 +58,25 @@ function isTabUrlAllowed(type: CommandType, payload: unknown, sender: CommandSen
   return tabHost !== null && tabHost === hostOf(urlOf(payload))
 }
 
+/** The extension page that gates a tab; only it may send `gate.*` commands. */
+export const GATE_PAGE_PATH = '/gate.html'
+
+/**
+ * A gate-page command must come from this extension's `gate.html` (its
+ * static or dynamic id: `sender.id` already proved it is this extension)
+ * shown in a tab, never from a content script or another extension page.
+ */
+function isGatePageAllowed(type: CommandType, sender: CommandSender): boolean {
+  if (!GATE_PAGE_COMMANDS.has(type)) return true
+  if (typeof sender.tab?.id !== 'number' || !sender.url) return false
+  try {
+    const { protocol, pathname } = new URL(sender.url)
+    return protocol === 'chrome-extension:' && pathname === GATE_PAGE_PATH
+  } catch {
+    return false
+  }
+}
+
 /**
  * Single entry point for commands sent to the service worker. It answers only
  * messages from this extension's own contexts (`sender.id === runtime.id`;
@@ -85,7 +105,7 @@ export class CommandRouter {
     if (!COMMAND_PAYLOAD_GUARDS[type](payload)) {
       return { ok: false, error: 'message.malformed' }
     }
-    if (!isTabUrlAllowed(type, payload, sender)) {
+    if (!isTabUrlAllowed(type, payload, sender) || !isGatePageAllowed(type, sender)) {
       return { ok: false, error: 'sender.rejected' }
     }
     const handler = this.handlers[type] as CommandHandler<CommandType>
