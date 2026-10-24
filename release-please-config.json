@@ -1,0 +1,106 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "include-component-in-tag": true,
+  "separate-pull-requests": true,
+  "bump-minor-pre-major": true,
+  "pull-request-title-pattern": "chore(repo): release${component} ${version}",
+  "signoff": "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>",
+  "changelog-sections": [
+    { "type": "feat", "section": "Added" },
+    { "type": "fix", "section": "Fixed" },
+    { "type": "security", "section": "Security" },
+    { "type": "perf", "section": "Changed" },
+    { "type": "refactor", "section": "Changed" },
+    { "type": "revert", "section": "Changed" },
+    { "type": "deps", "section": "Dependencies" },
+    { "type": "build", "section": "Dependencies" },
+    { "type": "docs", "section": "Documentation", "hidden": true },
+    { "type": "chore", "section": "Miscellaneous", "hidden": true },
+    { "type": "ci", "section": "Miscellaneous", "hidden": true },
+    { "type": "test", "section": "Miscellaneous", "hidden": true },
+    { "type": "style", "section": "Miscellaneous", "hidden": true }
+  ],
+  "packages": {
+    "packages/rules": {
+      "release-type": "node",
+      "component": "rules",
+      "package-name": "@monki-focus/rules",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "/package-lock.json",
+          "jsonpath": "$.packages['packages/rules'].version"
+        }
+      ]
+    },
+    "packages/engine": {
+      "release-type": "node",
+      "component": "engine",
+      "package-name": "@monki-focus/engine",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "/package-lock.json",
+          "jsonpath": "$.packages['packages/engine'].version"
+        }
+      ]
+    },
+    "packages/protocol": {
+      "release-type": "node",
+      "component": "protocol",
+      "package-name": "@monki-focus/protocol",
+      "draft": true,
+      "force-tag-creation": true,
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "/package-lock.json",
+          "jsonpath": "$.packages['packages/protocol'].version"
+        }
+      ]
+    },
+    "extension": {
+      "release-type": "node",
+      "component": "extension",
+      "package-name": "@monki-focus/extension",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "/package-lock.json",
+          "jsonpath": "$.packages['extension'].version"
+        }
+      ]
+    },
+    "server": {
+      "release-type": "simple",
+      "component": "server",
+      "package-name": "monki-focus-server",
+      "extra-files": [
+        { "type": "json", "path": "api/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "web/package.json", "jsonpath": "$.version" },
+        {
+          "type": "json",
+          "path": "/package-lock.json",
+          "jsonpath": "$.packages['server/api'].version"
+        },
+        {
+          "type": "json",
+          "path": "/package-lock.json",
+          "jsonpath": "$.packages['server/web'].version"
+        }
+      ]
+    },
+    "android": {
+      "release-type": "simple",
+      "component": "android",
+      "package-name": "monki-focus-android",
+      "extra-files": [{ "type": "generic", "path": "gradle.properties" }]
+    },
+    "macos": {
+      "release-type": "simple",
+      "component": "macos",
+      "package-name": "monki-focus-macos",
+      "extra-files": [{ "type": "generic", "path": "Config/Version.xcconfig" }]
+    }
+  }
+}
