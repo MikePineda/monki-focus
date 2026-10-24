@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
-<!-- Local storage only (Room, DataStore): no permissions. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<!--
+  Local storage only (Room, DataStore). The one permission is usage access,
+  which the user grants in system settings (an app op, never granted at
+  install): UsageStatsEventsSource reads app foreground, screen and keyguard
+  events with it and checks the grant before every query.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+</manifest>

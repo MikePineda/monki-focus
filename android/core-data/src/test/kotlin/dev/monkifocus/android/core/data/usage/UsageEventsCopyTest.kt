@@ -12,15 +12,17 @@ import org.junit.Test
 class UsageEventsCopyTest {
     private class FakeSource(
         private val events: List<DeviceUsageEvent>,
+        private val granted: Boolean = true,
     ) : UsageEventsSource {
         val reads = mutableListOf<Pair<Long, Long>>()
 
         override suspend fun read(
             fromEpochMillis: Long,
             toEpochMillis: Long,
-        ): List<DeviceUsageEvent> {
+        ): UsageEventsRead {
             reads += fromEpochMillis to toEpochMillis
-            return events.filter { it.epochMillis in fromEpochMillis until toEpochMillis }
+            if (!granted) return UsageEventsRead.AccessNotGranted
+            return UsageEventsRead.Events(events.filter { it.epochMillis in fromEpochMillis until toEpochMillis })
         }
     }
 
@@ -63,6 +65,20 @@ class UsageEventsCopyTest {
 
             assertEquals(listOf(now - day - 5 * 60 * 1_000L to now), source.reads)
             assertEquals(now, cursors.values[UsageEventsCopy.CURSOR_SOURCE])
+        }
+
+    @Test
+    fun without_usage_access_nothing_is_copied_and_the_cursor_stays() =
+        runTest {
+            val cursors = MemoryCursors().apply { values[UsageEventsCopy.CURSOR_SOURCE] = now - day }
+            val received = mutableListOf<DeviceUsageEvent>()
+
+            val result = UsageEventsCopy(FakeSource(events, granted = false), cursors, { received += it }).run(now)
+
+            assertEquals(false, result.accessGranted)
+            assertEquals(0, result.eventCount)
+            assertEquals(emptyList<DeviceUsageEvent>(), received)
+            assertEquals(now - day, cursors.values[UsageEventsCopy.CURSOR_SOURCE])
         }
 
     @Test
