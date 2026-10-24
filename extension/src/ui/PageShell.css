@@ -1,0 +1,19 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+body {
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.page-shell {
+  padding: var(--space-4);
+}
+
+.page-shell__title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-title);
+}

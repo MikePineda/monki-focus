@@ -1,3 +1,74 @@
-# Browser extension
+# `@monki-focus/extension`
 
-Placeholder. Work package 0.4 adds the skeleton (WXT + Vite + Vitest) and phase 1 (E1-E9) builds the Chromium MV3 extension.
+Chromium MV3 extension (Chrome, Brave): WXT 0.21 on Vite 8, Preact, TypeScript,
+Vitest and Playwright. Phase 1 (E1-E9) fills in feed hiding, the intention gate,
+tracking and the popup; this package is the skeleton they build on.
+
+## Commands
+
+| Command                                     | What                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------- |
+| `npm run dev -w @monki-focus/extension`     | WXT dev server (mode `development`), opens a browser with the build |
+| `npm run build -w @monki-focus/extension`   | production build in `.output/chrome-mv3`                            |
+| `npm run build:dev -w …` / `build:e2e -w …` | `.output/chrome-mv3-dev` / `.output/chrome-mv3-e2e`                 |
+| `npm run zip -w @monki-focus/extension`     | `.output/monki-focus-extension-<version>-chrome.zip` (production)   |
+| `npm run test -w @monki-focus/extension`    | Vitest unit tests (`tests/unit`, `fakeBrowser` via `WxtVitest()`)   |
+| `npm run e2e -w @monki-focus/extension`     | builds `e2e` and runs Playwright (`e2e/tests`)                      |
+
+First E2E run on a machine: `npx playwright install chromium`.
+
+## Build modes and the extension id
+
+`wxt.config.ts` derives the manifest from the build mode
+(`config/extensionManifest.ts`):
+
+- `development` and `e2e` add `manifest.key` from the env var
+  `EXTENSION_DEV_PUBLIC_KEY` (base64 DER public key, no PEM armour) when it is
+  set, which pins the unpacked extension id (needed later for native messaging
+  `allowed_origins`). Without it the unpacked id is derived from the folder
+  path and varies between machines; tests never hard-code it.
+- `production` (`build`, `zip`) never carries a `key`; the store assigns the id.
+
+Only the public key is ever used. The private key (`.pem`) never enters the
+repo (`*.pem` is gitignored).
+
+## Layout
+
+```
+src/entrypoints/   background.ts (wiring only), popup/, options/, gate/
+src/background/    service-worker modules (commands/CommandRouter.ts, ...)
+src/shared/        clock.ts (injected Clock), messages.ts (typed commands)
+src/i18n/          catalogs/{en,es}.json, t.ts, locale.ts
+src/theme/         tokens.css (semantic light/dark variables)
+src/ui/            Preact components
+public/_locales/   store name and description only
+tests/unit/        mirrors src/
+e2e/               Playwright: support/, fixtures/sites/<site>/, tests/
+```
+
+## Rules this package enforces
+
+- The service worker is the only writer of state; other contexts send typed
+  commands (`src/shared/messages.ts`). `CommandRouter` answers only messages
+  whose `sender.id` is this extension's id; there is no
+  `externally_connectable`.
+- UI copy comes only from `src/i18n/catalogs` (`en`, `es`); a parity test fails
+  on any missing key and ESLint (`i18next/no-literal-string`) rejects literal
+  JSX text in `src/ui` and `src/entrypoints`. No `innerHTML`.
+- Colours, type and spacing come from the variables in `src/theme/tokens.css`.
+
+## E2E harness
+
+- Playwright's bundled Chromium with `channel: 'chromium'` in a persistent
+  context, plus `--disable-extensions-except` / `--load-extension`. The
+  default headless shell does not load extensions (verified with
+  `@playwright/test` 1.64.1: the service worker never starts), and branded
+  Chrome 137+ ignores `--load-extension`.
+- No real sites: `e2e/support/fixtureServer.ts` serves
+  `e2e/fixtures/sites/<site>/` over HTTPS (self-signed per run) on a free
+  ephemeral loopback port, and `--host-resolver-rules` maps reddit, x/twitter,
+  youtube and instagram (and subdomains) to `127.0.0.1:<port>`; every other
+  host fails to resolve. Pages keep their real origin
+  (`https://www.reddit.com/`), so host permissions and content-script matches
+  apply unchanged, and no privileged port 443 is needed.
+- Fixture pages are synthetic: real DOM structure, invented content.
