@@ -1,0 +1,35 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Lives in a shadow root appended to <html>; the host resets inherited styles. */
+:host {
+  all: initial;
+}
+
+.mf-session-overlay {
+  font-family: var(--mf-font-family-sans);
+  font-size: var(--mf-type-body-size);
+  line-height: var(--mf-type-body-line-height);
+  color: var(--mf-ink-1);
+}
+
+/* Above anything the page stacks. */
+.mf-session-overlay .mf-overlay {
+  z-index: 2147483647;
+}
+
+.mf-intention-pill {
+  position: fixed;
+  right: var(--mf-space-md);
+  bottom: var(--mf-space-md);
+  z-index: 2147483647;
+  margin: 0;
+  padding: var(--mf-space-xs) var(--mf-space-md);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius-full);
+  background: var(--mf-surface-1);
+  color: var(--mf-ink-1);
+  box-shadow: var(--mf-elevation-1);
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}

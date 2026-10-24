@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Decision } from '@monki-focus/rules/pure'
+import {
+  INTENTION_MINUTES,
+  MAX_GATE_SEARCH_LENGTH,
+  MAX_INTENTION_LENGTH,
+  type ActiveSession,
+  type CommitResult,
+  type GateView,
+  type IntentionMinutes,
+} from './GateContract'
 import { isGuardAttributes, type GuardAttributes } from './GuardAttributes'
 import type { IncognitoAccess, TodayStats, WeekStats } from './StatsContract'
 
@@ -9,8 +18,9 @@ import type { IncognitoAccess, TodayStats, WeekStats } from './StatsContract'
  * state. Every command is `{ v, type, payload }`; the answer is a
  * `CommandResult` that carries a reason code, never user-facing text.
  *
- * Later work packages add `intention.start`, `intention.extend`,
- * `gate.dismiss`, `override.request`, ...
+ * `gate.*` commands come only from the extension's own gate page in a tab
+ * (`GATE_PAGE_COMMANDS`); `gate.open` and `intention.*` come from the feed
+ * guard of a site page (`TAB_URL_COMMANDS`).
  */
 export const MESSAGE_VERSION = 1
 
@@ -34,6 +44,19 @@ export interface FeedDecision {
    * every page of the site (`data-mf-restrict`).
    */
   restrict: string[]
+  /** The intention or emergency access this page is inside (E6), if any. */
+  session?: ActiveSession
+}
+
+/** The DNR redirect's hand-off: the session ticket proves the rule wrote `to`. */
+export interface GateHandoff {
+  ticket: string
+  to: string
+}
+
+/** The gate page's tab is closed (or replaced by a new tab when it was the last one). */
+export interface ClosedAnswer {
+  closed: boolean
 }
 
 export interface CommandMap {
@@ -55,6 +78,37 @@ export interface CommandMap {
   'stats.week': { request: Record<string, never>; response: WeekStats }
   /** Whether incognito access is allowed (popup warning). */
   'privacy.incognitoAccess': { request: Record<string, never>; response: IncognitoAccess }
+  /** The gate page of a tab asks what to show (and hands off the DNR destination once). */
+  'gate.load': { request: { handoff: GateHandoff | null }; response: GateView }
+  /** The pause on screen has run out. */
+  'gate.pauseDone': { request: Record<string, never>; response: GateView }
+  /** "Continue to <site>": commit to an intention for some minutes. */
+  'gate.commit': {
+    request: { minutes: IntentionMinutes; intention: string }
+    response: CommitResult
+  }
+  /** Close: closes the gate's tab (or opens a new tab if it is the last one). */
+  'gate.close': { request: Record<string, never>; response: ClosedAnswer }
+  /** Emergency: starts the 2-minute wait. */
+  'gate.emergency': { request: Record<string, never>; response: GateView }
+  /** The emergency wait has run out: 15 minutes of access, recorded as a bypass. */
+  'gate.emergencyDone': { request: Record<string, never>; response: GateView }
+  /** Cancels the emergency wait and goes back to the gate. */
+  'gate.emergencyCancel': { request: Record<string, never>; response: GateView }
+  /** Timed out on the gate page: leave (closes the tab). */
+  'gate.leave': { request: Record<string, never>; response: ClosedAnswer }
+  /** Timed out on the gate page: 5 more minutes (a broken intention). */
+  'gate.extend': { request: Record<string, never>; response: GateView }
+  /** The gate's search box: answers the site search URL to open (never gated). */
+  'gate.search': { request: { query: string }; response: GateView }
+  /** A site page whose decision gates or blocks it asks to be sent to the gate. */
+  'gate.open': { request: { url: string }; response: { opened: boolean } }
+  /** The page's intention timer reached zero. */
+  'intention.expired': { request: { url: string }; response: { session: ActiveSession | null } }
+  /** Timeout overlay: Leave (closes the tab). */
+  'intention.leave': { request: { url: string }; response: ClosedAnswer }
+  /** Timeout overlay: 5 more minutes (the tab goes through the doubled pause). */
+  'intention.extend': { request: { url: string }; response: { opened: boolean } }
 }
 
 export type CommandType = keyof CommandMap
@@ -98,6 +152,30 @@ function hasOnlyKeys(value: object, keys: readonly string[]): boolean {
   return Object.keys(value).every((key) => keys.includes(key))
 }
 
+const NO_PAYLOAD = (payload: object): payload is Record<string, never> => hasOnlyKeys(payload, [])
+
+/** A session ticket: base64url, as `GateTicket` creates it. */
+const TICKET_PATTERN = /^[A-Za-z0-9_-]{16,64}$/
+
+function isHandoff(value: unknown): value is GateHandoff {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as Record<string, unknown>
+  return (
+    hasOnlyKeys(candidate, ['ticket', 'to']) &&
+    typeof candidate.ticket === 'string' &&
+    TICKET_PATTERN.test(candidate.ticket) &&
+    isHttpUrl(candidate.to)
+  )
+}
+
+function isBoundedString(value: unknown, max: number): value is string {
+  return typeof value === 'string' && value.length <= max
+}
+
+function isUrlPayload(payload: object): payload is { url: string } {
+  return hasOnlyKeys(payload, ['url']) && isHttpUrl((payload as { url?: unknown }).url)
+}
+
 function isHttpUrl(text: unknown): text is string {
   if (typeof text !== 'string' || text.length === 0 || text.length > MAX_COMMAND_URL_LENGTH) {
     return false
@@ -125,7 +203,56 @@ export const COMMAND_PAYLOAD_GUARDS: {
   'stats.week': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
   'privacy.incognitoAccess': (payload): payload is Record<string, never> =>
     hasOnlyKeys(payload, []),
+  'gate.load': (payload): payload is { handoff: GateHandoff | null } => {
+    const handoff = (payload as { handoff?: unknown }).handoff
+    return hasOnlyKeys(payload, ['handoff']) && (handoff === null || isHandoff(handoff))
+  },
+  'gate.pauseDone': NO_PAYLOAD,
+  'gate.commit': (payload): payload is { minutes: IntentionMinutes; intention: string } => {
+    const { minutes, intention } = payload as { minutes?: unknown; intention?: unknown }
+    return (
+      hasOnlyKeys(payload, ['minutes', 'intention']) &&
+      (INTENTION_MINUTES as readonly unknown[]).includes(minutes) &&
+      isBoundedString(intention, MAX_INTENTION_LENGTH)
+    )
+  },
+  'gate.close': NO_PAYLOAD,
+  'gate.emergency': NO_PAYLOAD,
+  'gate.emergencyDone': NO_PAYLOAD,
+  'gate.emergencyCancel': NO_PAYLOAD,
+  'gate.leave': NO_PAYLOAD,
+  'gate.extend': NO_PAYLOAD,
+  'gate.search': (payload): payload is { query: string } => {
+    const { query } = payload as { query?: unknown }
+    return (
+      hasOnlyKeys(payload, ['query']) &&
+      isBoundedString(query, MAX_GATE_SEARCH_LENGTH) &&
+      query.trim().length > 0
+    )
+  },
+  'gate.open': isUrlPayload,
+  'intention.expired': isUrlPayload,
+  'intention.leave': isUrlPayload,
+  'intention.extend': isUrlPayload,
 }
+
+/**
+ * Commands only the extension's own gate page may send: the sender must be
+ * `chrome-extension://<this id or its dynamic id>/gate.html` in a tab, and
+ * the tab is the one the command acts on.
+ */
+export const GATE_PAGE_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
+  'gate.load',
+  'gate.pauseDone',
+  'gate.commit',
+  'gate.close',
+  'gate.emergency',
+  'gate.emergencyDone',
+  'gate.emergencyCancel',
+  'gate.leave',
+  'gate.extend',
+  'gate.search',
+])
 
 /**
  * Commands sent by content scripts about the page they run in: the router
@@ -135,6 +262,10 @@ export const COMMAND_PAYLOAD_GUARDS: {
 export const TAB_URL_COMMANDS: { [T in CommandType]?: (payload: CommandRequest<T>) => string } = {
   'decision.get': (payload) => payload.url,
   'feedGuard.attach': (payload) => payload.url,
+  'gate.open': (payload) => payload.url,
+  'intention.expired': (payload) => payload.url,
+  'intention.leave': (payload) => payload.url,
+  'intention.extend': (payload) => payload.url,
 }
 
 /**

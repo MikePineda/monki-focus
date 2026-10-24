@@ -1,0 +1,88 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* The intention gate: one centred column on `surface`, no site branding. */
+.mf-gate {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-lg);
+  width: 100%;
+  max-width: var(--mf-column-max);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: var(--mf-space-3xl) var(--mf-space-md) var(--mf-space-xl);
+}
+
+.mf-gate__context,
+.mf-gate__level {
+  margin: 0;
+  color: var(--mf-ink-2);
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  letter-spacing: var(--mf-type-label-letter-spacing);
+  font-variant-numeric: tabular-nums;
+}
+
+.mf-gate__pause,
+.mf-gate__message,
+.mf-gate__form,
+.mf-gate__guardian {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-md);
+}
+
+.mf-gate__heading {
+  margin: 0;
+  font-size: var(--mf-type-title-size);
+  line-height: var(--mf-type-title-line-height);
+  font-weight: var(--mf-type-title-weight);
+  letter-spacing: var(--mf-type-title-letter-spacing);
+  text-wrap: balance;
+}
+
+.mf-gate__why {
+  margin: 0;
+  color: var(--mf-ink-2);
+}
+
+/* Static under reduced motion; the breathing only runs below. */
+.mf-gate__breath {
+  width: var(--mf-space-3xl);
+  height: var(--mf-space-3xl);
+  border: 1px solid var(--mf-line-strong);
+  border-radius: var(--mf-radius-full);
+  background: var(--mf-surface-1);
+}
+
+.mf-gate__search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-sm);
+  padding-top: var(--mf-space-md);
+  border-top: 1px solid var(--mf-line);
+}
+
+.mf-gate__footer {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding-top: var(--mf-space-xl);
+}
+
+@keyframes mf-gate-breath {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.6);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mf-gate__breath {
+    margin: var(--mf-space-md);
+    animation: mf-gate-breath calc(var(--mf-breath-phase) * 2) ease-in-out infinite;
+  }
+}

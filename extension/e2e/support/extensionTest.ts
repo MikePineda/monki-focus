@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { test as base, type BrowserContext } from '@playwright/test'
+import { starterRuleset, useRuleset, type StartingRuleset } from './extensionStorage'
 import { startFixtureServer, type FixtureServer } from './fixtureServer'
 import { launchExtension, type ExtensionBuild, type LaunchedExtension } from './launchExtension'
 
 interface ExtensionFixtures {
   /** Which build to load: `test.use({ extensionBuild: 'dev' })` for the UI kit gallery. */
   extensionBuild: ExtensionBuild
+  /**
+   * The rule set before the spec runs: `gateless` (default: feeds only, no
+   * gate, no bedtime), `gated` (the starter without bedtime) or `untouched`.
+   */
+  startingRuleset: StartingRuleset
   launched: LaunchedExtension
   context: BrowserContext
   extensionId: string
@@ -24,6 +30,7 @@ interface WorkerFixtures {
  */
 export const test = base.extend<ExtensionFixtures, WorkerFixtures>({
   extensionBuild: ['e2e', { option: true }],
+  startingRuleset: ['gateless', { option: true }],
   fixtureServer: [
     // eslint-disable-next-line no-empty-pattern -- Playwright requires the destructuring
     async ({}, use) => {
@@ -33,12 +40,18 @@ export const test = base.extend<ExtensionFixtures, WorkerFixtures>({
     },
     { scope: 'worker' },
   ],
-  launched: async ({ fixtureServer, locale, extensionBuild }, use) => {
+  launched: async ({ fixtureServer, locale, extensionBuild, startingRuleset }, use) => {
     const launched = await launchExtension({
       fixturePort: fixtureServer.port,
       locale,
       build: extensionBuild,
     })
+    // The starter gates Reddit and X and has a bedtime: specs about other
+    // things start from a rule set that leaves every page alone.
+    if (extensionBuild === 'e2e' && startingRuleset !== 'untouched') {
+      const friction = startingRuleset === 'gated'
+      await useRuleset(launched.context, starterRuleset({ friction }), friction ? 2 : 0)
+    }
     await use(launched)
     await launched.context.close()
   },

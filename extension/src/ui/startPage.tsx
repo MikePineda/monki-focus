@@ -16,6 +16,11 @@ export interface StartPageOptions {
   titleKey: SimpleKey
   /** Page body under the heading; receives the page's I18nProvider. */
   content?: ComponentChildren
+  /**
+   * `false` renders `content` without the PageShell heading: a page that
+   * lays out its own `<main>` and heading (the intention gate).
+   */
+  shell?: boolean
   root?: HTMLElement | null
   /** Seams for tests; production uses the extension's storage and browser. */
   storage?: Parameters<typeof readUiPreferences>[0]
@@ -35,6 +40,7 @@ const SYSTEM_PREFERENCES: UiPreferences = { theme: 'system', language: 'system' 
 export async function startPage({
   titleKey,
   content,
+  shell = true,
   root = document.getElementById('app'),
   storage = browser.storage.local,
   storageChanged = browser.storage.onChanged,
@@ -58,7 +64,7 @@ export async function startPage({
   document.title = t(titleKey)
   render(
     <I18nProvider locale={locale}>
-      <PageShell title={t(titleKey)}>{content}</PageShell>
+      {shell ? <PageShell title={t(titleKey)}>{content}</PageShell> : content}
     </I18nProvider>,
     root
   )

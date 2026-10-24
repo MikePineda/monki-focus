@@ -31,6 +31,11 @@ export interface FeedGuardOptions {
   timeoutMs?: number
   /** Called after each answer is applied (E2E builds mark the page). */
   onApplied?: () => void
+  /**
+   * Every applied answer for the page's URL, for the intention gate (E6):
+   * gated pages go to the gate, running intentions show their pill.
+   */
+  onDecision?: (answer: FeedDecision, url: string) => void
 }
 
 /** The hidden page surface the placeholder stands in for, if any. */
@@ -138,6 +143,7 @@ export class FeedGuard {
     const state: HideState = { hide: answer.hide, restrict: answer.restrict }
     this.hider.apply(state)
     placeholder.show(placeholderSurfaceOf(state, answer.surface))
+    this.options.onDecision?.(answer, url)
     this.options.onApplied?.()
   }
 }

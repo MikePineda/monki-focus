@@ -3,7 +3,7 @@ import { browser } from 'wxt/browser'
 import { defineBackground } from 'wxt/utils/define-background'
 import { CommandRouter } from '../background/commands/CommandRouter'
 import { createCommandHandlers, type FeedDecisions } from '../background/commands/commands'
-import { DecisionService } from '../background/decisions/DecisionService'
+import { DecisionService, EMPTY_DECISION_STATE } from '../background/decisions/DecisionService'
 import {
   RESTRICTION_ALARM,
   RESTRICTION_CHECK_MINUTES,
@@ -12,14 +12,17 @@ import {
 import { delayedFeedDecisions } from '../background/e2e/DecisionDelay'
 import { SiteTabs } from '../background/feeds/SiteTabs'
 import { UserStylesheetInjector } from '../background/feeds/UserStylesheetInjector'
+import { createGateModule, type GateModule } from '../background/gate/GateModule'
 import { deviceTimeZone } from '../background/rules/DeviceTimeZone'
 import { RulesetStore } from '../background/rules/RulesetStore'
 import { ShortsRedirectSync } from '../background/shorts/ShortsRedirectSync'
+import { openMonkiDb } from '../background/storage/db'
 import { createTrackingModule } from '../background/tracking/TrackingModule'
 import { trackingTimingFor } from '../background/tracking/TrackingTiming'
 import { bundledRulesCatalog } from '../shared/bundledRulesCatalog'
 import { systemClock } from '../shared/clock'
 import { decisionChangedMessage } from '../shared/messages'
+import { runtimeClock } from '../shared/RuntimeClock'
 
 // Wiring only: every behaviour lives in a module under src/background.
 // Failures are swallowed here on purpose (reason codes only, never URLs):
@@ -27,7 +30,16 @@ import { decisionChangedMessage } from '../shared/messages'
 export default defineBackground(() => {
   const catalog = bundledRulesCatalog()
   const rulesets = new RulesetStore({ storage: browser.storage.local, deviceTimeZone })
-  const decisionService = new DecisionService({ catalog, rulesets, clock: systemClock })
+  // The gate and the decisions share one clock (shifted by specs in the e2e build).
+  const gateClock = runtimeClock()
+  // The decisions read the gate's state; the gate decides with them.
+  const gateHolder: { module?: GateModule } = {}
+  const decisionService = new DecisionService({
+    catalog,
+    rulesets,
+    clock: gateClock,
+    states: () => gateHolder.module?.decisionState() ?? EMPTY_DECISION_STATE,
+  })
   const shortsRedirect = new ShortsRedirectSync(decisionService, browser.declarativeNetRequest)
   const siteTabs = new SiteTabs({
     query: (query) => browser.tabs.query(query),
@@ -45,13 +57,46 @@ export default defineBackground(() => {
     onChange: decisionsChanged,
   })
 
+  const db = openMonkiDb()
+  db.catch(() => undefined)
   const tracking = createTrackingModule({
     browser,
     clock: systemClock,
     timing: trackingTimingFor(import.meta.env.MODE),
     catalog,
     rulesets,
+    openDb: () => db,
   })
+
+  const gate = createGateModule({
+    browser: {
+      ...browser,
+      tabs: {
+        get: (tabId) => browser.tabs.get(tabId),
+        query: (query) => browser.tabs.query(query),
+        queryAll: () => browser.tabs.query({}),
+        create: (properties) => browser.tabs.create(properties),
+        remove: (tabId) => browser.tabs.remove(tabId),
+        update: (tabId, properties) => browser.tabs.update(tabId, properties),
+        onUpdated: browser.tabs.onUpdated,
+        onRemoved: browser.tabs.onRemoved,
+      },
+    },
+    clock: gateClock,
+    catalog,
+    rulesets,
+    openDb: () => db,
+    decide: (url) => decisionService.decide(url),
+    minutesToday: async (site) => {
+      const today = await tracking.commands.today()
+      const seconds = today.topActivities.find((top) => top.activityKey === site)?.seconds ?? 0
+      return Math.floor(seconds / 60)
+    },
+    broadcast: async () => {
+      await siteTabs.broadcast(decisionChangedMessage())
+    },
+  })
+  gateHolder.module = gate
 
   let decisions: FeedDecisions = decisionService
   if (import.meta.env.MODE === 'e2e') {
@@ -67,6 +112,7 @@ export default defineBackground(() => {
       stylesheets: new UserStylesheetInjector(catalog, browser.scripting),
       shortsRedirect,
       tracking: tracking.commands,
+      gate,
     })
   )
   router.listen(browser.runtime.onMessage)
@@ -82,12 +128,17 @@ export default defineBackground(() => {
   rulesets.watch(browser.storage.onChanged, () => {
     void decisionsChanged()
     void restrictions.check().catch(() => undefined)
+    void gate.refresh().catch(() => undefined)
   })
   browser.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === RESTRICTION_ALARM) void restrictions.check().catch(() => undefined)
+    if (alarm.name !== RESTRICTION_ALARM) return
+    void restrictions.check().catch(() => undefined)
+    // Schedule edges and spent budgets change which sites the gate redirects.
+    void gate.refresh().catch(() => undefined)
   })
   void browser.alarms.create(RESTRICTION_ALARM, { periodInMinutes: RESTRICTION_CHECK_MINUTES })
   void shortsRedirect.sync().catch(() => undefined)
   void restrictions.check().catch(() => undefined)
   tracking.start()
+  gate.start()
 })

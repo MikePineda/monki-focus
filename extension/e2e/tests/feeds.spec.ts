@@ -18,11 +18,13 @@ interface WorkerGlobal {
 const REDDIT_PERMALINK =
   'https://www.reddit.com/r/examplesub/comments/fixture1/first_synthetic_post/'
 
-/** A starter rule set that shows the Reddit feed (and no bedtime). */
+/** A starter rule set that shows the Reddit feed (no friction, no bedtime). */
 function rulesetShowingRedditFeed(): Ruleset {
   return {
     ...structuredClone(starterPreset),
-    rules: starterPreset.rules.filter((rule) => rule.id !== 'starter-reddit-feed-hide'),
+    rules: starterPreset.rules.filter(
+      (rule) => rule.id !== 'starter-reddit-feed-hide' && rule.mode !== 'friction'
+    ),
     bedtime: { ...starterPreset.bedtime, enabled: false },
   }
 }
