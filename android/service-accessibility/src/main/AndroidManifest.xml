@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!--
+  MonkiAccessibilityService lands in work package 2.7. It is guarded by the
+  android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+  attribute, which only the system holds; the module requests nothing itself.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
