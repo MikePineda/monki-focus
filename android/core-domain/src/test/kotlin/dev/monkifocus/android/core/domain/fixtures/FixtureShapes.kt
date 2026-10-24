@@ -95,6 +95,33 @@ data class RuleChangeFixture(
     )
 }
 
+@Serializable
+data class CandidatesFixture(
+    val id: String,
+    val kind: String,
+    val description: String,
+    val given: Given,
+    @SerialName("when") val whenever: When,
+    val then: Then,
+) {
+    @Serializable
+    data class Given(
+        val ruleset: Ruleset,
+        val now: String,
+    )
+
+    @Serializable
+    data class When(
+        val target: Observation,
+    )
+
+    @Serializable
+    data class Then(
+        val frictionCandidates: List<String>,
+        val budgetedRules: List<String>,
+    )
+}
+
 /** A document every validator must reject, with its code; `document` stays raw JSON on purpose. */
 @Serializable
 data class InvalidFixture(

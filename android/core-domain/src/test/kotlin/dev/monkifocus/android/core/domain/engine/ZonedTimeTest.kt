@@ -75,6 +75,22 @@ class ZonedTimeTest {
     }
 
     @Test
+    fun offset_transitions_are_the_first_second_with_the_new_offset() {
+        val sydney = "Australia/Sydney"
+        val springForward = epochSecondsOf("2026-10-03T16:00:00Z")
+        val week = 7 * SECONDS_PER_DAY
+
+        assertEquals(listOf(springForward), offsetTransitionsBetween(springForward - week, springForward + week, sydney))
+        assertEquals(listOf(springForward), offsetTransitionsBetween(springForward - 1, springForward, sydney))
+        assertEquals(emptyList<Long>(), offsetTransitionsBetween(springForward, springForward + week, sydney))
+        assertEquals(
+            listOf(epochSecondsOf("2026-10-25T01:00:00Z")),
+            offsetTransitionsBetween(epochSecondsOf("2026-10-24T00:00:00Z"), epochSecondsOf("2026-10-26T00:00:00Z"), "Europe/London"),
+        )
+        assertEquals(emptyList<Long>(), offsetTransitionsBetween(springForward - week, springForward + week, "UTC"))
+    }
+
+    @Test
     fun zone_names_resolve_case_sensitively_for_validators() {
         assertTrue(isResolvableTimeZone("Australia/Sydney"))
         assertTrue(isResolvableTimeZone("Asia/Calcutta"))

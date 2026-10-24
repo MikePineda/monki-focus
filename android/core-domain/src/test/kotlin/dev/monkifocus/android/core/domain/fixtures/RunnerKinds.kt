@@ -7,7 +7,7 @@ package dev.monkifocus.android.core.domain.fixtures
  * (vectors live in `packages/protocol`). A new kind fails [RunnerCoverageTest].
  */
 object RunnerKinds {
-    val RUN_HERE = listOf("decision", "specificity", "url-normalize", "schedule", "escalation", "rule-change", "invalid")
+    val RUN_HERE = listOf("decision", "specificity", "url-normalize", "schedule", "escalation", "rule-change", "candidates", "invalid")
 
     val RUN_ELSEWHERE = listOf("activity", "unlock-token")
 

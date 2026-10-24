@@ -31,6 +31,7 @@ class FailClosedDecisionTest {
         assertEquals(ReasonCode.ENGINE_ERROR, decision.reason)
         assertEquals(ExplanationKey.ENGINE_ERROR, decision.explanationKey)
         assertNull(decision.gate)
+        assertNull(decision.validUntil)
         assertEquals(ENGINE_ERROR_DECISION, decision)
     }
 
@@ -58,6 +59,7 @@ class FailClosedDecisionTest {
         assertFailsClosed(decide(aRuleset(), page, aState().copy(unlocks = listOf(unlock)), now, catalog))
         val escalation = initialEscalationState("r-x").copy(lastActivityAt = "2026-10-26T09:00:00")
         assertFailsClosed(decide(aRuleset(), page, aState().copy(escalation = listOf(escalation)), now, catalog))
+        assertFailsClosed(decide(aRuleset(), page, aState().copy(pendingEffectiveFrom = "tomorrow"), now, catalog))
     }
 
     @Test

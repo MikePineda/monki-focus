@@ -11,4 +11,9 @@ data class DecisionState(
     val usage: DailyUsage?,
     val unlocks: List<VerifiedUnlock>,
     val guardianLinked: Boolean,
+    /**
+     * `effectiveFrom` of the rule change that waits (§8), or null when none
+     * waits. `decide` never applies it; `validUntil` stops there (§5.6).
+     */
+    val pendingEffectiveFrom: String? = null,
 )
