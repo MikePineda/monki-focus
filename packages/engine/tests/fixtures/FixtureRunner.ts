@@ -15,6 +15,7 @@ export const RUNNER_KINDS = [
   'schedule',
   'escalation',
   'rule-change',
+  'candidates',
   'invalid',
 ] as const
 

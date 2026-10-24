@@ -14,6 +14,7 @@ const FAIL_CLOSED = {
   ruleId: null,
   reason: 'engine_error',
   explanationKey: 'decision.engine_error',
+  validUntil: null,
 }
 const page: Observation = { kind: 'site', urlText: 'https://news.example.org/today' }
 
