@@ -8,3 +8,4 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-10-25 Windows client (frontmost-app watcher and native messaging host).
 - 2026-10-25 Guardian approvals co-signed with the guardian's passkey, verified offline, so a server admin cannot self-approve.
 - 2026-10-25 Apple Developer ID signing and notarization for the macOS app (removes the "Open anyway" step).
+- 2026-10-25 detekt for the Android tree once a stable 2.x supports Kotlin 2.4 (Spotless + ktlint + Android Lint until then).
