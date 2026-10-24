@@ -27,10 +27,11 @@
     },
     "timeZone": {
       "title": "TimeZone",
-      "description": "IANA time zone name, for example `Australia/Sydney` or `UTC`.",
+      "description": "IANA time zone name, for example `Australia/Sydney` or `UTC`. `x-timeZone`: validators also reject a name the platform's time zone database cannot resolve (SEMANTICS.md §1).",
       "type": "string",
       "maxLength": 64,
-      "pattern": "^(UTC|[A-Z][A-Za-z_-]+(/[A-Za-z0-9_+-]+){1,2})$"
+      "pattern": "^(UTC|[A-Z][A-Za-z_-]+(/[A-Za-z0-9_+-]+){1,2})$",
+      "x-timeZone": true
     }
   }
 }

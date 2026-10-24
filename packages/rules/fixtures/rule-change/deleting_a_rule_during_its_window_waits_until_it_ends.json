@@ -1,0 +1,106 @@
+{
+  "id": "rule-change.deleting_a_rule_during_its_window_waits_until_it_ends",
+  "kind": "rule-change",
+  "description": "Deleting a 23:00–02:00 block waits past local midnight until the window running then ends (02:00 local).",
+  "given": {
+    "old": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit-late",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "block",
+          "schedules": [
+            {
+              "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+              "start": "23:00",
+              "end": "02:00"
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "new": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T15:00:00+11:00",
+    "pendingEffectiveFrom": null
+  },
+  "then": {
+    "effectiveToday": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit-late",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "block",
+          "schedules": [
+            {
+              "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+              "start": "23:00",
+              "end": "02:00"
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "effectiveFrom": "2026-10-26T15:00:00Z"
+  }
+}

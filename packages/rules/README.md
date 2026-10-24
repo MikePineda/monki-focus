@@ -50,7 +50,8 @@ import { bundledSchemaValidator, starterPreset } from '@monki-focus/rules/pure'
 
 Validators on every platform must also enforce the `x-uniqueBy` extension
 keyword (duplicate rule ids, category targets, escalation groups or surface ids
-are invalid). Kotlin and Swift read `schema/`, `data/` and `fixtures/` by relative path and
+are invalid), `x-registrableDomain` and `x-timeZone` (a zone the platform's
+time zone database cannot resolve is rejected with `invalid_time_zone`). Kotlin and Swift read `schema/`, `data/` and `fixtures/` by relative path and
 validate fixtures against `schema/v1/fixture.schema.json`.
 
 ## Scripts

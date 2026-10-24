@@ -64,7 +64,14 @@
         "code": {
           "title": "RejectionCode",
           "type": "string",
-          "enum": ["schema", "duplicate_key", "invalid_domain", "too_large", "invalid_json"]
+          "enum": [
+            "schema",
+            "duplicate_key",
+            "invalid_domain",
+            "invalid_time_zone",
+            "too_large",
+            "invalid_json"
+          ]
         }
       }
     }

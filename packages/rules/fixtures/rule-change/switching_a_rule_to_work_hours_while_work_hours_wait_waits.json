@@ -1,7 +1,7 @@
 {
-  "id": "rule-change.effective_from_stops_chaining_windows_after_seven_days",
+  "id": "rule-change.switching_a_rule_to_work_hours_while_work_hours_wait_waits",
   "kind": "rule-change",
-  "description": "Narrowing a block that runs 24 hours every day waits, but chained windows never push it past the local midnight 7 days after the next one.",
+  "description": "Moving an always-on friction rule to work hours while widening work hours to the whole week waits: the new schedule is judged against the work hours that apply today (the old Mon–Fri 09:00–17:00), so the rule keeps gating at 20:00 until local midnight.",
   "given": {
     "old": {
       "schemaVersion": 1,
@@ -10,19 +10,13 @@
       "timeZone": "Australia/Sydney",
       "rules": [
         {
-          "id": "r-reddit-block",
+          "id": "r-reddit-friction",
           "target": {
             "kind": "site",
             "domain": "reddit.com"
           },
-          "mode": "block",
-          "schedules": [
-            {
-              "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-              "start": "00:00",
-              "end": "00:00"
-            }
-          ],
+          "mode": "friction",
+          "schedules": [],
           "enabled": true
         }
       ],
@@ -37,7 +31,7 @@
       "workHours": {
         "days": ["mon", "tue", "wed", "thu", "fri"],
         "start": "09:00",
-        "end": "17:30"
+        "end": "17:00"
       }
     },
     "new": {
@@ -47,17 +41,15 @@
       "timeZone": "Australia/Sydney",
       "rules": [
         {
-          "id": "r-reddit-block",
+          "id": "r-reddit-friction",
           "target": {
             "kind": "site",
             "domain": "reddit.com"
           },
-          "mode": "block",
+          "mode": "friction",
           "schedules": [
             {
-              "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-              "start": "18:00",
-              "end": "23:00"
+              "ref": "workHours"
             }
           ],
           "enabled": true
@@ -72,12 +64,12 @@
         "warnMinutesBefore": 30
       },
       "workHours": {
-        "days": ["mon", "tue", "wed", "thu", "fri"],
-        "start": "09:00",
-        "end": "17:30"
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "00:00",
+        "end": "00:00"
       }
     },
-    "now": "2026-10-26T15:00:00+11:00",
+    "now": "2026-10-26T20:00:00+11:00",
     "pendingEffectiveFrom": null
   },
   "then": {
@@ -88,19 +80,13 @@
       "timeZone": "Australia/Sydney",
       "rules": [
         {
-          "id": "r-reddit-block",
+          "id": "r-reddit-friction",
           "target": {
             "kind": "site",
             "domain": "reddit.com"
           },
-          "mode": "block",
-          "schedules": [
-            {
-              "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-              "start": "00:00",
-              "end": "00:00"
-            }
-          ],
+          "mode": "friction",
+          "schedules": [],
           "enabled": true
         }
       ],
@@ -115,9 +101,9 @@
       "workHours": {
         "days": ["mon", "tue", "wed", "thu", "fri"],
         "start": "09:00",
-        "end": "17:30"
+        "end": "17:00"
       }
     },
-    "effectiveFrom": "2026-11-02T13:00:00Z"
+    "effectiveFrom": "2026-10-26T13:00:00Z"
   }
 }

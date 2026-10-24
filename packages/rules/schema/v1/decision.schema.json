@@ -48,7 +48,8 @@
         "emergency_active",
         "permalink_never_hidden",
         "path_unknown_allow",
-        "not_a_feed"
+        "not_a_feed",
+        "engine_error"
       ]
     },
     "explanationKey": {
@@ -68,7 +69,8 @@
         "decision.emergency_active",
         "decision.permalink_never_hidden",
         "decision.path_unknown_allow",
-        "decision.not_a_feed"
+        "decision.not_a_feed",
+        "decision.engine_error"
       ]
     },
     "frictionType": {

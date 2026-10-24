@@ -40,7 +40,7 @@ function pulseOf(entries: { seconds: number; level: number }[]): number | null {
 }
 
 const ACCESS_REASONS: Record<Decision['access'], readonly Decision['reason'][]> = {
-  block: ['rule_match', 'schedule_bedtime', 'budget_exhausted'],
+  block: ['rule_match', 'schedule_bedtime', 'budget_exhausted', 'engine_error'],
   gate: ['intention_required'],
   allow: [
     'no_rule',

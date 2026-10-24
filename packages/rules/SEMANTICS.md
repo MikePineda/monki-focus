@@ -13,8 +13,9 @@ the rule set's pinned `timeZone` (§6.3).
 
 ## 1. Conventions
 
-- **Instants** in inputs are RFC 3339 with an explicit offset and whole
-  seconds. Every instant an engine **computes** (escalation state, rule-change
+- **Instants** in inputs (`now` included) MUST be RFC 3339 with an explicit
+  offset or `Z` and whole seconds (the schema pattern); a floating local time
+  is invalid input. Every instant an engine **computes** (escalation state, rule-change
   `effectiveFrom`, analytics) is written in UTC with `Z` and no fractional
   seconds (`2026-10-25T23:00:00Z`), so fixture comparison is a string compare.
 - **Local time** means the wall clock in the pinned IANA time zone. Days of
@@ -35,10 +36,13 @@ the rule set's pinned `timeZone` (§6.3).
   `x.com`, are duplicates. A domain marked `x-registrableDomain` MUST keep two
   labels after normalisation and MUST NOT be a bare public suffix (two labels
   under a two-letter TLD with second label `ac`, `co`, `com`, `edu`, `gov`,
-  `net` or `org`): `m.me` and `www.co.uk` are rejected. Every platform's
-  validator enforces both keywords and reports a rejection code (`schema`,
-  `duplicate_key`, `invalid_domain`, `too_large`, `invalid_json`), checked by
-  the `invalid` fixtures (§12). Data contains literals, globs and view ids
+  `net` or `org`): `m.me` and `www.co.uk` are rejected. A time zone marked
+  `x-timeZone` MUST resolve in the platform's time zone database, matched
+  case-sensitively (links such as `Asia/Calcutta` are fine): `Mars/Olympus`
+  is rejected. Every platform's validator enforces these keywords and reports
+  a rejection code (`schema`, `duplicate_key`, `invalid_domain`,
+  `invalid_time_zone`, `too_large`, `invalid_json`), checked by the `invalid`
+  fixtures (§12). Data contains literals, globs and view ids
   only, never regular expressions or code.
 
 ## 2. URL normalisation (`url-normalize`)
@@ -279,7 +283,8 @@ ships with `UTC`; clients set the device zone once at install.
 
 `nextEscalation(state, event, now, guardianLinked) → {state, effects}`.
 One state per **target group**: the id of the friction rule (or the blocked
-rule / `bedtime` for emergency overrides). The initial state is `idle` with
+rule / `bedtime` for emergency overrides; `bedtime` is reserved, so no rule
+may use it as its id). The initial state is `idle` with
 counters 0, `pendingExtension` false and every other field null. Events that
 do not apply in the current phase leave the state unchanged; every event that
 changes the state sets `lastActivityAt = now`.
@@ -332,8 +337,11 @@ short extension path; the third and later require a full gate.
   with the doubled pause and no typing or key, `pendingExtension` true (then 5
   minutes). Otherwise a **full gate** at the current level (typing and key as
   §7.1), `pendingExtension` false (then `asking` and a new `commit`).
-- **`emergency_request`** in `idle`, `pausing`, `asking`, `timed_out`:
-  `override_waiting`, `overrideReadyAt = now + 120 s`.
+- **`emergency_request`** in `idle`, `pausing`, `asking`, `active`,
+  `timed_out` (every phase in which `decide` can gate or block, so the user is
+  never trapped; `active` matters when a budget runs out mid-intention):
+  `override_waiting`, `overrideReadyAt = now + 120 s`. From `active` the
+  intention ends (`intentionExpiresAt` becomes null).
 - **`emergency_wait_elapsed`** in `override_waiting` with
   `now ≥ overrideReadyAt`: `override_active`,
   `overrideEndsAt = now + 15 min`, effect `record_bypass` (always reported to
@@ -379,7 +387,11 @@ tightening) waits. Each part is judged on its own:
   (removing or disabling any rule that carries a budget waits); mode `allow → any`, `friction → block`,
   `hide-feed → block`; schedules whose week set (§6.1) contains the old one on
   a non-allow rule (outrank check when it grows); budget added or lowered
-  (raised or removed waits); `note` is neutral.
+  (raised or removed waits); `note` is neutral. A `{"ref": "workHours"}`
+  schedule resolves to `old.workHours` in the old rule and to the work hours
+  that apply **today** in the new one (`old.workHours` while a `workHours`
+  change waits, otherwise `new.workHours`): moving a rule to work hours while
+  widening them waits.
 - **Outrank check.** A rule that becomes active where it was not (added,
   enabled, schedule widened) is tightening only if, at every instant it is
   active, it does not outrank (§4, access axis) an overlapping rule of
@@ -412,19 +424,19 @@ version (added loosening rules left out, removed restrictive rules kept), with
 
 1. the next local midnight after `now` (with a waiting `timeZone` change, the
    later of the next midnights in both zones);
-2. if an old window of a waiting part is active at that instant (in either
-   zone), move to the end of that window; repeat while one is active, for at
-   most 7 days: the result is never later than the local midnight 7 local
-   days after the next local midnight of step 1 (with a waiting `timeZone`
-   change, the later of the two zones' such midnights), even when windows
-   still chain there (24-hour windows on every day never end). The old
-   windows of the waiting parts are (an old bedtime window only while the old
-   bedtime is enabled; a `workHours` reference resolves to the old
-   `workHours`):
+2. the first instant at or after that one that lies in no old window of a
+   waiting part (in either zone): the end of the union of the half-open
+   windows that chain from it, however many there are. It is a time bound,
+   never a round count, and never later than `now` + 8 days (691 200 s): if
+   the union still covers that instant (24-hour windows on every day never
+   end), the result is exactly `now` + 8 days. The old windows of the waiting
+   parts are (an old bedtime window only while the old bedtime is enabled; a
+   `workHours` reference resolves to the old `workHours`):
    - bedtime or categories (they decide bedtime): the old bedtime window;
-   - a rule whose `schedules` changed: its old schedule windows. Removed or
-     disabled rules add no window (the rule fields above decide whether they
-     wait); a rule without schedules has no window;
+   - a rule whose `schedules` changed, and an enabled non-allow rule that is
+     removed or disabled: its old schedule windows (deleting a block during
+     its window waits until the window ends); a rule without schedules has
+     no window;
    - `workHours`: the old `workHours` window;
    - `timeZone`: the old bedtime window and the schedule windows of every
      enabled old rule;
@@ -562,3 +574,19 @@ decisions are folded into the sections above):
     explore/trending/hashtags (`youtube.explore`) are feeds; Instagram Explore
     search is `instagram.search` (utility). The starter preset hides
     `youtube.explore` but not subscriptions or user pages.
+
+## 14. Failure handling
+
+- **Fail closed.** Any exception or invalid input while computing `decide`
+  (an input that fails its schema, an unresolvable time zone, an instant
+  without an offset, an internal error) yields
+  `{access: block, content: hide-feed, ruleId: null, reason: engine_error,
+explanationKey: decision.engine_error}` and no gate. Adapters log the
+  reason code only, never URLs or titles.
+- **Validated inputs.** Rule sets are validated (§1) before they reach an
+  engine; an unknown time zone is rejected with `invalid_time_zone`, so at
+  run time it can only come from a bug and fails closed as above.
+- **Ids are data.** Lookups by rule id, target group or usage key MUST use
+  maps or own-property checks and never reach an object prototype:
+  `constructor`, `toString` or `hasOwnProperty` are ordinary ids
+  (`decision.rule_ids_named_like_object_members_are_plain_ids`).
