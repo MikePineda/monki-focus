@@ -18,3 +18,5 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-10-25 Docs: update `docs/threat-model.md` §3 and `docs/CONTRACTS.md` to the final token spec (signed time token, ratcheting floor, revocations in the time token).
 - 2026-10-25 Protocol: list vendored vector files in `.prettierignore` so they stay byte-identical to upstream.
 - 2026-10-25 Self-hosting docs: release issuers are `https://host` only (no port, no IP literal); LAN setups need a hostname and a reverse proxy on 443.
+- 2026-10-25 macOS release: `release-please.yml` re-signs with `codesign --force --deep --sign -`, which drops the hardened-runtime flag the Release build sets; add `--options runtime` (and sign the helper before the app instead of `--deep`).
+- 2026-10-25 macOS: stable self-signed signing certificate (plan M1) so Accessibility survives rebuilds; M1 ships ad-hoc only.
