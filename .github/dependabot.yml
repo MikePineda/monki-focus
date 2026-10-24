@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Dependency updates. Commit prefixes keep Conventional Commits:
+# `build(deps): …` for application dependencies, `ci(deps): …` for actions
+# (still pinned by SHA; Dependabot bumps the SHA and the `# vX.Y.Z` comment).
+# Ecosystems whose directory has no manifest yet (gradle, swift, docker) are
+# reported as "dependency file not found" in the Dependabot log until the
+# component lands; nothing else breaks.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    ignore:
+      # TypeScript majors are gated by Angular and AdonisJS support: bump by hand.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      adonisjs:
+        patterns: ['@adonisjs/*', '@japa/*', '@vinejs/*', '@tuyau/*']
+      angular:
+        patterns: ['@angular/*', '@angular-devkit/*', 'angular-eslint']
+      extension:
+        patterns: ['wxt', '@wxt-dev/*', 'vite', 'preact', '@preact/*']
+      tooling:
+        patterns: ['*']
+        exclude-patterns:
+          [
+            '@adonisjs/*',
+            '@japa/*',
+            '@vinejs/*',
+            '@tuyau/*',
+            '@angular/*',
+            '@angular-devkit/*',
+            'angular-eslint',
+            'wxt',
+            '@wxt-dev/*',
+            'vite',
+            'preact',
+            '@preact/*',
+          ]
+
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      androidx:
+        patterns: ['androidx.*']
+        exclude-patterns: ['androidx.compose*']
+      compose:
+        patterns: ['androidx.compose*']
+      kotlin:
+        patterns: ['org.jetbrains.kotlin*', 'org.jetbrains.kotlinx*', 'com.google.devtools.ksp*']
+      tooling:
+        patterns: ['*']
+        exclude-patterns:
+          [
+            'androidx.*',
+            'org.jetbrains.kotlin*',
+            'org.jetbrains.kotlinx*',
+            'com.google.devtools.ksp*',
+          ]
+
+  - package-ecosystem: swift
+    directory: /macos/Packages/MonkiCore
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      swift:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      base-images:
+        patterns: ['*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ['*']

@@ -1,0 +1,152 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# CodeQL static analysis. JavaScript/TypeScript and the workflows themselves
+# (`actions`) are always analysed; java-kotlin and swift only once
+# android/ and macos/ have a build, through a guard step in the matrix. On
+# pull requests a language is analysed only when its paths changed; the weekly
+# run and pushes to main analyse everything.
+name: CodeQL
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      javascript: ${{ steps.filter.outputs.javascript }}
+      actions: ${{ steps.filter.outputs.actions }}
+      android: ${{ steps.filter.outputs.android }}
+      macos: ${{ steps.filter.outputs.macos }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            javascript:
+              - '**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}'
+              - 'package*.json'
+              - '.github/workflows/codeql.yml'
+            actions:
+              - '.github/**'
+            android:
+              - 'android/**'
+              - '.github/workflows/codeql.yml'
+            macos:
+              - 'macos/**'
+              - '.github/workflows/codeql.yml'
+
+  analyze:
+    name: analyze (${{ matrix.language }})
+    needs: changes
+    # Runs when `changes` was skipped (push, schedule) or succeeded (PR).
+    if: always() && (needs.changes.result == 'success' || needs.changes.result == 'skipped')
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+            build-mode: none
+            runner: ubuntu-24.04
+            filter: javascript
+            marker: package.json
+          - language: actions
+            build-mode: none
+            runner: ubuntu-24.04
+            filter: actions
+            marker: .github/workflows
+          - language: java-kotlin
+            build-mode: manual
+            runner: ubuntu-24.04
+            filter: android
+            marker: android/settings.gradle.kts
+          - language: swift
+            build-mode: manual
+            runner: macos-26
+            filter: macos
+            marker: macos/project.yml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - id: guard
+        env:
+          EVENT: ${{ github.event_name }}
+          CHANGED: ${{ needs.changes.outputs[matrix.filter] }}
+          MARKER: ${{ matrix.marker }}
+        run: |
+          if [[ "$EVENT" == 'pull_request' && "$CHANGED" != 'true' ]]; then
+            echo "::notice::No ${MARKER%%/*} changes in this pull request; skipping analysis."
+            echo 'present=false' >>"$GITHUB_OUTPUT"
+          else
+            bash scripts/ci/component-present.sh "$MARKER"
+          fi
+
+      - if: steps.guard.outputs.present == 'true' && matrix.language == 'java-kotlin'
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - if: steps.guard.outputs.present == 'true' && matrix.language == 'java-kotlin'
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: true
+
+      - if: steps.guard.outputs.present == 'true' && matrix.language == 'swift'
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: '26'
+
+      - if: steps.guard.outputs.present == 'true'
+        uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Build (java-kotlin)
+        if: steps.guard.outputs.present == 'true' && matrix.language == 'java-kotlin'
+        working-directory: android
+        run: ./gradlew --no-build-cache --no-configuration-cache assembleDebug
+
+      - name: Build (swift)
+        if: steps.guard.outputs.present == 'true' && matrix.language == 'swift'
+        working-directory: macos
+        run: |
+          brew install xcodegen
+          xcodegen generate
+          xcodebuild build -scheme MonkiFocus -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO
+
+      - if: steps.guard.outputs.present == 'true'
+        uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          category: /language:${{ matrix.language }}
