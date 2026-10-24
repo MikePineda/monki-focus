@@ -1,0 +1,669 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "0ec829c52ab05eeebd9a238c1de62a5f",
+    "entities": [
+      {
+        "tableName": "ruleset_revision",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `revision` INTEGER NOT NULL, `schema_version` INTEGER NOT NULL, `json` TEXT NOT NULL, `source` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `effective_from` INTEGER NOT NULL, `superseded_at` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "schemaVersion",
+            "columnName": "schema_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "json",
+            "columnName": "json",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "effectiveFrom",
+            "columnName": "effective_from",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "supersededAt",
+            "columnName": "superseded_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ruleset_revision_effective_from",
+            "unique": false,
+            "columnNames": [
+              "effective_from"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ruleset_revision_effective_from` ON `${TABLE_NAME}` (`effective_from`)"
+          }
+        ]
+      },
+      {
+        "tableName": "escalation_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`target_group` TEXT NOT NULL, `phase` TEXT NOT NULL, `attempt_count` INTEGER NOT NULL, `last_attempt_at` INTEGER, `last_activity_at` INTEGER, `broken_count` INTEGER NOT NULL, `last_friction_type` TEXT, `pause_ends_at` INTEGER, `pending_extension` INTEGER NOT NULL, `intention_expires_at` INTEGER, `override_ready_at` INTEGER, `override_ends_at` INTEGER, `gate_level` INTEGER, `gate_pause_seconds` INTEGER, `gate_friction_type` TEXT, `gate_requires_typed_intention` INTEGER, `gate_requires_guardian_key` INTEGER, PRIMARY KEY(`target_group`))",
+        "fields": [
+          {
+            "fieldPath": "targetGroup",
+            "columnName": "target_group",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "phase",
+            "columnName": "phase",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attemptCount",
+            "columnName": "attempt_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptAt",
+            "columnName": "last_attempt_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastActivityAt",
+            "columnName": "last_activity_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "brokenCount",
+            "columnName": "broken_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastFrictionType",
+            "columnName": "last_friction_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pauseEndsAt",
+            "columnName": "pause_ends_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pendingExtension",
+            "columnName": "pending_extension",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "intentionExpiresAt",
+            "columnName": "intention_expires_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "overrideReadyAt",
+            "columnName": "override_ready_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "overrideEndsAt",
+            "columnName": "override_ends_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "gate.level",
+            "columnName": "gate_level",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "gate.pauseSeconds",
+            "columnName": "gate_pause_seconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "gate.frictionType",
+            "columnName": "gate_friction_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gate.requiresTypedIntention",
+            "columnName": "gate_requires_typed_intention",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "gate.requiresGuardianKey",
+            "columnName": "gate_requires_guardian_key",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "target_group"
+          ]
+        }
+      },
+      {
+        "tableName": "intention",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `target_group` TEXT NOT NULL, `minutes` INTEGER NOT NULL, `typed_words` INTEGER NOT NULL, `guardian_key_verified` INTEGER NOT NULL, `started_at` INTEGER NOT NULL, `ends_at` INTEGER NOT NULL, `outcome` TEXT, `closed_at` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetGroup",
+            "columnName": "target_group",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "minutes",
+            "columnName": "minutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "typedWords",
+            "columnName": "typed_words",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "guardianKeyVerified",
+            "columnName": "guardian_key_verified",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "started_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endsAt",
+            "columnName": "ends_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "outcome",
+            "columnName": "outcome",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "closedAt",
+            "columnName": "closed_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_intention_target_group_ends_at",
+            "unique": false,
+            "columnNames": [
+              "target_group",
+              "ends_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_intention_target_group_ends_at` ON `${TABLE_NAME}` (`target_group`, `ends_at`)"
+          },
+          {
+            "name": "index_intention_started_at",
+            "unique": false,
+            "columnNames": [
+              "started_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_intention_started_at` ON `${TABLE_NAME}` (`started_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "bypass_event",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `kind` TEXT NOT NULL, `occurred_at` INTEGER NOT NULL, `detected_at` INTEGER NOT NULL, `details` TEXT NOT NULL, `reported_at` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurredAt",
+            "columnName": "occurred_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detectedAt",
+            "columnName": "detected_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "details",
+            "columnName": "details",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reportedAt",
+            "columnName": "reported_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_bypass_event_occurred_at",
+            "unique": false,
+            "columnNames": [
+              "occurred_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_bypass_event_occurred_at` ON `${TABLE_NAME}` (`occurred_at`)"
+          },
+          {
+            "name": "index_bypass_event_reported_at",
+            "unique": false,
+            "columnNames": [
+              "reported_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_bypass_event_reported_at` ON `${TABLE_NAME}` (`reported_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "aw_bucket",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `type` TEXT NOT NULL, `client` TEXT NOT NULL, `hostname` TEXT NOT NULL, `created_at` INTEGER NOT NULL, `data` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "client",
+            "columnName": "client",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hostname",
+            "columnName": "hostname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "data",
+            "columnName": "data",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "aw_event",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bucket_id` TEXT NOT NULL, `timestamp_ms` INTEGER NOT NULL, `duration_ms` INTEGER NOT NULL, `data` TEXT NOT NULL, `data_hash` TEXT NOT NULL, `synced_at` INTEGER, FOREIGN KEY(`bucket_id`) REFERENCES `aw_bucket`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bucketId",
+            "columnName": "bucket_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestampMs",
+            "columnName": "timestamp_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "duration_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "data",
+            "columnName": "data",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataHash",
+            "columnName": "data_hash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedAt",
+            "columnName": "synced_at",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_aw_event_bucket_id_timestamp_ms_data_hash",
+            "unique": true,
+            "columnNames": [
+              "bucket_id",
+              "timestamp_ms",
+              "data_hash"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_aw_event_bucket_id_timestamp_ms_data_hash` ON `${TABLE_NAME}` (`bucket_id`, `timestamp_ms`, `data_hash`)"
+          },
+          {
+            "name": "index_aw_event_timestamp_ms",
+            "unique": false,
+            "columnNames": [
+              "timestamp_ms"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_aw_event_timestamp_ms` ON `${TABLE_NAME}` (`timestamp_ms`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "aw_bucket",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "bucket_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "activity_block",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`device_id` TEXT NOT NULL, `block_start` INTEGER NOT NULL, `activity_key` TEXT NOT NULL, `category_path` TEXT NOT NULL, `source` TEXT NOT NULL, `level` INTEGER NOT NULL, `seconds` INTEGER NOT NULL, PRIMARY KEY(`device_id`, `block_start`, `activity_key`, `category_path`, `source`, `level`))",
+        "fields": [
+          {
+            "fieldPath": "deviceId",
+            "columnName": "device_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "blockStart",
+            "columnName": "block_start",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activityKey",
+            "columnName": "activity_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryPath",
+            "columnName": "category_path",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "level",
+            "columnName": "level",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seconds",
+            "columnName": "seconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "device_id",
+            "block_start",
+            "activity_key",
+            "category_path",
+            "source",
+            "level"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_activity_block_block_start",
+            "unique": false,
+            "columnNames": [
+              "block_start"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_activity_block_block_start` ON `${TABLE_NAME}` (`block_start`)"
+          }
+        ]
+      },
+      {
+        "tableName": "unlock_ledger",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`jti` TEXT NOT NULL, `status` TEXT NOT NULL, `exp_at` INTEGER NOT NULL, `iat_at` INTEGER, `nbf_at` INTEGER, `dur_s` INTEGER, `receipt_boot` TEXT, `receipt_mono_ms` INTEGER, `receipt_budget_ms` INTEGER, `activated_at` INTEGER, `activation_end_at` INTEGER, `activation_boot` TEXT, `activation_mono_ms` INTEGER, `activation_budget_ms` INTEGER, `stale` INTEGER NOT NULL, PRIMARY KEY(`jti`))",
+        "fields": [
+          {
+            "fieldPath": "jti",
+            "columnName": "jti",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expAt",
+            "columnName": "exp_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "iatAt",
+            "columnName": "iat_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "nbfAt",
+            "columnName": "nbf_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "durS",
+            "columnName": "dur_s",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "receiptBoot",
+            "columnName": "receipt_boot",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "receiptMonoMs",
+            "columnName": "receipt_mono_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "receiptBudgetMs",
+            "columnName": "receipt_budget_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "activatedAt",
+            "columnName": "activated_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "activationEndAt",
+            "columnName": "activation_end_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "activationBoot",
+            "columnName": "activation_boot",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activationMonoMs",
+            "columnName": "activation_mono_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "activationBudgetMs",
+            "columnName": "activation_budget_ms",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "stale",
+            "columnName": "stale",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "jti"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_unlock_ledger_exp_at",
+            "unique": false,
+            "columnNames": [
+              "exp_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_unlock_ledger_exp_at` ON `${TABLE_NAME}` (`exp_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "ingest_cursor",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`source` TEXT NOT NULL, `last_ts_ms` INTEGER NOT NULL, PRIMARY KEY(`source`))",
+        "fields": [
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastTsMs",
+            "columnName": "last_ts_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "source"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0ec829c52ab05eeebd9a238c1de62a5f')"
+    ]
+  }
+}
