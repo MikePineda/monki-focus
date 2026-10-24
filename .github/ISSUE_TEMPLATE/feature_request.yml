@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest an idea or an improvement.
+title: 'feat: '
+labels: ['enhancement', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        monki-focus is a self-commitment device chosen by the person who uses it. Requests for
+        hidden monitoring, covert installs or controlling someone else's device will be closed.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      multiple: true
+      options:
+        - Browser extension
+        - Android app
+        - macOS app
+        - Server (API)
+        - Web dashboard
+        - Rules / fixtures
+        - Self-hosting / Docker
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does it solve?
+      description: Describe the moment where the current behaviour falls short.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy impact
+      description: Does it collect, store or share anything new? Who would see it?

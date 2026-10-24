@@ -1,0 +1,74 @@
+name: Bug report
+description: Something does not work as documented.
+title: 'bug: '
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please do **not** paste personal data (real names, emails,
+        browsing history, screenshots with private content). Security problems go to
+        [private vulnerability reporting](https://github.com/MikePineda/monki-focus/security/advisories/new) instead.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Browser extension
+        - Android app
+        - macOS app
+        - Server (API)
+        - Web dashboard
+        - Rules / fixtures
+        - Self-hosting / Docker
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Component version (extension and app "About" screens, or `GET /api/health` on the server).
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How is it installed?
+      options:
+        - Official release
+        - Built from source
+        - Self-hosted server
+        - Not applicable
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Browser and version, Android version and device, or macOS version.
+      placeholder: Chromium 155 / Android 15 / macOS 26
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Redact anything personal before pasting.
+      render: shell

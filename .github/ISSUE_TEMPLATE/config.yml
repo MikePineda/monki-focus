@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/MikePineda/monki-focus/security/advisories/new
+    about: Please report vulnerabilities (including any hidden-monitoring path) privately, never in a public issue. See SECURITY.md.
+  - name: Code of Conduct concerns
+    url: https://github.com/MikePineda/monki-focus/security/advisories/new
+    about: Report conduct issues privately; start the title with "Code of Conduct".

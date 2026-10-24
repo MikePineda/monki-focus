@@ -1,0 +1,16 @@
+# Git hooks, installed by `npm install` through the root "prepare" script.
+# Only the commit message is checked locally; the full gate is `npm run verify`
+# and CI (which also runs commitlint and gitleaks on every pull request).
+prepare-commit-msg:
+  jobs:
+    # Developer Certificate of Origin: add a Signed-off-by trailer with the
+    # local git identity when the message does not carry one yet. Prefer
+    # `git commit -s`; this is a safety net, not a substitute for reading the DCO.
+    - name: dco-signoff
+      run: >-
+        git interpret-trailers --in-place --if-exists doNothing
+        --trailer "Signed-off-by: $(git config user.name) <$(git config user.email)>" {1}
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: npx --no-install commitlint --edit {1}

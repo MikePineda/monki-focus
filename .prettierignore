@@ -1,0 +1,25 @@
+# Generated or vendored output
+node_modules
+build
+dist
+coverage
+.turbo
+.output
+.wxt
+.angular
+.adonisjs
+tmp
+playwright-report
+test-results
+package-lock.json
+CHANGELOG.md
+# The official license text is kept byte-identical to the upstream file
+LICENSE
+# Local-only notes (gitignored)
+docs/internal
+# Copied verbatim from elsewhere; keep byte-identical to the source
+.claude/skills/web-design-guidelines
+.claude/skills/writing-guidelines
+# Native toolchains format their own sources (Spotless/ktlint, swift-format)
+android
+macos

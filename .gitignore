@@ -1,0 +1,54 @@
+# Private working docs (brief, plan copies, Q&A) — never committed
+docs/internal/
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+!.env.test
+*.pem
+*.p12
+*.jks
+*.keystore
+keystore.properties
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+.output/
+.wxt/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# Android / Gradle
+.gradle/
+local.properties
+android/**/build/
+*.apk
+*.aab
+
+# macOS / Xcode
+.DS_Store
+DerivedData/
+*.xcodeproj/
+*.xcworkspace/xcuserdata/
+.build/
+.swiftpm/
+
+# Test artefacts
+playwright-report/
+test-results/
+*.local.bru
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local tooling
+lefthook-local.yml
+.lefthook-local/
+.claude/settings.local.json
+*.log

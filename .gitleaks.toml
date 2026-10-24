@@ -1,0 +1,10 @@
+# Extends the default gitleaks rules with the repo's known false positives.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Published test vectors and documented placeholders"
+# Unlock-token and rules-signing test vectors use fixed, public test keys on
+# purpose (PASETO v4.public vectors); they never sign anything real.
+paths = ['''packages/protocol/fixtures/''']
+regexes = ['''test-key-not-real''', '''gitleaks:allow''']
