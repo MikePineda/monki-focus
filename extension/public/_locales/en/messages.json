@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Monki Focus",
+    "description": "Extension name shown in the browser and the store."
+  },
+  "extDescription": {
+    "message": "Hide endless feeds, pause before distracting sites and see where your time goes. Local-first and open source.",
+    "description": "Store and extensions-page description."
+  }
+}

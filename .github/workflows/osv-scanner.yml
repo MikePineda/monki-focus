@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# OSV-Scanner: known vulnerabilities in every lockfile of the monorepo
+# (package-lock.json, Gradle lockfiles, Package.resolved). Pull requests only
+# report vulnerabilities they introduce; the weekly run scans everything.
+# Non-blocking for now (`fail-on-vuln: false`, not a required check); results
+# land in Security > Code scanning.
+name: OSV-Scanner
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '41 4 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: osv-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scan-pr:
+    name: osv-scanner (pull request)
+    if: github.event_name == 'pull_request'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+    with:
+      runs-on: ubuntu-24.04
+      fail-on-vuln: false
+      scan-args: |-
+        --recursive
+        ./
+
+  scan:
+    name: osv-scanner
+    if: github.event_name != 'pull_request'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+    with:
+      runs-on: ubuntu-24.04
+      fail-on-vuln: false
+      scan-args: |-
+        --recursive
+        ./

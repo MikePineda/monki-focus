@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Synthetic stand-in for the Reddit home feed: real structure, fake content. -->
+<html lang="en" data-fixture="reddit-home">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture: reddit home</title>
+  </head>
+  <body>
+    <shreddit-app>
+      <header>
+        <form role="search" action="/search/">
+          <input type="search" name="q" aria-label="Search" />
+        </form>
+      </header>
+      <shreddit-feed>
+        <article data-post-id="t3_fixture1">
+          <a href="/r/examplesub/comments/fixture1/first_synthetic_post/">First synthetic post</a>
+        </article>
+        <article data-post-id="t3_fixture2">
+          <a href="/r/examplesub/comments/fixture2/second_synthetic_post/">Second synthetic post</a>
+        </article>
+      </shreddit-feed>
+    </shreddit-app>
+  </body>
+</html>
