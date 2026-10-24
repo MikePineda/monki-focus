@@ -28,7 +28,7 @@ class RunnerCoverageTest {
                 .directory("fixtures")
                 .listFiles { file -> file.isDirectory }!!
                 .map { it.name }
-                .filter { it !in RunnerKinds.RUN_ELSEWHERE }
+                .filter { it !in RunnerKinds.RUN_ELSEWHERE && it !in RunnerKinds.NOT_KINDS }
 
         assertEquals(directories.sorted(), RunnerKinds.RUN_HERE.sorted())
     }

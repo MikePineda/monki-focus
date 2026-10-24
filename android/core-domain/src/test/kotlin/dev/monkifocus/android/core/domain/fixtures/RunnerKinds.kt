@@ -10,4 +10,7 @@ object RunnerKinds {
     val RUN_HERE = listOf("decision", "specificity", "url-normalize", "schedule", "escalation", "rule-change", "invalid")
 
     val RUN_ELSEWHERE = listOf("activity", "unlock-token")
+
+    /** `fixtures/` directories that are not kinds: `detectors/` holds the UI dumps `:detectors` replays. */
+    val NOT_KINDS = listOf("detectors")
 }

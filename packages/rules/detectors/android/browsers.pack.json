@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "packId": "browsers",
+  "packVersion": "2026.10.25.1",
+  "minSchemaVersion": 1,
+  "packages": [
+    "com.android.chrome",
+    "com.brave.browser",
+    "com.vivaldi.browser",
+    "org.cromite.cromite",
+    "app.vanadium.browser",
+    "org.mozilla.firefox",
+    "com.sec.android.app.sbrowser"
+  ],
+  "testedAppVersions": [],
+  "unclassifiedCapMinutes": 0,
+  "keepVisible": [
+    "url_bar",
+    "omnibox_url_text",
+    "mozac_browser_toolbar_url_view",
+    "location_bar_edit_text"
+  ],
+  "urlBarViewIds": [
+    "url_bar",
+    "omnibox_url_text",
+    "mozac_browser_toolbar_url_view",
+    "ADDRESSBAR_URL_BOX",
+    "location_bar_edit_text",
+    "sites_url"
+  ],
+  "surfaces": []
+}

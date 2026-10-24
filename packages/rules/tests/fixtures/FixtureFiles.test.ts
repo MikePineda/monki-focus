@@ -4,6 +4,7 @@ import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   FIXTURE_KINDS,
+  NON_KIND_FIXTURE_DIRECTORIES,
   checkFixtureInvariants,
   listFixtureFiles,
   loadFixtures,
@@ -228,7 +229,7 @@ describe('fixture files', () => {
 
   it('every_fixture_directory_is_a_known_kind', () => {
     const directories = readdirSync(join(packageRoot, 'fixtures')).sort()
-    expect(directories).toEqual([...FIXTURE_KINDS].sort())
+    expect(directories).toEqual([...FIXTURE_KINDS, ...NON_KIND_FIXTURE_DIRECTORIES].sort())
   })
 
   it.each(files.map((file) => [file.relativePath, file] as const))(
