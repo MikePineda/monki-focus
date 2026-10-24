@@ -6,7 +6,7 @@
  */
 import type { ActivityEvent } from '@monki-focus/rules'
 import { isAfkData, isWebTabData } from './EventData.ts'
-import { epochSecondsOf, utcInstantOf } from './Instant.ts'
+import { epochSecondsOf, utcInstantOf } from '@monki-focus/engine'
 import type { Interval } from './IntervalSet.ts'
 import { subtractIntervals } from './IntervalSet.ts'
 

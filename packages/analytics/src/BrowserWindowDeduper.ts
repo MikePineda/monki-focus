@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /**
  * Browser dedupe on one device (SEMANTICS.md §10.8, macOS aggregator). Web
- * events become `web` segments with their domain; other window events stay
- * `app` segments. Browser window time minus the union of web events is
- * uncovered: up to `extensionLastHeartbeatAt + staleAfterSeconds` it is
- * `browser-unknown` (neutral), later (a silent extension) it counts as the
- * browser app itself.
+ * events become `web` segments with their domain, never clipped to browser
+ * window time; other window events stay `app` segments. Browser window time
+ * minus the union of web events is uncovered. The extension's known
+ * heartbeats are the end of every web event and `extensionLastHeartbeatAt`;
+ * an uncovered instant `t` is `browser-unknown` when the latest heartbeat
+ * `h ≤ t` has `t < h + staleAfterSeconds`, otherwise (a silent extension, or
+ * no heartbeat yet) it counts as the browser app itself.
  */
 import type {
   ActivityEvent,
@@ -13,9 +15,9 @@ import type {
   AttributedSegment,
   BrowserDedupeGiven,
 } from '@monki-focus/rules'
+import { epochSecondsOf, utcInstantOf } from '@monki-focus/engine'
 import { compareCodeUnits } from './CodeUnitOrder.ts'
 import { isWebTabData, isWindowData } from './EventData.ts'
-import { epochSecondsOf, utcInstantOf } from './Instant.ts'
 import type { Interval } from './IntervalSet.ts'
 import { subtractIntervals } from './IntervalSet.ts'
 
@@ -43,6 +45,35 @@ function comparePieces(a: Piece, b: Piece): number {
   )
 }
 
+/**
+ * Splits an uncovered stretch where its latest heartbeat or its staleness
+ * changes, labels each part, and joins neighbours with the same label.
+ */
+function attributeGap(
+  gap: Interval,
+  app: string,
+  heartbeats: readonly number[],
+  staleAfterSeconds: number
+): Piece[] {
+  const cuts = heartbeats
+    .flatMap((heartbeat) => [heartbeat, heartbeat + staleAfterSeconds])
+    .filter((cut) => cut > gap.start && cut < gap.end)
+  const ends = [...new Set([...cuts, gap.end])].sort((a, b) => a - b)
+  const pieces: Piece[] = []
+  let start = gap.start
+  for (const end of ends) {
+    // Heartbeats are sorted, so the last one at or before `start` is the latest.
+    const latest = heartbeats.filter((heartbeat) => heartbeat <= start).at(-1)
+    const live = latest !== undefined && start < latest + staleAfterSeconds
+    const activityKey = live ? BROWSER_UNKNOWN : app
+    const last = pieces.at(-1)
+    if (last?.activityKey === activityKey) last.end = end
+    else pieces.push({ start, end, source: 'app', activityKey })
+    start = end
+  }
+  return pieces
+}
+
 export function dedupeBrowserTime(input: BrowserDedupeInput): AttributedSegment[] {
   const browsers = new Set(input.browserApps)
   const pieces: Piece[] = input.webEvents.flatMap((event) =>
@@ -51,10 +82,9 @@ export function dedupeBrowserTime(input: BrowserDedupeInput): AttributedSegment[
       : []
   )
   const covered = [...pieces]
-  const staleAt =
-    input.extensionLastHeartbeatAt === null
-      ? Number.NEGATIVE_INFINITY
-      : epochSecondsOf(input.extensionLastHeartbeatAt) + input.staleAfterSeconds
+  const lastHeartbeat =
+    input.extensionLastHeartbeatAt === null ? [] : [epochSecondsOf(input.extensionLastHeartbeatAt)]
+  const heartbeats = [...covered.map((piece) => piece.end), ...lastHeartbeat].sort((a, b) => a - b)
 
   for (const event of input.windowEvents) {
     if (!isWindowData(event.data)) continue
@@ -64,9 +94,7 @@ export function dedupeBrowserTime(input: BrowserDedupeInput): AttributedSegment[
       continue
     }
     for (const gap of subtractIntervals([intervalOf(event)], covered)) {
-      const split = Math.min(Math.max(gap.start, staleAt), gap.end)
-      pieces.push({ start: gap.start, end: split, source: 'app', activityKey: BROWSER_UNKNOWN })
-      pieces.push({ start: split, end: gap.end, source: 'app', activityKey: app })
+      pieces.push(...attributeGap(gap, app, heartbeats, input.staleAfterSeconds))
     }
   }
   return pieces

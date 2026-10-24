@@ -8,7 +8,7 @@
  */
 import type { AttributedEvent } from '@monki-focus/rules'
 import { capAcrossDevices } from './CrossDeviceCapper.ts'
-import { epochSecondsOf, utcInstantOf } from './Instant.ts'
+import { epochSecondsOf, utcInstantOf } from '@monki-focus/engine'
 import type { SyncBlock } from './SyncBlock.ts'
 import { BLOCK_SECONDS } from './SyncBlock.ts'
 

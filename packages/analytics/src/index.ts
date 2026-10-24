@@ -2,8 +2,9 @@
 /**
  * @monki-focus/analytics: the pure analytics core shared by the extension
  * (service worker) and the server (Node). Implements SEMANTICS.md §9–§10 of
- * @monki-focus/rules. No clock, no I/O, no Node-only APIs: every input,
- * including site profiles and default categories, is a parameter.
+ * @monki-focus/rules on top of @monki-focus/engine (URL normalisation, target
+ * matching, specificity, instants, zones). No clock, no I/O, no Node-only
+ * APIs: every input, including the rules catalog, is a parameter.
  */
 export type {
   ActivityBlock,
@@ -28,15 +29,12 @@ export { heartbeat, mergeHeartbeats } from './HeartbeatMerger.ts'
 export { activeTime } from './AfkFilter.ts'
 export type { TabProbeInput } from './TabProbe.ts'
 export { probeTab } from './TabProbe.ts'
-export { normalizeUrl } from './UrlNormaliser.ts'
-export type { CategoriseOptions } from './Categoriser.ts'
 export { UNCATEGORISED, categorise } from './Categoriser.ts'
 export type { PulseInput } from './PulseCalculator.ts'
 export { pulse } from './PulseCalculator.ts'
 export type { BlockOptions } from './BlockAggregator.ts'
 export { toBlocks } from './BlockAggregator.ts'
 export { dailyTotals } from './DailyTotals.ts'
-export { localDateOf, nextLocalMidnight } from './LocalCalendar.ts'
 export type { BrowserDedupeInput } from './BrowserWindowDeduper.ts'
 export { BROWSER_UNKNOWN, dedupeBrowserTime } from './BrowserWindowDeduper.ts'
 export type { Interval } from './IntervalSet.ts'

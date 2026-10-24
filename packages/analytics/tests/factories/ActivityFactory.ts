@@ -7,7 +7,28 @@ import type {
   WebTabData,
   WindowData,
 } from '@monki-focus/rules'
+import type { CategoryAssignment } from '@monki-focus/rules'
+import { createRulesCatalog } from '@monki-focus/engine'
+import type { RulesCatalog } from '@monki-focus/engine'
+import { defaultCategories, siteProfiles, surfaceRegistry } from '@monki-focus/rules/pure'
 import type { SyncBlock } from '../../src/index.ts'
+
+/** The bundled rules data, as an adapter builds it from @monki-focus/rules/pure. */
+export function bundledCatalog(): RulesCatalog {
+  return createRulesCatalog({
+    siteProfiles,
+    surfaces: surfaceRegistry.surfaces,
+    defaultCategories: defaultCategories.assignments,
+  })
+}
+
+/** A catalog of synthetic site profiles and defaults only. */
+export function catalogOf(
+  profiles: readonly SiteProfile[] = [],
+  defaults: readonly CategoryAssignment[] = []
+): RulesCatalog {
+  return createRulesCatalog({ siteProfiles: profiles, surfaces: [], defaultCategories: defaults })
+}
 
 export function makeWebEvent(
   timestamp: string,

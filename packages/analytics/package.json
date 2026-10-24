@@ -26,7 +26,8 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@monki-focus/rules": "0.0.0"
+    "@monki-focus/engine": "*",
+    "@monki-focus/rules": "*"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

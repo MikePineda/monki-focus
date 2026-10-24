@@ -13,7 +13,7 @@
 import type { ActivityEvent, AfkData, WebTabData, WindowData } from '@monki-focus/rules'
 import type { EventData } from './EventData.ts'
 import { isAfkData, isWebTabData, isWindowData } from './EventData.ts'
-import { epochSecondsOf, utcInstantOf } from './Instant.ts'
+import { epochSecondsOf, utcInstantOf } from '@monki-focus/engine'
 
 export type ActivityWatchBucketType = 'currentwindow' | 'afkstatus' | 'web.tab.current'
 
@@ -162,9 +162,17 @@ function importedData(type: ActivityWatchBucketType, data: ActivityWatchEventDat
   }
 }
 
+/** aw-server writes microseconds (`…:00.123456+00:00`); instants here are whole seconds. */
+const FRACTIONAL_SECONDS = /\.\d+(?=Z$|[+-]\d{2}:\d{2}$)/
+
+function wholeSecondsOf(timestamp: string): string {
+  return utcInstantOf(epochSecondsOf(timestamp.replace(FRACTIONAL_SECONDS, '')))
+}
+
 /**
  * Reads back an export written by `toActivityWatchExport` (after a JSON
- * round trip): timestamps in UTC `Z`, durations in whole seconds.
+ * round trip): timestamps in UTC `Z` (fractions dropped), durations rounded to
+ * whole seconds.
  */
 export function fromActivityWatchExport(document: ActivityWatchExport): ActivityWatchBucket[] {
   return Object.values(document.buckets).map((bucket) => ({
@@ -172,9 +180,9 @@ export function fromActivityWatchExport(document: ActivityWatchExport): Activity
     type: bucket.type,
     client: bucket.client,
     hostname: bucket.hostname,
-    created: utcInstantOf(epochSecondsOf(bucket.created)),
+    created: wholeSecondsOf(bucket.created),
     events: bucket.events.map((event) => ({
-      timestamp: utcInstantOf(epochSecondsOf(event.timestamp)),
+      timestamp: wholeSecondsOf(event.timestamp),
       duration: Math.round(event.duration),
       data: importedData(bucket.type, event.data),
     })),

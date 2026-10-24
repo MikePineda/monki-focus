@@ -4,7 +4,7 @@
  * package. The test name is the fixture id; nothing is skipped.
  */
 import { describe, expect, it } from 'vitest'
-import { loadDefaultCategories, loadFixtures, loadSiteProfiles } from '@monki-focus/rules'
+import { loadFixtures } from '@monki-focus/rules'
 import type { ActivityFixture } from '@monki-focus/rules'
 import {
   activeTime,
@@ -17,9 +17,9 @@ import {
   pulse,
   toBlocks,
 } from '../../src/index.ts'
+import { bundledCatalog } from '../factories/ActivityFactory.ts'
 
-const siteProfiles = loadSiteProfiles().map((file) => file.profile)
-const defaults = loadDefaultCategories().assignments
+const catalog = bundledCatalog()
 const fixtures = loadFixtures('activity')
 
 function actualOf(fixture: ActivityFixture): unknown {
@@ -33,14 +33,16 @@ function actualOf(fixture: ActivityFixture): unknown {
         ),
       }
     case 'probe':
-      return { heartbeat: probeTab(fixture.given, siteProfiles) }
+      return { heartbeat: probeTab(fixture.given, catalog) }
     case 'active-time':
       return { events: activeTime(fixture.given.events, fixture.given.afk) }
     case 'categorise':
-      return categorise(fixture.given.activity, fixture.given.assignments, {
-        defaults: fixture.given.includeDefaults ? defaults : [],
-        siteProfiles,
-      })
+      return categorise(
+        fixture.given.activity,
+        fixture.given.assignments,
+        catalog,
+        fixture.given.includeDefaults
+      )
     case 'pulse':
       return { pulse: pulse(fixture.given.entries) }
     case 'blocks':

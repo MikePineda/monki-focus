@@ -7,7 +7,7 @@
  */
 export type { RulesCatalog, RulesCatalogInput } from './RulesCatalog.ts'
 export { createRulesCatalog } from './RulesCatalog.ts'
-export { instantOf } from './Instant.ts'
+export { epochSecondsOf, instantOf, utcInstantOf } from './Instant.ts'
 export { normalizeUrl } from './UrlNormalizer.ts'
 export { ENGINE_ERROR_DECISION, decide } from './FailClosedDecision.ts'
 export type { EscalationResult } from './EscalationPolicy.ts'
@@ -19,3 +19,11 @@ export { effectiveRuleSet } from './RuleChangePolicy.ts'
 export { isScheduleActive } from './ScheduleEvaluator.ts'
 export type { BedtimePhase } from './BedtimePolicy.ts'
 export { bedtimePhase } from './BedtimePolicy.ts'
+// Shared with @monki-focus/analytics (categorise, blocks, daily totals), re-exported so
+// the analytics core reuses the engine's §2–§4 and zone logic instead of duplicating it.
+export type { ResolvedObservation } from './ResolvedObservation.ts'
+export { matchesTarget } from './TargetMatcher.ts'
+export type { TargetSpecificity } from './Specificity.ts'
+export { compareTargetSpecificity, targetSpecificity } from './Specificity.ts'
+export type { LocalTime } from './ZonedTime.ts'
+export { localTimeAt, nextLocalMidnight } from './ZonedTime.ts'

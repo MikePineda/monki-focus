@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest'
-import { dailyTotals, localDateOf, nextLocalMidnight } from '../../src/index.ts'
-import { epochSecondsOf, utcInstantOf } from '../../src/Instant.ts'
+import { dailyTotals } from '../../src/index.ts'
 
 describe('DailyTotals', () => {
   it('zero_length_entries_add_no_date', () => {
@@ -37,18 +36,13 @@ describe('DailyTotals', () => {
 
   it('the_pinned_zone_decides_the_date_not_utc', () => {
     // 23:30 UTC on 25 October is already 26 October in a zone ahead of UTC.
-    const instant = epochSecondsOf('2026-10-25T23:30:00Z')
-    expect(localDateOf(instant, 'UTC')).toBe('2026-10-25')
-    expect(localDateOf(instant, 'Pacific/Auckland')).toBe('2026-10-26')
-    expect(localDateOf(instant, 'America/New_York')).toBe('2026-10-25')
-  })
-
-  it('next_local_midnight_is_the_first_second_of_the_next_date', () => {
-    const midnight = nextLocalMidnight(epochSecondsOf('2026-10-26T12:00:00Z'), 'Etc/GMT-10')
-    expect(utcInstantOf(midnight)).toBe('2026-10-26T14:00:00Z')
+    const entries = [{ timestamp: '2026-10-25T23:30:00Z', duration: 60, level: 50 } as const]
+    expect(dailyTotals(entries, 'UTC').map((day) => day.date)).toStrictEqual(['2026-10-25'])
+    expect(dailyTotals(entries, 'Etc/GMT-10').map((day) => day.date)).toStrictEqual(['2026-10-26'])
   })
 
   it('an_unknown_time_zone_fails_loudly', () => {
-    expect(() => localDateOf(0, 'Not/AZone')).toThrow(RangeError)
+    const entries = [{ timestamp: '2026-10-25T23:30:00Z', duration: 60, level: 50 } as const]
+    expect(() => dailyTotals(entries, 'Not/AZone')).toThrow(RangeError)
   })
 })

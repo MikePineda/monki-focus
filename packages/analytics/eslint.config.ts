@@ -20,7 +20,8 @@ export default defineConfig(
   },
   {
     // The analytics core is pure: no implicit clock, no I/O, no Node-only APIs,
-    // and runtime code from @monki-focus/rules (which reads files) is off limits.
+    // and @monki-focus/rules is types only: rules data reaches src/ through the
+    // engine's RulesCatalog, which adapters build from @monki-focus/rules/pure.
     files: ['src/**/*.ts'],
     rules: {
       'no-restricted-imports': [
@@ -28,12 +29,10 @@ export default defineConfig(
         {
           patterns: [
             { group: ['node:*'], message: 'src/ must run in a service worker: no Node APIs.' },
-          ],
-          paths: [
             {
-              name: '@monki-focus/rules',
+              group: ['@monki-focus/rules', '@monki-focus/rules/*'],
               allowTypeImports: true,
-              message: 'Only type imports: the rules runtime reads files with node:fs.',
+              message: 'Only type imports: rules data comes in through the RulesCatalog.',
             },
           ],
         },

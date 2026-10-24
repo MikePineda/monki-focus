@@ -6,7 +6,7 @@
  */
 import type { ActivityEvent } from '@monki-focus/rules'
 import { sameData } from './EventData.ts'
-import { epochSecondsOf } from './Instant.ts'
+import { epochSecondsOf } from '@monki-focus/engine'
 
 /**
  * The last event extended by `next`, or `null` when `next` must open a new

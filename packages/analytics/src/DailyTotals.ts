@@ -11,8 +11,7 @@ import type {
   SecondsByLevel,
 } from '@monki-focus/rules'
 import { compareCodeUnits } from './CodeUnitOrder.ts'
-import { epochSecondsOf } from './Instant.ts'
-import { localDateOf, nextLocalMidnight } from './LocalCalendar.ts'
+import { epochSecondsOf, localTimeAt, nextLocalMidnight } from '@monki-focus/engine'
 import { pulse } from './PulseCalculator.ts'
 
 const LEVELS: readonly CategoryLevel[] = [0, 25, 50, 75, 100]
@@ -28,7 +27,7 @@ export function dailyTotals(entries: readonly LevelledInterval[], timeZone: stri
     const end = cursor + entry.duration
     while (cursor < end) {
       const pieceEnd = Math.min(nextLocalMidnight(cursor, timeZone), end)
-      const date = localDateOf(cursor, timeZone)
+      const date = localTimeAt(cursor, timeZone).localDate
       const byLevel = days.get(date) ?? emptyByLevel()
       byLevel[entry.level] += pieceEnd - cursor
       days.set(date, byLevel)
