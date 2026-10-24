@@ -339,8 +339,9 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
 
 ## Popup and options (E8)
 
-- **Popup** (360 wide, plan §8.2): the running intention (only when the
-  intention gate answers `intention.active` with `available: true`), Pulse
+- **Popup** (360 wide, plan §8.2): the running intention (the gate's
+  `GateIntentions`: the active escalation state ending first, its words
+  from the session notes; "End now" is the engine's `leave`, kept), Pulse
   today ("—" without data), the level bar with its table view, the top five
   sites, the intentions line, warnings (no incognito access: a way around
   the rules; missing host access, with "Allow" asking for it) and the
@@ -351,11 +352,12 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   `reddit.com/r/<name>/**`), bedtime, work hours, site levels (category
   overrides), rule set import/export; language, theme, "store page titles"
   (off by default) and "count a playing tab while idle"; the 7-day pulse,
-  the hour × weekday heatmap (each with its table), the intentions log (E6),
+  the hour × weekday heatmap (each with its table), the intentions log (the
+  last 7 days of kept, broken and closed facts from the gate's log; no text),
   export (ActivityWatch JSON, CSV of blocks) and "Delete all local data"
   behind an in-page confirmation. It erases history before the current
-  local day: today's events and blocks stay, so a delete cannot reset a
-  daily budget; rules, preferences and bypass records (a later package)
+  local day: today's events, blocks and gate facts (`intentions`)
+  stay, so a delete cannot reset a daily budget or today's escalation counts; rules, preferences and bypass records (a later package)
   are never erased.
 - **Rule changes** go only through `rules.propose` with the whole edited set
   and the revision the page started from (`stale_revision` otherwise).

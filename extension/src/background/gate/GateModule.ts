@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { IntentionCommands } from '../../shared/IntentionContract'
+import { GateIntentions } from './GateIntentions'
 import { activityWatchBucketId } from '@monki-focus/analytics'
 import { instantOf, type RulesCatalog } from '@monki-focus/engine'
 import type { Decision, DecisionState, Ruleset } from '@monki-focus/rules/pure'
@@ -82,6 +84,8 @@ export interface GateModule {
   /** Re-syncs the redirects after a rule set change or a schedule edge. */
   refresh(): Promise<void>
   commands: GateCommands
+  /** The popup's running intention and "End now", the Stats page's log (E8). */
+  intentions: IntentionCommands
   sessionFor(url: string, decision: Decision): Promise<ActiveSession | undefined>
   /** Recent reason codes of recovered failures. */
   diagnostics: GateDiagnostics
@@ -242,6 +246,14 @@ export function createGateModule(deps: GateModuleDependencies): GateModule {
       sweepTabs()
     },
     commands: new GateCommands(controller),
+    intentions: new GateIntentions({
+      clock,
+      rulesets,
+      escalation,
+      notes,
+      log,
+      endEarly: (group) => controller.endEarly(group),
+    }),
     sessionFor: (url, decision) => controller.sessionFor(url, decision),
     diagnostics,
   }

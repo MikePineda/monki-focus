@@ -13,15 +13,16 @@ const EARLIEST = '0000-01-01T00:00:00Z'
 const LATEST = '9999-12-31T23:59:59Z'
 
 /**
- * Stores whose records must outlive "Delete all local data": a bypass
- * record (a later work package) is what the guardian is owed, so deleting
- * local history must never erase it. Outbox entries other than blocks stay
- * for the same reason.
+ * Stores never cleared by "Delete all local data". The outbox only loses
+ * queued blocks from before today: emergency bypass records
+ * (`kind: 'bypass'`, E6) are what a guardian is owed, so deleting history
+ * must never erase them (nor `gate.pendingBypasses` in `storage.local`,
+ * which this service never touches).
  */
-const RETAINED_STORES: ReadonlySet<string> = new Set(['outbox', 'bypassEvents'])
+const RETAINED_STORES: ReadonlySet<string> = new Set(['outbox'])
 
 /** Stores whose records of the current local day stay (today's usage). */
-const DAY_KEPT_STORES: ReadonlySet<string> = new Set(['events', 'blocks'])
+const DAY_KEPT_STORES: ReadonlySet<string> = new Set(['events', 'blocks', 'intentions'])
 
 export interface LocalDataServiceOptions {
   db: MonkiDb
@@ -130,7 +131,13 @@ export class LocalDataService {
     const others = [...db.objectStoreNames].filter(
       (name) => !RETAINED_STORES.has(name) && !DAY_KEPT_STORES.has(name)
     )
-    const names = [...others, 'events', 'blocks', 'outbox'] as (typeof others)[number][]
+    const names = [
+      ...others,
+      'events',
+      'blocks',
+      'intentions',
+      'outbox',
+    ] as (typeof others)[number][]
     const tx = db.transaction(names, 'readwrite')
     const work: Promise<unknown>[] = others.map((name) => tx.objectStore(name).clear())
     const before = IDBKeyRange.upperBound(dayStart, true)
@@ -139,6 +146,12 @@ export class LocalDataService {
     while (event) {
       if (endsBeforeToday(event.value)) work.push(event.delete())
       event = await event.continue()
+    }
+    // Today's gate facts (visits, commitments, closes) set today's levels and counts.
+    let fact = await tx.objectStore('intentions').index('at').openCursor(before)
+    while (fact) {
+      work.push(fact.delete())
+      fact = await fact.continue()
     }
     let block = await tx.objectStore('blocks').index('blockStart').openCursor(before)
     while (block) {
