@@ -1,0 +1,84 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+.mf-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mf-space-sm);
+  min-height: var(--mf-tap);
+  padding: 0 var(--mf-space-lg);
+  border: 1px solid transparent;
+  border-radius: var(--mf-radius-md);
+  font: inherit;
+  font-size: var(--mf-type-body-strong-size);
+  line-height: var(--mf-type-body-strong-line-height);
+  font-weight: var(--mf-type-body-strong-weight);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.mf-button:focus-visible {
+  outline: 2px solid var(--mf-focus);
+  outline-offset: 2px;
+}
+
+/* The one accent fill: the leave/close action of a gate. */
+.mf-button--leave {
+  width: 100%;
+  min-height: var(--mf-tap-lg);
+  background: var(--mf-accent);
+  color: var(--mf-accent-ink);
+}
+
+.mf-button--leave:hover:not(:disabled),
+.mf-button--leave:active:not(:disabled) {
+  background: var(--mf-accent-hover);
+}
+
+.mf-button--ink {
+  background: var(--mf-ink-1);
+  color: var(--mf-surface-0);
+}
+
+.mf-button--secondary {
+  background: transparent;
+  border-color: var(--mf-line-strong);
+  color: var(--mf-ink-1);
+}
+
+.mf-button--secondary:hover:not(:disabled) {
+  background: var(--mf-surface-2);
+}
+
+.mf-button--quiet {
+  min-height: var(--mf-tap-min);
+  padding: 0 var(--mf-space-xs);
+  background: transparent;
+  color: var(--mf-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: var(--mf-space-xs);
+}
+
+.mf-button--quiet.mf-button--muted {
+  color: var(--mf-ink-2);
+}
+
+/* Disabled never relies on opacity alone: ink-3 label, line border, a reason. */
+.mf-button:disabled {
+  background: transparent;
+  border-color: var(--mf-line);
+  color: var(--mf-ink-3);
+  cursor: not-allowed;
+}
+
+.mf-button--quiet:disabled {
+  border-color: transparent;
+}
+
+.mf-button__reason {
+  margin: var(--mf-space-xs) 0 0;
+  color: var(--mf-ink-3);
+  font-size: var(--mf-type-caption-size);
+  line-height: var(--mf-type-caption-line-height);
+  letter-spacing: var(--mf-type-caption-letter-spacing);
+}

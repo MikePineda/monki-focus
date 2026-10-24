@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { test as base, type BrowserContext } from '@playwright/test'
 import { startFixtureServer, type FixtureServer } from './fixtureServer'
-import { launchExtension, type LaunchedExtension } from './launchExtension'
+import { launchExtension, type ExtensionBuild, type LaunchedExtension } from './launchExtension'
 
 interface ExtensionFixtures {
+  /** Which build to load: `test.use({ extensionBuild: 'dev' })` for the UI kit gallery. */
+  extensionBuild: ExtensionBuild
   launched: LaunchedExtension
   context: BrowserContext
   extensionId: string
@@ -21,6 +23,7 @@ interface WorkerFixtures {
  * `locale` option (`test.use({ locale: 'es' })`) drives the browser language.
  */
 export const test = base.extend<ExtensionFixtures, WorkerFixtures>({
+  extensionBuild: ['e2e', { option: true }],
   fixtureServer: [
     // eslint-disable-next-line no-empty-pattern -- Playwright requires the destructuring
     async ({}, use) => {
@@ -30,8 +33,12 @@ export const test = base.extend<ExtensionFixtures, WorkerFixtures>({
     },
     { scope: 'worker' },
   ],
-  launched: async ({ fixtureServer, locale }, use) => {
-    const launched = await launchExtension({ fixturePort: fixtureServer.port, locale })
+  launched: async ({ fixtureServer, locale, extensionBuild }, use) => {
+    const launched = await launchExtension({
+      fixturePort: fixtureServer.port,
+      locale,
+      build: extensionBuild,
+    })
     await use(launched)
     await launched.context.close()
   },

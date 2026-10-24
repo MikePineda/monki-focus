@@ -1,0 +1,57 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+.mf-toast-region--floating {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--mf-space-lg);
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--mf-space-md);
+  pointer-events: none;
+}
+
+.mf-toast {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mf-space-sm);
+  margin: 0;
+  padding: var(--mf-space-sm) var(--mf-space-md);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius-lg);
+  background: var(--mf-surface-1);
+  box-shadow: var(--mf-elevation-2);
+  color: var(--mf-ink-1);
+  font-size: var(--mf-type-body-sm-size);
+  line-height: var(--mf-type-body-sm-line-height);
+  font-variant-numeric: tabular-nums;
+  pointer-events: auto;
+}
+
+.mf-toast .mf-icon {
+  color: var(--mf-ink-2);
+}
+
+@keyframes mf-toast-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--mf-space-sm));
+  }
+}
+
+@keyframes mf-toast-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mf-toast {
+    animation: mf-toast-enter var(--mf-duration-fast) var(--mf-easing-standard);
+  }
+}
+
+/* Reduced motion: opacity only, 100ms. */
+@media (prefers-reduced-motion: reduce) {
+  .mf-toast {
+    animation: mf-toast-fade 100ms linear;
+  }
+}

@@ -1,19 +1,23 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 body {
   margin: 0;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-family: var(--font-family-sans);
-  font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
+  background: var(--mf-surface-0);
+  color: var(--mf-ink-1);
+  font-family: var(--mf-font-family-sans);
+  font-size: var(--mf-type-body-size);
+  line-height: var(--mf-type-body-line-height);
+  font-weight: var(--mf-type-body-weight);
 }
 
 .page-shell {
-  padding: var(--space-4);
+  padding: var(--mf-space-md);
 }
 
 .page-shell__title {
-  margin: 0 0 var(--space-3);
-  font-size: var(--font-size-title);
-  font-weight: var(--font-weight-title);
+  margin: 0 0 var(--mf-space-md);
+  font-size: var(--mf-type-title-size);
+  line-height: var(--mf-type-title-line-height);
+  font-weight: var(--mf-type-title-weight);
+  letter-spacing: var(--mf-type-title-letter-spacing);
+  text-wrap: balance;
 }

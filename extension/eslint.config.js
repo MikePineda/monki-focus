@@ -37,7 +37,13 @@ export default tseslint.config(
   },
   {
     // UI copy lives only in src/i18n/catalogs: no literal strings in JSX.
-    files: ['src/ui/**/*.{ts,tsx}', 'src/entrypoints/**/*.{ts,tsx}'],
+    // Type information lets the rule accept literals whose contextual type
+    // is a string-literal union (`variant="quiet"`, `align: 'end'`): those
+    // are enum values, never copy.
+    files: ['src/ui/**/*.{ts,tsx}', 'src/entrypoints/**/*.{ts,tsx}', 'src/dev/**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
     plugins: { i18next },
     rules: {
       'i18next/no-literal-string': [
@@ -61,11 +67,14 @@ export default tseslint.config(
               'for',
               'htmlFor',
               'style',
+              'focusable',
               'width',
               'height',
               'data-.+',
             ],
           },
+          // Column and option ids are identifiers, not copy.
+          'object-properties': { exclude: ['[A-Z_-]+', 'id'] },
         },
       ],
     },

@@ -1,0 +1,81 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+.mf-segmented__label {
+  display: block;
+  margin-bottom: var(--mf-space-sm);
+  color: var(--mf-ink-2);
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  font-weight: var(--mf-type-label-weight);
+  letter-spacing: var(--mf-type-label-letter-spacing);
+}
+
+.mf-segmented__track {
+  display: flex;
+  gap: var(--mf-space-xs);
+  padding: var(--mf-space-xs);
+  border-radius: var(--mf-radius-md);
+  background: var(--mf-surface-2);
+}
+
+.mf-segmented__option {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* The native radio keeps the semantics; the face carries the look. */
+.mf-segmented__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.mf-segmented__face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mf-space-xs);
+  min-height: calc(var(--mf-tap) - 2 * var(--mf-space-xs));
+  padding: 0 var(--mf-space-md);
+  border: 1px solid transparent;
+  border-radius: var(--mf-radius-sm);
+  color: var(--mf-ink-1);
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  font-weight: var(--mf-type-label-weight);
+  letter-spacing: var(--mf-type-label-letter-spacing);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mf-segmented__input:checked + .mf-segmented__face {
+  border-color: var(--mf-accent);
+  background: var(--mf-accent-soft);
+  color: var(--mf-accent);
+}
+
+.mf-segmented__input:focus-visible + .mf-segmented__face {
+  outline: 2px solid var(--mf-focus);
+  outline-offset: 2px;
+}
+
+.mf-segmented--compact .mf-segmented__track {
+  padding: calc(var(--mf-space-xs) / 2);
+}
+
+.mf-segmented--compact .mf-segmented__face {
+  min-height: var(--mf-space-lg);
+  padding: 0 var(--mf-space-sm);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mf-segmented__face {
+    transition:
+      background-color var(--mf-duration-fast) var(--mf-easing-standard),
+      border-color var(--mf-duration-fast) var(--mf-easing-standard);
+  }
+}

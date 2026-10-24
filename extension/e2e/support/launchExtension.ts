@@ -5,11 +5,17 @@ import { fileURLToPath } from 'node:url'
 import { chromium, type BrowserContext } from '@playwright/test'
 import { hostResolverRules } from './fixtureServer'
 
+const OUTPUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../.output')
+
 /** Output of `npm run build:e2e` (`wxt build --mode e2e`). */
-export const E2E_BUILD_DIR = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  '../../.output/chrome-mv3-e2e'
-)
+export const E2E_BUILD_DIR = resolve(OUTPUT_DIR, 'chrome-mv3-e2e')
+/** Output of `npm run build:dev`: the only build with the UI kit gallery (dev.html). */
+export const DEV_BUILD_DIR = resolve(OUTPUT_DIR, 'chrome-mv3-dev')
+
+export type ExtensionBuild = 'e2e' | 'dev'
+
+const BUILD_DIRS: Record<ExtensionBuild, string> = { e2e: E2E_BUILD_DIR, dev: DEV_BUILD_DIR }
+const BUILD_COMMANDS: Record<ExtensionBuild, string> = { e2e: 'build:e2e', dev: 'build:dev' }
 
 export interface LaunchedExtension {
   context: BrowserContext
@@ -20,10 +26,13 @@ export interface LaunchOptions {
   fixturePort: number
   locale?: string | undefined
   headless?: boolean | undefined
+  /** `e2e` (default) for journeys; `dev` only for the UI kit gallery. */
+  build?: ExtensionBuild | undefined
 }
 
 /**
- * Starts Playwright's bundled Chromium with the unpacked e2e build loaded.
+ * Starts Playwright's bundled Chromium with an unpacked build loaded (the
+ * e2e build unless `build: 'dev'`).
  *
  * - `channel: 'chromium'` selects the full Chromium build, which runs
  *   extensions in the new headless mode; the default headless shell does not
@@ -36,9 +45,13 @@ export async function launchExtension({
   fixturePort,
   locale,
   headless = true,
+  build = 'e2e',
 }: LaunchOptions): Promise<LaunchedExtension> {
-  if (!existsSync(resolve(E2E_BUILD_DIR, 'manifest.json'))) {
-    throw new Error(`No e2e build at ${E2E_BUILD_DIR}; run \`npm run build:e2e\` first.`)
+  const buildDir = BUILD_DIRS[build]
+  if (!existsSync(resolve(buildDir, 'manifest.json'))) {
+    throw new Error(
+      `No ${build} build at ${buildDir}; run \`npm run ${BUILD_COMMANDS[build]}\` first.`
+    )
   }
   const context = await chromium.launchPersistentContext('', {
     channel: 'chromium',
@@ -46,8 +59,8 @@ export async function launchExtension({
     ...(locale ? { locale } : {}),
     ignoreHTTPSErrors: true,
     args: [
-      `--disable-extensions-except=${E2E_BUILD_DIR}`,
-      `--load-extension=${E2E_BUILD_DIR}`,
+      `--disable-extensions-except=${buildDir}`,
+      `--load-extension=${buildDir}`,
       `--host-resolver-rules=${hostResolverRules(fixturePort)}`,
       '--ignore-certificate-errors',
       ...(locale ? [`--lang=${locale}`] : []),
