@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:unlock-token-claims:v1",
+  "title": "monki-focus unlock token claims (v1)",
+  "description": "Claims of a PASETO v4.public unlock token. The signed message must also be the canonical serialisation of these claims (docs/protocol/unlock-tokens.md §4.0). Semantic rules beyond this schema: iat <= nbf < exp; exp - iat <= 14400; dur_s <= exp - iat; iss and dev equal the pinned issuer and this device.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "v",
+    "typ",
+    "iss",
+    "sub",
+    "dev",
+    "rule",
+    "scope",
+    "dur_s",
+    "iat",
+    "nbf",
+    "exp",
+    "jti",
+    "req",
+    "pol"
+  ],
+  "properties": {
+    "v": {
+      "const": 1,
+      "description": "Claims format version."
+    },
+    "typ": {
+      "const": "unlock"
+    },
+    "iss": {
+      "$ref": "#/$defs/issuer"
+    },
+    "sub": {
+      "$ref": "#/$defs/subject"
+    },
+    "dev": {
+      "$ref": "#/$defs/uuid",
+      "description": "Device uuid the token is bound to (also bound by the implicit assertion)."
+    },
+    "rule": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$",
+      "description": "Rule id the unlock lifts."
+    },
+    "scope": {
+      "description": "Exactly what is unlocked. Never a wildcard. Matching rules: spec §4.5.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value", "includeSubdomains"],
+          "properties": {
+            "kind": {
+              "const": "domain"
+            },
+            "value": {
+              "type": "string",
+              "maxLength": 253,
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\\.(?:[a-z]{2,63}|xn--[a-z0-9-]{0,58}[a-z0-9])$"
+            },
+            "includeSubdomains": {
+              "type": "boolean",
+              "description": "Also match hosts ending in \".\" + value. Issuers default to false."
+            }
+          },
+          "description": "An exact hostname with at least two labels; subdomains only when includeSubdomains is true."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {
+              "const": "path"
+            },
+            "value": {
+              "type": "string",
+              "maxLength": 512,
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\\.(?:[a-z]{2,63}|xn--[a-z0-9-]{0,58}[a-z0-9])(?:/(?:[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.\\.[A-Za-z0-9._~!$&'()+,;=:@-]+))+$"
+            }
+          },
+          "description": "An exact host plus literal path segments (segment-prefix match); no query, fragment, wildcard, %, backslash, empty, \".\" or \"..\" segment."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {
+              "const": "app"
+            },
+            "value": {
+              "type": "string",
+              "maxLength": 255,
+              "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_-]*)+$"
+            }
+          },
+          "description": "An Android package name or Apple bundle id (exact match)."
+        }
+      ]
+    },
+    "dur_s": {
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 7200,
+      "description": "Unlock length once activated, in seconds (at most 120 minutes, the cap of any guardian link)."
+    },
+    "iat": {
+      "$ref": "#/$defs/rfc3339Utc",
+      "description": "Issued at (server time)."
+    },
+    "nbf": {
+      "$ref": "#/$defs/rfc3339Utc",
+      "description": "Not before (server time); iat <= nbf."
+    },
+    "exp": {
+      "$ref": "#/$defs/rfc3339Utc",
+      "description": "Expiry (server time); nbf < exp."
+    },
+    "jti": {
+      "$ref": "#/$defs/uuid",
+      "description": "Token id, the replay-store key."
+    },
+    "req": {
+      "$ref": "#/$defs/uuid",
+      "description": "Unlock request uuid this token answers."
+    },
+    "pol": {
+      "$ref": "#/$defs/sha256Base64Url",
+      "description": "Hash of the signed policy the request was made under (heartbeat policyHash)."
+    }
+  },
+  "$defs": {
+    "issuer": {
+      "type": "string",
+      "maxLength": 270,
+      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\\.(?:[a-z]{2,63}|xn--[a-z0-9-]{0,58}[a-z0-9])|http://(?:localhost|127\\.0\\.0\\.1)(?::(?:[1-9]|[1-79][0-9]|8[1-9]|[1-9][0-9]{2,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?)$",
+      "description": "Instance origin. Release: lowercase https://host, no port, path or trailing slash. Development only: http://localhost or http://127.0.0.1 with an optional non-default port. Never contains \"|\"."
+    },
+    "uuid": {
+      "type": "string",
+      "maxLength": 36,
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "Lowercase canonical UUID."
+    },
+    "subject": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "description": "Opaque user id on the instance."
+    },
+    "sha256Base64Url": {
+      "type": "string",
+      "maxLength": 43,
+      "pattern": "^[A-Za-z0-9_-]{43}$",
+      "description": "Unpadded base64url SHA-256 digest."
+    },
+    "rfc3339Utc": {
+      "type": "string",
+      "maxLength": 20,
+      "pattern": "^(?:19[7-9][0-9]|[2-9][0-9]{3})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$",
+      "description": "UTC instant as YYYY-MM-DDTHH:MM:SSZ (whole seconds, no offset, year >= 1970). Verifiers also check that the day exists in its month (no 2026-02-30), which a pattern cannot express."
+    }
+  }
+}

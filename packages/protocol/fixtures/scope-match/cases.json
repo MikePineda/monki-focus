@@ -1,0 +1,418 @@
+{
+  "$comment": "Hand-written shared vector for unlock scope matching (spec section 4.5). Targets are already normalised by the platform: lowercase A-label host without port or trailing dot, and the parsed URL path without query or fragment.",
+  "kind": "scope-match",
+  "cases": [
+    {
+      "id": "domain_matches_the_exact_host",
+      "scope": {
+        "kind": "domain",
+        "value": "video.example.com",
+        "includeSubdomains": false
+      },
+      "target": {
+        "kind": "web",
+        "host": "video.example.com",
+        "path": "/watch"
+      },
+      "matches": true
+    },
+    {
+      "id": "domain_without_subdomains_does_not_match_a_subdomain",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": false
+      },
+      "target": {
+        "kind": "web",
+        "host": "www.example.com",
+        "path": "/"
+      },
+      "matches": false
+    },
+    {
+      "id": "domain_with_subdomains_matches_a_subdomain",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": true
+      },
+      "target": {
+        "kind": "web",
+        "host": "m.www.example.com",
+        "path": "/"
+      },
+      "matches": true
+    },
+    {
+      "id": "domain_with_subdomains_matches_the_host_itself",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": true
+      },
+      "target": {
+        "kind": "web",
+        "host": "example.com",
+        "path": "/"
+      },
+      "matches": true
+    },
+    {
+      "id": "domain_never_matches_a_lookalike_suffix",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": true
+      },
+      "target": {
+        "kind": "web",
+        "host": "badexample.com",
+        "path": "/"
+      },
+      "matches": false
+    },
+    {
+      "id": "domain_never_matches_a_parent_domain",
+      "scope": {
+        "kind": "domain",
+        "value": "video.example.com",
+        "includeSubdomains": true
+      },
+      "target": {
+        "kind": "web",
+        "host": "example.com",
+        "path": "/"
+      },
+      "matches": false
+    },
+    {
+      "id": "unnormalised_host_does_not_match",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": false
+      },
+      "target": {
+        "kind": "web",
+        "host": "Example.com",
+        "path": "/"
+      },
+      "matches": false
+    },
+    {
+      "id": "host_with_trailing_dot_does_not_match",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": false
+      },
+      "target": {
+        "kind": "web",
+        "host": "example.com.",
+        "path": "/"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_matches_the_exact_path",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic"
+      },
+      "matches": true
+    },
+    {
+      "id": "path_matches_deeper_segments",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic/comments/1"
+      },
+      "matches": true
+    },
+    {
+      "id": "path_matches_with_a_trailing_slash",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic/"
+      },
+      "matches": true
+    },
+    {
+      "id": "path_prefix_is_by_segment_not_by_character",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_is_case_sensitive",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/Example-Topic"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_does_not_match_a_parent_path",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_never_matches_a_subdomain",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "old.forum.example.com",
+        "path": "/r/example-topic"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_is_not_percent_decoded",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example%2Dtopic"
+      },
+      "matches": false
+    },
+    {
+      "id": "app_matches_the_exact_id",
+      "scope": {
+        "kind": "app",
+        "value": "com.example.video"
+      },
+      "target": {
+        "kind": "app",
+        "id": "com.example.video"
+      },
+      "matches": true
+    },
+    {
+      "id": "app_never_matches_a_longer_id",
+      "scope": {
+        "kind": "app",
+        "value": "com.example.video"
+      },
+      "target": {
+        "kind": "app",
+        "id": "com.example.video.lite"
+      },
+      "matches": false
+    },
+    {
+      "id": "app_scope_never_matches_a_web_target",
+      "scope": {
+        "kind": "app",
+        "value": "com.example.video"
+      },
+      "target": {
+        "kind": "web",
+        "host": "com.example.video",
+        "path": "/"
+      },
+      "matches": false
+    },
+    {
+      "id": "web_scope_never_matches_an_app_target",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": true
+      },
+      "target": {
+        "kind": "app",
+        "id": "com.example"
+      },
+      "matches": false
+    },
+    {
+      "id": "ip_literal_host_never_matches",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": true
+      },
+      "target": {
+        "kind": "web",
+        "host": "127.0.0.1",
+        "path": "/"
+      },
+      "matches": false
+    },
+    {
+      "id": "ipv6_literal_host_never_matches",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": true
+      },
+      "target": {
+        "kind": "web",
+        "host": "[::1]",
+        "path": "/"
+      },
+      "matches": false
+    },
+    {
+      "id": "numeric_last_label_host_never_matches",
+      "scope": {
+        "kind": "domain",
+        "value": "example.com",
+        "includeSubdomains": true
+      },
+      "target": {
+        "kind": "web",
+        "host": "example.com.0",
+        "path": "/"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_with_dot_segment_fails_closed",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic/./x"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_with_dot_dot_segment_fails_closed",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic/../admin"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_with_encoded_dot_segment_fails_closed",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic/%2e"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_with_encoded_dot_dot_segment_fails_closed",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic/%2E%2e"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_with_mixed_encoded_dot_dot_segment_fails_closed",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic/.%2E/admin"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_with_encoded_slash_fails_closed",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic%2Fadmin"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_with_encoded_backslash_fails_closed",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic/a%5cb"
+      },
+      "matches": false
+    },
+    {
+      "id": "path_with_raw_backslash_fails_closed",
+      "scope": {
+        "kind": "path",
+        "value": "forum.example.com/r/example-topic"
+      },
+      "target": {
+        "kind": "web",
+        "host": "forum.example.com",
+        "path": "/r/example-topic/a\\b"
+      },
+      "matches": false
+    }
+  ]
+}
