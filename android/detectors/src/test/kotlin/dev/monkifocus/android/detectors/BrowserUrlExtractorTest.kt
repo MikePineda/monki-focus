@@ -10,7 +10,7 @@ import org.junit.Test
 class BrowserUrlExtractorTest {
     private val browsers = RulesResources.bundledPack("browsers")
 
-    private fun read(dump: String): UrlBarReading = BrowserUrlExtractor.read(RulesResources.screen(dump), browsers)
+    private fun read(dump: String): UrlBarReading = BrowserUrlExtractor().read(RulesResources.screen(dump), browsers)
 
     @Test
     fun chrome_url_bar_text_is_returned_raw() {
@@ -49,7 +49,7 @@ class BrowserUrlExtractorTest {
         val page = TestNode("com.brave.browser:id/page", textValue = "page text", contentDescValue = "page", textReads = reads)
         val screen = window("com.brave.browser", page, bar)
 
-        BrowserUrlExtractor.read(screen, browsers)
+        BrowserUrlExtractor().read(screen, browsers)
 
         assertEquals(listOf("text:com.brave.browser:id/url_bar"), reads.distinct())
     }
@@ -62,18 +62,47 @@ class BrowserUrlExtractorTest {
                 TestNode("com.android.chrome:id/url_bar", textValue = "example.org", bounds = Rect(130, 100, 900, 200)),
             )
 
-        assertEquals(UrlBarReading.Absent, BrowserUrlExtractor.read(screen, browsers))
+        assertEquals(UrlBarReading.Absent, BrowserUrlExtractor().read(screen, browsers))
     }
 
     @Test
     fun a_package_outside_the_browser_pack_is_absent() {
         val screen = window("com.example.reader", TestNode("com.example.reader:id/url_bar", textValue = "example.org"))
 
-        assertEquals(UrlBarReading.Absent, BrowserUrlExtractor.read(screen, browsers))
+        assertEquals(UrlBarReading.Absent, BrowserUrlExtractor().read(screen, browsers))
     }
 
     @Test
     fun a_url_reading_never_prints_the_url() {
         assertFalse(UrlBarReading.Shown("example.org/private").toString().contains("example"))
+    }
+
+    @Test
+    fun a_page_element_named_like_the_url_bar_is_never_read() {
+        assertEquals(UrlBarReading.Shown("example.org"), read("com.brave.browser/synthetic/url-02.xml"))
+        assertEquals(UrlBarReading.Absent, read("com.brave.browser/synthetic/url-03.xml"))
+    }
+
+    @Test
+    fun a_spoofed_bar_inside_a_web_view_is_ignored_even_alone() {
+        val page =
+            TestNode(
+                className = "android.webkit.WebView",
+                bounds = Rect(0, 220, 1080, 2400),
+                children = listOf(TestNode("com.brave.browser:id/url_bar", textValue = SPOOFED, bounds = Rect(40, 420, 1040, 520))),
+            )
+
+        assertEquals(UrlBarReading.Absent, BrowserUrlExtractor().read(window("com.brave.browser", page), browsers))
+    }
+
+    private companion object {
+        const val SPOOFED = "https://example.net/spoofed"
+    }
+
+    @Test
+    fun firefox_compose_url_box_is_read_by_its_bare_tag() {
+        val box = TestNode("ADDRESSBAR_URL_BOX", textValue = "example.org", bounds = Rect(130, 100, 900, 200))
+
+        assertEquals(UrlBarReading.Shown("example.org"), BrowserUrlExtractor().read(window("org.mozilla.firefox", box), browsers))
     }
 }

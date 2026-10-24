@@ -40,15 +40,16 @@ class UiDumpFixturesTest(
     @Test
     fun guarded_screen_matches_fixture() {
         if ("guarded" !in expect) return
-        val classifier = SettingsScreenClassifier(RulesResources.bundledPack("settings"), ownLabels = setOf(OWN_LABEL))
+        val classifier =
+            SettingsScreenClassifier(RulesResources.bundledPack("settings"), ownLabels = setOf(OWN_LABEL), ourPackage = OWN_PACKAGE)
 
-        assertEquals(name, expect.string("guarded"), classifier.classify(screen)?.surfaceId)
+        assertEquals(name, expect.string("guarded"), classifier.classify(screen, labelCollision = false)?.surfaceId)
     }
 
     @Test
     fun url_bar_reading_matches_fixture() {
         val urlBar = expect.string("urlBar") ?: return
-        val reading = BrowserUrlExtractor.read(screen, RulesResources.bundledPack("browsers"))
+        val reading = BrowserUrlExtractor().read(screen, RulesResources.bundledPack("browsers"))
 
         when (urlBar) {
             "shown" -> assertEquals(name, expect.string("urlText"), (reading as UrlBarReading.Shown).urlText)
@@ -68,6 +69,9 @@ class UiDumpFixturesTest(
     companion object {
         /** The app label of `:core-ui` (`app_name`), which the guarded fixtures show. */
         const val OWN_LABEL = "monki-focus"
+
+        /** The application id of `:app`. */
+        const val OWN_PACKAGE = "dev.monkifocus.android"
 
         @JvmStatic
         @Parameterized.Parameters(name = "{0}")

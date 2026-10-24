@@ -10,6 +10,7 @@ import kotlinx.serialization.SerializationException
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.CodingErrorAction
+import java.time.Instant
 
 /**
  * Loads detector packs (plan §1.6, docs/threat-model.md "Reglas"). A
@@ -18,42 +19,63 @@ import java.nio.charset.CodingErrorAction
  * 1. size: at most [RulesetValidator.MAX_DOCUMENT_BYTES];
  * 2. signature: Ed25519 over the exact file bytes, checked by [verifier]
  *    with its pinned public key, before anything is parsed;
- * 3. strict UTF-8, then `detector-pack.schema.json` through [validator]
- *    (unknown fields, scripts and regex-like keys are refused), then a strict
- *    decode;
+ * 3. strict UTF-8, no duplicate JSON keys, `detector-pack.schema.json`
+ *    through [validator], a strict decode and a real calendar `packVersion`;
  * 4. `minSchemaVersion` supported by this build;
  * 5. pack id and every package inside the compiled [allowlist];
- * 6. `packVersion` strictly newer than the installed pack of the same id
- *    (monotonic: no rollback, no replay of the same version).
+ * 6. the compiled [PackInvariants] (families, evidence, safety net);
+ * 7. not on the compiled revocation list, not dated after `now` + 2 days;
+ * 8. `packVersion` strictly newer than both the installed pack and the
+ *    version bundled with this build ([PackVersionPolicy]).
  *
  * Packs are data only: nothing in them is executed. A rejection leaves the
  * installed pack active. The pack bundled in the APK is trusted as part of
  * the signed app (no detached signature) but passes every other check, and
  * it is the fallback whenever no newer downloaded pack is accepted.
+ *
+ * For the caller: keep a downloaded pack and its signature under
+ * `noBackupFilesDir` and run them through [loadDownloaded] again on every
+ * start (with the bundled pack as `installed`); never trust a stored decode.
  */
 class DetectorPackLoader(
     private val validator: RulesetValidator,
     private val verifier: SignatureVerifier,
+    registeredSurfaces: Set<String>,
     private val allowlist: PackageAllowlist = PackageAllowlist.COMPILED,
+    private val versions: PackVersionPolicy = PackVersionPolicy.COMPILED,
     private val supportedSchemaVersion: Int = SUPPORTED_SCHEMA_VERSION,
 ) {
-    /** A pack shipped inside the APK. */
-    fun loadBundled(bytes: ByteArray): PackLoadResult = decode(bytes)
+    private val invariants = PackInvariants(registeredSurfaces)
 
-    /** A pack fetched at runtime, with its detached signature and the pack it would replace. */
+    /** A pack shipped inside the APK. */
+    fun loadBundled(bytes: ByteArray): PackLoadResult {
+        val result = decode(bytes)
+        if (result !is PackLoadResult.Accepted) return result
+        val minimum = versions.minimumOf(result.pack.packId) ?: return rejected(PackRejection.PACKAGE_NOT_ALLOWED)
+        return if (result.pack.version < minimum) rejected(PackRejection.NOT_NEWER) else result
+    }
+
+    /**
+     * A pack fetched at runtime (or re-read from storage at start), with its
+     * detached signature, the pack it would replace and the trusted time.
+     */
     fun loadDownloaded(
         bytes: ByteArray,
         signature: ByteArray,
         installed: DetectorPack,
+        now: Instant,
     ): PackLoadResult {
         if (bytes.size > RulesetValidator.MAX_DOCUMENT_BYTES) return rejected(PackRejection.TOO_LARGE)
         if (!verifySafely(bytes, signature)) return rejected(PackRejection.INVALID_SIGNATURE)
         val result = decode(bytes)
         if (result !is PackLoadResult.Accepted) return result
         val pack = result.pack
+        val floor = listOfNotNull(installed.version, versions.minimumOf(pack.packId)).max()
         return when {
             pack.packId != installed.packId -> rejected(PackRejection.PACK_ID_MISMATCH)
-            pack.version <= installed.version -> rejected(PackRejection.NOT_NEWER)
+            versions.isRevoked(pack) -> rejected(PackRejection.REVOKED)
+            versions.isFromTheFuture(pack.version, now) -> rejected(PackRejection.FUTURE_VERSION)
+            pack.version <= floor -> rejected(PackRejection.NOT_NEWER)
             else -> result
         }
     }
@@ -63,12 +85,22 @@ class DetectorPackLoader(
         bundled: DetectorPack,
         downloaded: DetectorPack?,
     ): DetectorPack =
-        downloaded?.takeIf { it.packId == bundled.packId && it.version > bundled.version && allowlist.permits(it.packId, it.packages) }
-            ?: bundled
+        downloaded?.takeIf {
+            it.packId == bundled.packId &&
+                it.version > bundled.version &&
+                allowlist.permits(it.packId, it.packages) &&
+                invariants.holds(it) &&
+                !versions.isRevoked(it)
+        } ?: bundled
 
     private fun decode(bytes: ByteArray): PackLoadResult {
         if (bytes.size > RulesetValidator.MAX_DOCUMENT_BYTES) return rejected(PackRejection.TOO_LARGE)
         val text = strictUtf8(bytes) ?: return rejected(PackRejection.INVALID_JSON)
+        when (DuplicateKeyScan.scan(text)) {
+            DuplicateKeyScan.Outcome.UNIQUE -> Unit
+            DuplicateKeyScan.Outcome.DUPLICATE -> return rejected(PackRejection.DUPLICATE_KEY)
+            DuplicateKeyScan.Outcome.MALFORMED -> return rejected(PackRejection.INVALID_JSON)
+        }
         when (val validation = validator.validateDocument(SCHEMA_NAME, text)) {
             is ValidationResult.Valid -> Unit
             is ValidationResult.Rejected -> return rejected(rejectionOf(validation.code))
@@ -82,8 +114,11 @@ class DetectorPackLoader(
                 return rejected(PackRejection.SCHEMA)
             }
         return when {
+            PackVersion.parseOrNull(pack.packVersion) == null -> rejected(PackRejection.SCHEMA)
             pack.minSchemaVersion > supportedSchemaVersion -> rejected(PackRejection.UNSUPPORTED_SCHEMA)
             !allowlist.permits(pack.packId, pack.packages) -> rejected(PackRejection.PACKAGE_NOT_ALLOWED)
+            !invariants.holds(pack) -> rejected(PackRejection.INVARIANT)
+            versions.isRevoked(pack) -> rejected(PackRejection.REVOKED)
             else -> PackLoadResult.Accepted(pack)
         }
     }

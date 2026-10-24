@@ -7,10 +7,12 @@ package dev.monkifocus.android.detectors
  *
  * - A short view id (`clips_viewer_view_pager`) is prefixed with the package
  *   of the screen (`com.instagram.android:id/clips_viewer_view_pager`), which
- *   also covers repackaged variants. A node whose resource id carries no
- *   package at all (a Compose test tag such as `ADDRESSBAR_URL_BOX`) matches
- *   the short id verbatim. A qualified id (`android:id/switch_widget`) is
- *   compared as is.
+ *   also covers repackaged variants. Only the compiled [COMPOSE_TAGS] (test
+ *   tags Compose apps expose as a resource id without a package, such as
+ *   `ADDRESSBAR_URL_BOX`) also match verbatim. A qualified id
+ *   (`android:id/switch_widget`) is compared as is.
+ * - Only nodes of the screen's own package outside any WebView are
+ *   candidates ([ScreenIndex]).
  * - View ids are looked up first (index lookup); text and content
  *   descriptions are only read for the candidates, or for every node when a
  *   predicate names no view id. Comparisons are literal and case-sensitive.
@@ -18,6 +20,9 @@ package dev.monkifocus.android.detectors
  * Node text is compared in memory and never copied, stored or logged.
  */
 object PredicateEvaluator {
+    /** Compose test tags that stand for a view id without a package prefix. */
+    val COMPOSE_TAGS: Set<String> = setOf("ADDRESSBAR_URL_BOX")
+
     /** True when at least one indexed node satisfies [predicate]. */
     fun matches(
         predicate: NodePredicate,
@@ -25,7 +30,7 @@ object PredicateEvaluator {
     ): Boolean = candidates(predicate, index).any { nodeMatches(predicate, it, index.screen) }
 
     /** Nodes worth testing: the view-id hits when the predicate names an id, otherwise every node. */
-    private fun candidates(
+    fun candidates(
         predicate: NodePredicate,
         index: ScreenIndex,
     ): List<UiNode> {
@@ -37,7 +42,12 @@ object PredicateEvaluator {
     fun qualifiedIds(
         viewId: String,
         packageName: String,
-    ): List<String> = if (ID_SEPARATOR in viewId) listOf(viewId) else listOf("$packageName$ID_SEPARATOR$viewId", viewId)
+    ): List<String> =
+        when {
+            ID_SEPARATOR in viewId -> listOf(viewId)
+            viewId in COMPOSE_TAGS -> listOf("$packageName$ID_SEPARATOR$viewId", viewId)
+            else -> listOf("$packageName$ID_SEPARATOR$viewId")
+        }
 
     fun nodeMatches(
         predicate: NodePredicate,
@@ -45,6 +55,7 @@ object PredicateEvaluator {
         screen: Screen,
     ): Boolean {
         val viewId = predicate.viewId
+        if (node.packageName != screen.packageName) return false
         if (viewId != null && node.viewId !in qualifiedIds(viewId, screen.packageName)) return false
         if (predicate.className != null && node.className != predicate.className) return false
         if (predicate.selected != null && node.isSelected != predicate.selected) return false

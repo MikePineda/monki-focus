@@ -80,4 +80,24 @@ class PredicateEvaluatorTest {
         )
         assertTrue(holds(predicate, TestNode("$pkg:id/tab", contentDescValue = "Home", isSelected = true)))
     }
+
+    @Test
+    fun only_compiled_compose_tags_match_without_a_package() {
+        assertFalse(holds(NodePredicate(viewId = "url_bar"), TestNode("url_bar")))
+        assertTrue(holds(NodePredicate(viewId = "url_bar"), TestNode("$pkg:id/url_bar")))
+    }
+
+    @Test
+    fun a_node_of_another_package_never_matches() {
+        assertFalse(holds(NodePredicate(viewId = "pager"), TestNode("$pkg:id/pager", packageName = "com.example.overlay")))
+        assertFalse(holds(NodePredicate(contentDesc = "Reels"), TestNode(contentDescValue = "Reels", packageName = "com.example.overlay")))
+    }
+
+    @Test
+    fun nothing_below_a_web_view_matches() {
+        val page = TestNode(className = "android.webkit.WebView", children = listOf(TestNode("$pkg:id/pager", contentDescValue = "Reels")))
+
+        assertFalse(holds(NodePredicate(viewId = "pager"), page))
+        assertFalse(holds(NodePredicate(contentDesc = "Reels"), page))
+    }
 }

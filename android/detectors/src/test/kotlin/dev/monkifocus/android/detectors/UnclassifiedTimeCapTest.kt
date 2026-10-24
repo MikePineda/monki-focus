@@ -7,60 +7,113 @@ import org.junit.Test
 
 class UnclassifiedTimeCapTest {
     private val ig = "com.instagram.android"
+    private val other = "com.example.other"
+    private val second = 1_000L
     private val minute = 60_000L
 
-    private fun unclassifiedFor(minutes: Long): UnclassifiedTimeCap =
-        UnclassifiedTimeCap.INITIAL
-            .observe(ig, classified = false, nowMonotonicMs = 0)
-            .observe(ig, classified = false, nowMonotonicMs = minutes * minute)
+    /** Observes [pkg] every 30 s from [fromMs] to [toMs] (the service ticks at least every minute). */
+    private fun UnclassifiedTimeCap.use(
+        pkg: String,
+        classified: Boolean,
+        fromMs: Long,
+        toMs: Long,
+    ): UnclassifiedTimeCap {
+        var state = this
+        var t = fromMs
+        while (t <= toMs) {
+            state = state.observe(pkg, classified, t)
+            t += 30 * second
+        }
+        return state
+    }
 
     private fun UnclassifiedTimeCap.frictionAt(
-        minutes: Long,
+        nowMs: Long,
         cap: Int = 10,
         blockRule: Boolean = true,
-    ): Boolean = frictionApplies(ig, capMinutes = cap, packageHasSurfaceBlockRule = blockRule, nowMonotonicMs = minutes * minute)
+    ): Boolean = frictionApplies(ig, capMinutes = cap, packageHasSurfaceBlockRule = blockRule, nowMonotonicMs = nowMs)
 
     @Test
-    fun unclassified_package_with_a_surface_block_rule_gets_friction_after_the_cap() {
-        assertFalse(unclassifiedFor(10).frictionAt(10))
-        assertTrue(unclassifiedFor(11).frictionAt(11))
+    fun friction_after_cap_minutes_unclassified() {
+        val state = UnclassifiedTimeCap.INITIAL.use(ig, classified = false, fromMs = 0, toMs = 10 * minute)
+
+        assertFalse(state.frictionAt(9 * minute + 30 * second))
+        assertTrue(state.frictionAt(10 * minute))
     }
 
     @Test
-    fun recognising_a_surface_restarts_the_count() {
+    fun short_classified_blips_do_not_reset_the_count() {
+        var state = UnclassifiedTimeCap.INITIAL
+        // Nine minutes unclassified, broken every three minutes by a 30 s classified blip.
+        for (block in 0 until 3) {
+            val start = block * 3 * minute + block * 30 * second
+            state = state.use(ig, classified = false, fromMs = start, toMs = start + 3 * minute)
+            state = state.observe(ig, classified = true, nowMonotonicMs = start + 3 * minute + 15 * second)
+        }
+        val resume = 9 * minute + 3 * 30 * second
+        state = state.use(ig, classified = false, fromMs = resume, toMs = resume + minute)
+
+        assertTrue(state.frictionAt(resume + minute))
+    }
+
+    @Test
+    fun quick_app_switches_do_not_reset_the_count() {
         val state =
-            unclassifiedFor(9)
-                .observe(ig, classified = true, nowMonotonicMs = 9 * minute)
-                .observe(ig, classified = false, nowMonotonicMs = 10 * minute)
+            UnclassifiedTimeCap.INITIAL
+                .use(ig, classified = false, fromMs = 0, toMs = 6 * minute)
+                .use(other, classified = false, fromMs = 6 * minute + 10 * second, toMs = 6 * minute + 40 * second)
+                .use(ig, classified = false, fromMs = 7 * minute, toMs = 11 * minute)
 
-        assertFalse(state.frictionAt(15))
-        assertTrue(state.frictionAt(21))
+        assertTrue(state.frictionAt(11 * minute))
     }
 
     @Test
-    fun leaving_the_package_restarts_the_count() {
+    fun time_outside_the_two_cap_window_does_not_count() {
         val state =
-            unclassifiedFor(9)
-                .observe("com.example.other", classified = false, nowMonotonicMs = 9 * minute)
-                .observe(ig, classified = false, nowMonotonicMs = 10 * minute)
+            UnclassifiedTimeCap.INITIAL
+                .use(ig, classified = false, fromMs = 0, toMs = 6 * minute)
+                .use(ig, classified = true, fromMs = 6 * minute + 30 * second, toMs = 30 * minute)
+                .use(ig, classified = false, fromMs = 30 * minute + 30 * second, toMs = 35 * minute)
 
-        assertFalse(state.frictionAt(19))
+        assertFalse(state.frictionAt(35 * minute))
     }
 
     @Test
-    fun cap_zero_is_off() {
-        assertFalse(unclassifiedFor(500).frictionAt(500, cap = 0))
+    fun a_classified_screen_now_gets_no_friction() {
+        val state =
+            UnclassifiedTimeCap.INITIAL
+                .use(ig, classified = false, fromMs = 0, toMs = 12 * minute)
+                .observe(ig, classified = true, nowMonotonicMs = 12 * minute + 10 * second)
+
+        assertFalse(state.frictionAt(12 * minute + 10 * second))
     }
 
     @Test
-    fun no_surface_block_rule_means_no_safety_net() {
-        assertFalse(unclassifiedFor(60).frictionAt(60, blockRule = false))
+    fun a_screen_off_gap_is_not_counted() {
+        val state =
+            UnclassifiedTimeCap.INITIAL
+                .use(ig, classified = false, fromMs = 0, toMs = 2 * minute)
+                .backgrounded(2 * minute + 10 * second)
+                .observe(ig, classified = false, nowMonotonicMs = 40 * minute)
+
+        assertFalse(state.frictionAt(40 * minute))
     }
 
     @Test
-    fun a_monotonic_clock_reset_restarts_the_count() {
-        val state = unclassifiedFor(9).observe(ig, classified = false, nowMonotonicMs = 1_000)
+    fun a_missed_event_counts_at_most_one_minute() {
+        val state =
+            UnclassifiedTimeCap.INITIAL
+                .observe(ig, classified = false, nowMonotonicMs = 0)
+                .observe(ig, classified = false, nowMonotonicMs = 30 * minute)
 
-        assertFalse(state.frictionAt(5))
+        assertFalse(state.frictionAt(30 * minute))
+    }
+
+    @Test
+    fun cap_zero_is_off_and_no_block_rule_means_no_safety_net() {
+        val state = UnclassifiedTimeCap.INITIAL.use(ig, classified = false, fromMs = 0, toMs = 60 * minute)
+
+        assertFalse(state.frictionAt(60 * minute, cap = 0))
+        assertFalse(state.frictionAt(60 * minute, blockRule = false))
     }
 }

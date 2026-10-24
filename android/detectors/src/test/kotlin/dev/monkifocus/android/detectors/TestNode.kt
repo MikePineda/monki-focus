@@ -27,14 +27,29 @@ class TestNode(
 
     override fun findByViewId(fullId: String): List<UiNode> =
         (if (viewId == fullId) listOf(this) else emptyList<UiNode>()) + children.flatMap { it.findByViewId(fullId) }
+
+    /** This subtree with [pkg] as the package of every node that names none (a real tree always names one). */
+    fun inPackage(pkg: String): TestNode =
+        TestNode(
+            viewId,
+            textValue,
+            contentDescValue,
+            className,
+            packageName ?: pkg,
+            bounds,
+            isVisibleToUser,
+            isSelected,
+            isFocused,
+            children.map { it.inPackage(pkg) },
+            textReads,
+        )
 }
 
-/** A full-size window of [packageName] around [children]. */
+/** A full-size window of [packageName] around [children]; nodes without a package get [packageName]. */
 fun window(
     packageName: String,
     vararg children: TestNode,
-): Screen =
-    Screen.of(TestNode(className = "android.widget.FrameLayout", packageName = packageName, children = children.toList()), packageName)
+): Screen = Screen.of(TestNode(className = "android.widget.FrameLayout", children = children.toList()).inPackage(packageName), packageName)
 
 /** A detector pack with the required fields filled in, for classifier unit tests. */
 fun aPack(
