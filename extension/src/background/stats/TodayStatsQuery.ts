@@ -3,6 +3,7 @@ import { pulse, UNCATEGORISED, type SyncBlock } from '@monki-focus/analytics'
 import { epochSecondsOf, instantOf, localTimeAt, utcInstantOf } from '@monki-focus/engine'
 import type { TodayStats, TopActivity } from '../../shared/StatsContract'
 import type { BlockRepository } from '../storage/BlockRepository'
+import type { IntentionStatsQuery } from './IntentionStatsQuery'
 import { emptySecondsByLevel, levelIndexOf } from './LevelScale'
 import { localTimeOfBlock } from './LocalDay'
 
@@ -32,7 +33,11 @@ function topActivities(blocks: readonly SyncBlock[]): TopActivity[] {
 
 /** `stats.today`: today's blocks in the pinned zone, summarised for the popup. */
 export class TodayStatsQuery {
-  constructor(private readonly blocks: Pick<BlockRepository, 'between'>) {}
+  constructor(
+    private readonly blocks: Pick<BlockRepository, 'between'>,
+    /** The intention gate's log (E6); without it the intentions are zeros. */
+    private readonly intentions?: Pick<IntentionStatsQuery, 'today'>
+  ) {}
 
   async run(nowMs: number, timeZone: string): Promise<TodayStats> {
     const nowSeconds = epochSecondsOf(instantOf(nowMs))
@@ -57,7 +62,9 @@ export class TodayStatsQuery {
       levels,
       uncategorisedSeconds,
       topActivities: topActivities(today),
-      intentions: { total: 0, kept: 0, broken: 0, closes: 0 },
+      intentions: this.intentions
+        ? (await this.intentions.today(nowMs, timeZone)).summary
+        : { total: 0, kept: 0, broken: 0, closes: 0 },
     }
   }
 }

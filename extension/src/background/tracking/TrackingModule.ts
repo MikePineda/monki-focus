@@ -7,11 +7,13 @@ import type { IncognitoAccess, TodayStats, WeekStats } from '../../shared/StatsC
 import { IncognitoAccessCheck, type IncognitoExtensionApi } from '../privacy/IncognitoAccessCheck'
 import { deviceTimeZone } from '../rules/DeviceTimeZone'
 import type { RulesetStore } from '../rules/RulesetStore'
+import { IntentionStatsQuery } from '../stats/IntentionStatsQuery'
 import { TodayStatsQuery } from '../stats/TodayStatsQuery'
 import { WeekStatsQuery } from '../stats/WeekStatsQuery'
 import { openMonkiDb, type MonkiDb } from '../storage/db'
 import { IdbBlockRepository } from '../storage/IdbBlockRepository'
 import { IdbEventRepository } from '../storage/IdbEventRepository'
+import { IntentionLog } from '../storage/IntentionLog'
 import { Outbox } from '../storage/Outbox'
 import { Retention } from '../storage/Retention'
 import { ActiveTabProbe } from './ActiveTabProbe'
@@ -115,7 +117,7 @@ export function createTrackingModule(deps: TrackingModuleDependencies): Tracking
     return {
       tracker: new ActivityTracker(clock, probe, recorder),
       job,
-      today: new TodayStatsQuery(blocks),
+      today: new TodayStatsQuery(blocks, new IntentionStatsQuery(new IntentionLog(db))),
       week: new WeekStatsQuery(blocks),
     }
   })()

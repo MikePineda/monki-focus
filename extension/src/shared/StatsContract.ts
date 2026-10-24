@@ -38,7 +38,7 @@ export interface TodayStats {
   uncategorisedSeconds: number
   /** At most five, most seconds first. */
   topActivities: TopActivity[]
-  /** All zeros until the intention gate (E6) records intentions. */
+  /** Today's intentions from the gate's log (E6): commitments, kept, broken, closes. */
   intentions: IntentionSummary
 }
 

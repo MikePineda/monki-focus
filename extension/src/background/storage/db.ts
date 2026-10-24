@@ -6,11 +6,11 @@ import type { ActivityEvent, SyncBlock } from '@monki-focus/analytics'
 export const DB_NAME = 'monki'
 
 /**
- * Schema version. Migrations are additive: a later work package (intentions,
- * bypass events) bumps this and only creates stores or indexes in the
- * upgrade step for its version; existing stores are never dropped or renamed.
+ * Schema version. Migrations are additive: each version only creates stores
+ * or indexes in its own upgrade step; existing stores are never dropped or
+ * renamed. v2 (E6) adds `intentions`.
  */
-export const DB_VERSION = 1
+export const DB_VERSION = 2
 
 /** A raw ActivityWatch-style event as stored: one row per merged heartbeat run. */
 export interface StoredEvent extends ActivityEvent {
@@ -30,12 +30,43 @@ export interface StoredBlock extends SyncBlock {
   key: BlockKey
 }
 
-export interface OutboxEntry {
+/**
+ * A device bypass event as the device API carries it (`BypassEvent` in
+ * `packages/protocol/openapi.yaml`): small, non-personal details only, never
+ * a URL, a title or screen text.
+ */
+export interface BypassEventPayload {
+  dedupeKey: string
+  kind: 'emergency_override'
+  occurredAt: string
+  details: Record<string, string | number | boolean>
+}
+
+export type OutboxEntry =
+  | {
+      id?: number
+      kind: 'block'
+      /** What later sync uploads; only the seven sync-block fields. */
+      payload: SyncBlock
+      enqueuedAt: string
+    }
+  | {
+      id?: number
+      kind: 'bypass'
+      payload: BypassEventPayload
+      enqueuedAt: string
+    }
+
+/** What the intention gate records for the day's numbers (never a URL or the text). */
+export type IntentionEntryKind = 'visit' | 'committed' | 'kept' | 'broken' | 'closed'
+
+export interface IntentionEntry {
   id?: number
-  kind: 'block'
-  /** What later sync uploads; only the seven sync-block fields. */
-  payload: SyncBlock
-  enqueuedAt: string
+  /** UTC instant (`YYYY-MM-DDTHH:MM:SSZ`). */
+  at: string
+  kind: IntentionEntryKind
+  /** The escalation group (a rule id, or `bedtime`). */
+  group: string
 }
 
 export interface MonkiDbSchema extends DBSchema {
@@ -53,6 +84,11 @@ export interface MonkiDbSchema extends DBSchema {
     key: number
     value: OutboxEntry
   }
+  intentions: {
+    key: number
+    value: IntentionEntry
+    indexes: { at: string }
+  }
 }
 
 export type MonkiDb = IDBPDatabase<MonkiDbSchema>
@@ -68,6 +104,13 @@ export function openMonkiDb(name: string = DB_NAME): Promise<MonkiDb> {
         const blocks = db.createObjectStore('blocks', { keyPath: 'key' })
         blocks.createIndex('blockStart', 'blockStart')
         db.createObjectStore('outbox', { keyPath: 'id', autoIncrement: true })
+      }
+      if (oldVersion < 2) {
+        const intentions = db.createObjectStore('intentions', {
+          keyPath: 'id',
+          autoIncrement: true,
+        })
+        intentions.createIndex('at', 'at')
       }
     },
   })
