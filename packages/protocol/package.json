@@ -1,0 +1,46 @@
+{
+  "name": "@monki-focus/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "description": "monki-focus device API contract (OpenAPI), PASETO v4.public unlock and policy token reference implementation, schemas and shared test vectors.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./openapi.yaml": "./openapi.yaml",
+    "./schema/*": "./schema/*",
+    "./fixtures/*": "./fixtures/*"
+  },
+  "files": [
+    "dist",
+    "schema",
+    "fixtures",
+    "openapi.yaml"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "gen:vectors": "node scripts/gen-vectors.mjs"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "13.1.0",
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "ajv": "8.20.0",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "openapi-types": "12.1.3",
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5",
+    "yaml": "2.9.1"
+  }
+}

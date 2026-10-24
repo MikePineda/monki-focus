@@ -1,0 +1,38 @@
+{
+  "$comment": "TEST-ONLY Ed25519 keys (test-key-not-real). Public on purpose: they sign only the shared test vectors and must never sign anything real or be pinned by a real client. seedHex = SHA-256(\"monki-focus/\" + name); kid = first 16 chars of base64url(SHA-256(publicKey)).",
+  "warning": "TEST-ONLY. NOT A REAL KEY. DO NOT USE OUTSIDE TESTS.",
+  "keys": [
+    {
+      "name": "test-key-not-real-unlock-a",
+      "purpose": "unlock",
+      "role": "Pinned unlock-signing key (the current one).",
+      "seedHex": "fa6d538b96f6d3f96b1f133c062ccfc21c6122273b629cfceb04f7a36c908cf6",
+      "publicKeyHex": "89b0f174734971e39302db24e72dae684a1e75960b0d2f699abf2d3eb8cb384d",
+      "kid": "TBcVoSLeuybFEOuV"
+    },
+    {
+      "name": "test-key-not-real-unlock-b",
+      "purpose": "unlock",
+      "role": "Second pinned unlock-signing key (rotation successor).",
+      "seedHex": "2181629ec03483a77b2fa991c9f77b7001b562724d51b87325e359bd51356a1b",
+      "publicKeyHex": "2f6deb3aa4f2a446487a9bf35e7f7af128220ef461302e8d867a1ea75eb287e3",
+      "kid": "cSp-101RbV5gF033"
+    },
+    {
+      "name": "test-key-not-real-policy-a",
+      "purpose": "policy",
+      "role": "Pinned policy-signing key.",
+      "seedHex": "cc63569f03c2a15a46c57b6c83104a1b9591200b4f13e7758340eccaf9a8a4f1",
+      "publicKeyHex": "4dd9f23c303627d7511429f906424e2101fba490e6a858f7447ef8775ff29ffc",
+      "kid": "jAhwHvW_LqKC2uK3"
+    },
+    {
+      "name": "test-key-not-real-untrusted",
+      "purpose": "unlock",
+      "role": "A key nobody pinned (an attacker or another instance).",
+      "seedHex": "99d9d04753bff72c2f66f623e9f384f42a0d2ac81e919242b2c639f0bdc52f46",
+      "publicKeyHex": "fc7b60e117417b906bb2b362cc965c47a481d2db935580d4bafc4f7778c5eedc",
+      "kid": "vwgmfejyAb19q2Jq"
+    }
+  ]
+}
