@@ -9,7 +9,12 @@
  */
 
 const LABEL = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?'
-const HOST = `${LABEL}(?:\\.${LABEL})+`
+/**
+ * The last label is a letters-only TLD or an IDNA A-label (`xn--…`), never
+ * all-numeric, so no IP literal (`127.0.0.1`, `0.1`) is ever a valid host.
+ */
+const TOP_LABEL = '(?:[a-z]{2,63}|xn--[a-z0-9-]{0,58}[a-z0-9])'
+const HOST = `${LABEL}(?:\\.${LABEL})*\\.${TOP_LABEL}`
 
 /** A TCP port from 1 to 65535, without leading zeros, excluding 80 (the http default). */
 const LOOPBACK_PORT =

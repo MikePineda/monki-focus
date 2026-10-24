@@ -80,7 +80,10 @@ is `invalid_input` (the keyring refuses it); a failing R or S is
 `invalid_signature`. The vendored Wycheproof EddsaVerify suite and the 12
 "Taming the many EdDSAs" cases (`fixtures/ed25519-edge/`) pin the expected
 verdicts: Wycheproof `valid` accept, `invalid` and `acceptable` reject; all 12
-speccheck cases reject.
+speccheck cases reject. Every platform's CI MUST run both suites; in
+particular the Swift (CryptoKit) suite MUST run the speccheck cases with a
+mixed-order R, which CryptoKit alone would judge differently from the
+strict policy.
 
 ## 2. Key ids and keys
 
@@ -100,8 +103,10 @@ speccheck cases reject.
   together with the kid of every active key, and the enrolment QR code
   encodes `{code, issuer, kids}`. The device pins the keys from the enrolment
   response only if every kid equals one it was shown or scanned; otherwise it
-  discards the enrolment. When the guardian pairs, the dashboard shows the
-  guardian the same kids. Every heartbeat reports `pinnedKids`; the server
+  discards the enrolment. When the guardian pairs, the monitored device shows
+  its pinned kids on screen and the guardian MUST compare them with the kids
+  the dashboard shows the guardian; pairing is confirmed only after they
+  match. Every heartbeat reports `pinnedKids`; the server
   raises a `key_pin_mismatch` bypass event for the guardian when they are not
   the instance's keys (a device that was enrolled through an interception
   proxy would pin the proxy's keys).
@@ -140,8 +145,11 @@ issuer, device, nonce or boot id that does not match its format fails with
 `invalid_input`.
 
 **Issuer profiles.** In the **release** profile (what clients ship) the
-issuer is exactly `https://host`: lowercase, at least two labels, no port
-(including no explicit `:443`), no path, no trailing slash. The
+issuer is exactly `https://host`: lowercase, at least two labels, a last
+label that is a letters-only TLD or an `xn--` A-label (never all-numeric, so
+never an IP literal), no port at all (including no explicit `:443`), no
+path, no trailing slash. A self-hosted instance that listens on another port
+MUST be published through a reverse proxy on 443. The
 **development** profile additionally accepts `http://localhost` and
 `http://127.0.0.1` with an optional port from 1 to 65535 that is not the
 default `80`. Port 0 and ports above 65535 never match.
@@ -235,22 +243,34 @@ the published pattern plus a calendar check, never with a lenient parser.
 ### 4.5 Scope formats and matching
 
 - **`domain`**: `value` is an exact lowercase hostname with at least two
-  labels; `includeSubdomains` is required (issuers default to `false`). It
+  labels whose last label is never all-numeric (`127.0.0.1` and `0.1` are
+  invalid); `includeSubdomains` is required (issuers default to `false`). It
   matches a host equal to `value`, and, only when `includeSubdomains` is
   `true`, a host ending in `"." + value`. Never a parent domain, never a
   lookalike suffix (`badexample.com` is not under `example.com`).
+  `includeSubdomains: true` is allowed only on a value that is at least a
+  registrable domain (eTLD+1): issuers MUST check the value against the
+  Public Suffix List server-side and refuse `co.uk`, `github.io`,
+  `blogspot.com` and every other public suffix. The reference issuer takes
+  the check as an injected `isRegistrableDomain` hook and refuses such a
+  scope when none is given; `fixtures/public-suffix/` holds a tiny TEST-ONLY
+  excerpt, not the list. Clients cannot check this (they have no list).
 - **`path`**: `value` is an exact host plus one or more literal segments.
   Segments are non-empty, are not `.` or `..`, and contain no `%`, `\`, `*`,
   `?` or `#`; there is no trailing slash. It matches when the host is equal
   (never a subdomain) and the scope's segments are a prefix, segment by
   segment, of the target path's segments, compared case-sensitively and
   without percent-decoding (a scope cannot contain `%`, so an encoded
-  segment in the target never matches).
+  segment in the target never matches). Matching fails closed: if **any**
+  segment of the target path is `.` or `..` (also when written with `%2e`,
+  in any case and mix), or contains `%2f`, `%5c` or a raw `\`, the scope
+  does not match, because a server might resolve such a path differently.
 - **`app`**: an Android package name or Apple bundle id, matched exactly.
 
 Targets are normalised by the platform before matching: lowercase A-label
 host without port or trailing dot, and the parsed URL path (dot segments
-resolved, no query or fragment). Anything else does not match, which fails
+resolved, no query or fragment). An IP-literal host (IPv4 or `[...]` IPv6)
+never matches any scope. Anything else does not match, which fails
 closed. Shared cases: `fixtures/scope-match/cases.json`; reference:
 [`scope_match.ts`](../../packages/protocol/src/scope_match.ts).
 
@@ -316,20 +336,27 @@ trusted_now = max(wall_now, floor, anchor.srv + (mono_now - anchor.mono_sent))
   anchor term counts only while `boot` equals the current boot and the
   monotonic clock has not gone back. The unsigned `serverTime` fields in API
   responses are informative only, and a token's `iat` is never an anchor.
-- **Floor.** Persisted durably and only ever raised: to the anchored time on
-  every anchor and at least every 60 s of monotonic progress while the anchor
-  is current, and to the `iat` of every verified token. It is **never raised
-  from the wall clock** (a clock set far ahead must not lock the device out
-  forever), and it survives reboots and service-worker restarts, so a wall
-  clock set back can never take trusted time below it.
+- **Floor.** Persisted durably. It rises to the anchored time at least every
+  60 s of monotonic progress while the anchor is current, and towards the
+  `iat` of a verified token, but only with a current-boot anchor and never
+  beyond anchored now + 4 h. It is **never raised from the wall clock**, and
+  it survives reboots and service-worker restarts, so a wall clock set back
+  can never take trusted time below it.
+- **Authoritative time tokens.** A verified, nonce-fresh time token resets
+  the floor to its `srv`, **even when that is lower** than the current floor,
+  so no bad future value (a buggy server, a capped `iat`) can trap the user.
+  When the floor drops by more than 60 s the client records a
+  `time_floor_lowered` notice (a bypass event for the guardian, since a
+  device whose floor had to be lowered was told a wrong time).
 - **Monotonic clock and boot id.** Android: `SystemClock.elapsedRealtime()`
   and `Settings.Global.BOOT_COUNT` (decimal). macOS: `mach_continuous_time()`
   and the boot session uuid (`kern.bootsessionuuid`). Extension:
   `performance.now()` in the service worker, with a boot id from
-  `crypto.randomUUID()` generated **once per service-worker instance and kept
-  only in memory** (never in storage), so every service-worker restart is a
-  new boot; when the Mac app is present the extension uses the app's
-  `trusted_time` instead.
+  `crypto.randomUUID()`: it MUST be generated fresh **once per
+  service-worker instance and kept only in memory** (never in any storage),
+  so every service-worker restart is a new boot, and the extension's tests
+  MUST check that a restarted service worker gets a new boot id. When the
+  Mac app is present the extension uses the app's `trusted_time` instead.
 - **Wall-only time.** Without an anchor from the current boot, trusted time
   is `max(wall, floor)`. It is enough to refuse tokens, but never enough to
   accept a first receipt or activation, to end entries on time or to purge
@@ -379,9 +406,15 @@ each; every platform's port of
 match them. Actions: `time_response` (`srv`, `sentMono`, optional `revoked`
 and `complete`), `unlock_received` (`jti`, `iat`, `nbf`, `exp`, `durS`),
 `activate`, `deactivate`, `revalidate`, `purge`, `observe`. Before every
-event the driver ratchets the floor. Expected fields (only those listed are
-compared): `ok`, `error`, `end`, `trustedNow`, `status` (of the event's jti,
-`absent` when not stored) and `entries` (sorted stored jtis).
+event the driver ratchets the floor. The vectors are generated from
+hand-written scenarios (`scripts/state-machine-scenarios.mjs`, whose own
+expectations the generator checks) and carry the **full outcome** of every
+event, which runners MUST compare field by field: `ok`, `error`, `end`,
+`trustedNow`, `floor`, `revocationsIncomplete`, `notices`, `status` (of the
+event's jti, `absent` when not stored, `null` without a jti), `entry` (the
+stored entry: `status`, `exp`, `stale`, `receipt`, `activation`, or `null`)
+and `entries` (sorted stored jtis). An `activate` or `revalidate` that finds
+the unlock over moves the entry to `ended` **and** returns an error.
 
 ## 9. Revocation
 
@@ -391,22 +424,26 @@ device, at most 32 per token (which keeps the token under 4096 bytes). The
 client marks each listed jti `revoked`, even one it has not received yet, so a
 late delivery is refused. When `complete` is `false` the server had more
 than fit: the client marks every `received` or `active` entry as needing
-revalidation (`revalidation_required`) until the unlock poll confirms it.
+revalidation (`revalidation_required`) until the unlock poll confirms it,
+and persists `revocationsIncomplete` until a time token with
+`complete: true` arrives; while it is set, every **new** receipt also needs
+online revalidation before it can be activated.
 Revocation still needs connectivity; an offline device cannot learn of it,
 which is why unlock lifetimes are short (residual risk).
 
 ## 10. Test vectors
 
-| Directory                                | What                                                                    |
-| ---------------------------------------- | ----------------------------------------------------------------------- |
-| `fixtures/paseto-official/v4.json`       | Official PASETO v4 vectors (ISC); platforms run the `v4.public` cases.  |
-| `fixtures/unlock-tokens/*.json`          | Unlock-token vectors, one file per case.                                |
-| `fixtures/policy-tokens/*.json`          | Policy-token vectors.                                                   |
-| `fixtures/time-tokens/*.json`            | Time-token vectors (`verify` has `nonce` and `boot` instead of `now`).  |
-| `fixtures/state-machines/*.json`         | Trusted time, receipt, activation and ledger event sequences (§8).      |
-| `fixtures/scope-match/cases.json`        | Scope matching (§4.5).                                                  |
-| `fixtures/ed25519-edge/`                 | Wycheproof EddsaVerify and speccheck cases with strict verdicts (§1.1). |
-| `fixtures/keys/TEST-ONLY-*.ed25519.json` | The TEST-ONLY keys that sign the token vectors (`test-key-not-real-*`). |
+| Directory                                | What                                                                       |
+| ---------------------------------------- | -------------------------------------------------------------------------- |
+| `fixtures/paseto-official/v4.json`       | Official PASETO v4 vectors (ISC); platforms run the `v4.public` cases.     |
+| `fixtures/unlock-tokens/*.json`          | Unlock-token vectors, one file per case.                                   |
+| `fixtures/policy-tokens/*.json`          | Policy-token vectors.                                                      |
+| `fixtures/time-tokens/*.json`            | Time-token vectors (`verify` has `nonce` and `boot` instead of `now`).     |
+| `fixtures/state-machines/*.json`         | Trusted time, receipt, activation and ledger event sequences (§8).         |
+| `fixtures/scope-match/cases.json`        | Scope matching (§4.5).                                                     |
+| `fixtures/ed25519-edge/`                 | Wycheproof EddsaVerify and speccheck cases with strict verdicts (§1.1).    |
+| `fixtures/public-suffix/`                | TEST-ONLY public-suffix excerpt for the `isRegistrableDomain` hook (§4.5). |
+| `fixtures/keys/TEST-ONLY-*.ed25519.json` | The TEST-ONLY keys that sign the token vectors (`test-key-not-real-*`).    |
 
 Each token vector has `id` (also the file name), `token`, `verify`
 (`purpose`, `keyring` of `{kid, publicKeyHex}`, `issuer`, `device`, and `now`
@@ -496,13 +533,18 @@ token, a nonce, a key or a footer.
 8. **Release issuers are `https://host` without a port**; self-hosters on a
    non-default port put a reverse proxy in front.
 9. **Floor raised only from signed time** (anchors and `iat`), never from the
-   wall clock.
+   wall clock; `iat` raises it only with a current-boot anchor and at most to
+   anchored now + 4 h; a verified time token resets it, even downwards.
 10. **Anchor taken at the send instant** of a nonce-bound request, accepted
     within 60 s.
 11. **At most 32 revocations per time token**, with `complete: false` instead
     of truncation; an incomplete list forces revalidation of everything.
 12. **`includeSubdomains` is a required member** of domain scopes rather than
     an optional one, so the canonical form has a single spelling.
+13. **Public Suffix List check on the issuer only**, injected as a hook; the
+    protocol package ships only a TEST-ONLY excerpt.
+14. **No host has an all-numeric last label**, which rules out IP literals
+    for issuers, scopes and match targets with one pattern.
 
 ## 13. Open questions
 

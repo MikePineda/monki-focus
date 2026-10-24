@@ -249,7 +249,7 @@ describe('issuer profiles', () => {
   it('test_development_profile_accepts_only_loopback_http', () => {
     const local = { ...claims, iss: 'http://localhost:3333' }
     expect(issueUnlockToken(local, signingKeyA).ok).toBe(false)
-    const issued = issueUnlockToken(local, signingKeyA, 'development')
+    const issued = issueUnlockToken(local, signingKeyA, { profile: 'development' })
     expect(issued.ok).toBe(true)
     if (!issued.ok) return
     const base = { ...context, keyring: bothKeys, issuer: local.iss }

@@ -59,7 +59,7 @@
             "value": {
               "type": "string",
               "maxLength": 253,
-              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$"
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\\.(?:[a-z]{2,63}|xn--[a-z0-9-]{0,58}[a-z0-9])$"
             },
             "includeSubdomains": {
               "type": "boolean",
@@ -79,7 +79,7 @@
             "value": {
               "type": "string",
               "maxLength": 512,
-              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+(?:/(?:[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.\\.[A-Za-z0-9._~!$&'()+,;=:@-]+))+$"
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\\.(?:[a-z]{2,63}|xn--[a-z0-9-]{0,58}[a-z0-9])(?:/(?:[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.\\.[A-Za-z0-9._~!$&'()+,;=:@-]+))+$"
             }
           },
           "description": "An exact host plus literal path segments (segment-prefix match); no query, fragment, wildcard, %, backslash, empty, \".\" or \"..\" segment."
@@ -137,7 +137,7 @@
     "issuer": {
       "type": "string",
       "maxLength": 270,
-      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+|http://(?:localhost|127\\.0\\.0\\.1)(?::(?:[1-9]|[1-79][0-9]|8[1-9]|[1-9][0-9]{2,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?)$",
+      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\\.(?:[a-z]{2,63}|xn--[a-z0-9-]{0,58}[a-z0-9])|http://(?:localhost|127\\.0\\.0\\.1)(?::(?:[1-9]|[1-79][0-9]|8[1-9]|[1-9][0-9]{2,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?)$",
       "description": "Instance origin. Release: lowercase https://host, no port, path or trailing slash. Development only: http://localhost or http://127.0.0.1 with an optional non-default port. Never contains \"|\"."
     },
     "uuid": {

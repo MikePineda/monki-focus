@@ -14,7 +14,7 @@ interface StateMachineVector {
   id: string
   kind: 'unlock-state-machine'
   description: string
-  events: (SessionEvent & { expect: Partial<SessionOutcome> })[]
+  events: (SessionEvent & { outcome: SessionOutcome })[]
 }
 
 const vectors = readdirSync(join(packageRoot, 'fixtures/state-machines'))
@@ -28,16 +28,19 @@ describe('shared state-machine vectors', () => {
       expect.arrayContaining([
         'service_worker_restart_and_clock_rewind_do_not_extend_an_active_unlock',
         'reboot_clock_jump_purge_and_rewind_cannot_replay',
+        'authoritative_time_token_lowers_a_bad_floor',
+        'revocations_incomplete_persists_until_a_complete_time_token',
+        'activation_is_usable_until_exactly_dur_s_of_monotonic_time',
       ])
     )
   })
 
   it.each(vectors.map((vector) => [vector.id, vector] as const))('test_%s', (_id, vector) => {
     let state = initialSession()
-    vector.events.forEach((event, index) => {
+    vector.events.forEach(({ outcome: _expected, ...event }, index) => {
       const applied = applySessionEvent(state, event)
       state = applied.state
-      expect({ event: index, ...applied.outcome }).toMatchObject({ event: index, ...event.expect })
+      expect({ event: index, ...applied.outcome }).toEqual({ event: index, ..._expected })
     })
   })
 })

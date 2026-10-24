@@ -6,7 +6,7 @@ export interface VectorFile {
   readonly content: string
 }
 
-export function generateVectors(): VectorFile[]
+export function generateVectors(): Promise<VectorFile[]>
 
 /** Paths whose committed content differs from the generator output. */
-export function driftedVectors(): string[]
+export function driftedVectors(): Promise<string[]>

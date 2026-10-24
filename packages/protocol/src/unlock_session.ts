@@ -17,6 +17,7 @@ import {
   purge,
   receive,
   revalidate,
+  type ReplayEntry,
   type ReplayLedger,
   type ReplayStatus,
 } from './replay_ledger.ts'
@@ -24,7 +25,7 @@ import type { Result, TokenErrorCode } from './token_error.ts'
 import {
   applyTimeAnchor,
   initialTrustedTime,
-  raiseFloor,
+  raiseFloorFromIat,
   ratchetFloor,
   trustedNow,
   type DeviceClock,
@@ -60,15 +61,46 @@ export interface SessionEvent {
   readonly action: SessionAction
 }
 
+/** A stored ledger entry as the vectors write it (times RFC 3339 UTC, `null` when absent). */
+export interface EntryView {
+  readonly status: ReplayStatus
+  readonly exp: string
+  readonly stale: boolean
+  readonly receipt: {
+    readonly boot: string
+    readonly monoAtMs: number
+    readonly budgetMs: number
+  } | null
+  readonly activation: {
+    readonly at: string
+    readonly end: string
+    readonly boot: string
+    readonly monoAtMs: number
+    readonly budgetMs: number
+  } | null
+}
+
+/**
+ * The full outcome of one event. Every field is always present (`null` when
+ * it does not apply) and runners compare all of them.
+ */
 export interface SessionOutcome {
   readonly ok: boolean
-  readonly error?: TokenErrorCode
+  readonly error: TokenErrorCode | null
   /** `activate`: the unlock's end, RFC 3339 UTC. */
-  readonly end?: string
+  readonly end: string | null
   /** Trusted now after the event, RFC 3339 UTC. */
   readonly trustedNow: string
-  /** Status of the event's jti after the event (`absent` when not stored). */
-  readonly status?: ReplayStatus | 'absent'
+  /** The persisted floor after the event, RFC 3339 UTC. */
+  readonly floor: string
+  /** The persisted `revocationsIncomplete` flag after the event. */
+  readonly revocationsIncomplete: boolean
+  /** Platform notices raised by the event (`time_floor_lowered`). */
+  readonly notices: readonly string[]
+  /** Status of the event's jti (`absent` when not stored; `null` for events without a jti). */
+  readonly status: ReplayStatus | 'absent' | null
+  /** The event's jti entry after the event (`null` when absent or no jti). */
+  readonly entry: EntryView | null
   /** Every stored jti after the event, sorted. */
   readonly entries: readonly string[]
 }
@@ -90,6 +122,29 @@ function seconds(text: string): number {
   return value
 }
 
+function entryView(entry: ReplayEntry): EntryView {
+  const { receipt, activation } = entry
+  return {
+    status: entry.status,
+    exp: formatRfc3339Utc(entry.exp),
+    stale: entry.stale === true,
+    receipt:
+      receipt === undefined
+        ? null
+        : { boot: receipt.boot, monoAtMs: receipt.monoAtMs, budgetMs: receipt.budgetMs },
+    activation:
+      activation === undefined
+        ? null
+        : {
+            at: formatRfc3339Utc(activation.at),
+            end: formatRfc3339Utc(activation.end),
+            boot: activation.mono.boot,
+            monoAtMs: activation.mono.monoAtMs,
+            budgetMs: activation.mono.budgetMs,
+          },
+  }
+}
+
 export function applySessionEvent(
   state: SessionState,
   event: SessionEvent
@@ -103,21 +158,24 @@ export function applySessionEvent(
   let ledger = state.ledger
   let result: Result<unknown> = { ok: true, value: null }
   let end: number | undefined
+  const notices: string[] = []
   const { action } = event
 
   switch (action.type) {
     case 'time_response': {
-      const anchored = applyTimeAnchor(time, seconds(action.srv), action.sentMono, clock)
+      const complete = action.complete ?? true
+      const anchored = applyTimeAnchor(time, seconds(action.srv), action.sentMono, clock, complete)
       result = anchored
       if (anchored.ok) {
-        time = anchored.value
+        time = anchored.value.state
+        if (anchored.value.floorLowered) notices.push('time_floor_lowered')
         const revoked = (action.revoked ?? []).map(({ jti, exp }) => ({ jti, exp: seconds(exp) }))
-        ledger = applyRevocations(ledger, revoked, action.complete ?? true)
+        ledger = applyRevocations(ledger, revoked, complete)
       }
       break
     }
     case 'unlock_received': {
-      time = raiseFloor(time, seconds(action.iat))
+      time = raiseFloorFromIat(time, seconds(action.iat), clock)
       const window = {
         jti: action.jti,
         iat: seconds(action.iat),
@@ -154,12 +212,17 @@ export function applySessionEvent(
   }
 
   const jti = 'jti' in action ? action.jti : undefined
+  const stored = jti === undefined ? undefined : ledger.get(jti)
   const outcome: SessionOutcome = {
     ok: result.ok,
-    ...(result.ok ? {} : { error: result.error.code }),
-    ...(end === undefined ? {} : { end: formatRfc3339Utc(end) }),
+    error: result.ok ? null : result.error.code,
+    end: end === undefined ? null : formatRfc3339Utc(end),
     trustedNow: formatRfc3339Utc(trustedNow(time, clock)),
-    ...(jti === undefined ? {} : { status: ledger.get(jti)?.status ?? 'absent' }),
+    floor: formatRfc3339Utc(time.floor),
+    revocationsIncomplete: time.revocationsIncomplete,
+    notices,
+    status: jti === undefined ? null : (stored?.status ?? 'absent'),
+    entry: stored === undefined ? null : entryView(stored),
     entries: [...ledger.keys()].sort(),
   }
   return { state: { time, ledger }, outcome }

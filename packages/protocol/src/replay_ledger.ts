@@ -14,8 +14,9 @@
  *   monotonic) and boot, and ends at `min(activated_at + dur_s, exp + 60 s)`
  *   or when `dur_s` of monotonic time has passed in that boot, whichever is
  *   first. Activating again returns the original end.
- * - After a reboot (or a service-worker restart), or after an incomplete
- *   revocation list, an entry needs online revalidation
+ * - After a reboot (or a service-worker restart), after an incomplete
+ *   revocation list, or when received while the persisted
+ *   `revocationsIncomplete` flag is set, an entry needs online revalidation
  *   (`revalidation_required`) before it can be used again.
  * - `ended` never becomes active again (`replayed`); `revoked` never does
  *   either (`revoked`), even when revoked before it was received.
@@ -129,8 +130,11 @@ export function receive(
     monoAtMs: context.clock.monoNowMs,
     budgetMs: (window.exp - window.iat + CLOCK_SKEW_SECONDS) * 1000,
   }
+  // While the last time token said the revocation list was incomplete, a new
+  // receipt is recorded but needs online revalidation before activation.
+  const stale = context.time.revocationsIncomplete
   return step(
-    withEntry(ledger, window.jti, { status: 'received', exp: window.exp, window, receipt }),
+    withEntry(ledger, window.jti, { status: 'received', exp: window.exp, window, receipt, stale }),
     ok(null)
   )
 }

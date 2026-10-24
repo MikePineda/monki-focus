@@ -20,6 +20,7 @@ export { createKeyring, MAX_ACTIVE_KEYS, type Keyring, type PinnedKey } from './
 export { encodeKidFooter, parseKidFooter } from './kid_footer.ts'
 export { le64, pae } from './pae.ts'
 export * from './policy_claims.ts'
+export * from './registrable_domain.ts'
 export * from './replay_ledger.ts'
 export { formatRfc3339Utc, parseRfc3339Utc, RFC3339_UTC_PATTERN } from './rfc3339_utc.ts'
 export * from './scope_match.ts'

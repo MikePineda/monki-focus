@@ -21,11 +21,22 @@ import {
 import { deriveKeyId } from './key_id.ts'
 import { encodeKidFooter } from './kid_footer.ts'
 import { isPolicyClaims, type PolicyClaims } from './policy_claims.ts'
+import type { IsRegistrableDomain } from './registrable_domain.ts'
 import { signV4Public } from './sign_v4_public.ts'
 import { isTimeClaims, type TimeClaims } from './time_claims.ts'
 import { fail, ok, type Result } from './token_error.ts'
 import type { TokenPurpose } from './token_purpose.ts'
 import { isUnlockClaims, unlockDurationFits, type UnlockClaims } from './unlock_claims.ts'
+
+export interface IssueOptions {
+  /** Defaults to `release` (https issuers only). */
+  readonly profile?: IssuerProfile
+  /**
+   * Public Suffix List check, required to sign a domain scope with
+   * `includeSubdomains: true` (without it such claims are refused).
+   */
+  readonly isRegistrableDomain?: IsRegistrableDomain
+}
 
 export interface SigningKey {
   readonly kid: string
@@ -63,7 +74,7 @@ function signMessage(
 export function issueUnlockToken(
   claims: UnlockClaims,
   key: SigningKey,
-  profile: IssuerProfile = 'release'
+  options: IssueOptions = {}
 ): Result<string> {
   try {
     if (!isUnlockClaims(claims)) {
@@ -76,8 +87,22 @@ export function issueUnlockToken(
     if (!unlockDurationFits(claims, times.value)) {
       return fail('invalid_claims')
     }
+    if (claims.scope.kind === 'domain' && claims.scope.includeSubdomains) {
+      if (options.isRegistrableDomain === undefined) {
+        return fail('invalid_input')
+      }
+      if (!options.isRegistrableDomain(claims.scope.value)) {
+        return fail('invalid_claims')
+      }
+    }
     const binding = { issuer: claims.iss, device: claims.dev }
-    return signMessage('unlock', canonicalUnlockMessage(claims), binding, key, profile)
+    return signMessage(
+      'unlock',
+      canonicalUnlockMessage(claims),
+      binding,
+      key,
+      options.profile ?? 'release'
+    )
   } catch {
     return fail('internal_error')
   }
@@ -86,7 +111,7 @@ export function issueUnlockToken(
 export function issuePolicyToken(
   claims: PolicyClaims,
   key: SigningKey,
-  profile: IssuerProfile = 'release'
+  options: IssueOptions = {}
 ): Result<string> {
   try {
     if (!isPolicyClaims(claims)) {
@@ -97,7 +122,13 @@ export function issuePolicyToken(
       return times
     }
     const binding = { issuer: claims.iss, device: claims.dev }
-    return signMessage('policy', canonicalPolicyMessage(claims), binding, key, profile)
+    return signMessage(
+      'policy',
+      canonicalPolicyMessage(claims),
+      binding,
+      key,
+      options.profile ?? 'release'
+    )
   } catch {
     return fail('internal_error')
   }
@@ -106,7 +137,7 @@ export function issuePolicyToken(
 export function issueTimeToken(
   claims: TimeClaims,
   key: SigningKey,
-  profile: IssuerProfile = 'release'
+  options: IssueOptions = {}
 ): Result<string> {
   try {
     if (!isTimeClaims(claims)) {
@@ -118,7 +149,13 @@ export function issueTimeToken(
       nonce: claims.nonce,
       boot: claims.boot,
     }
-    return signMessage('time', canonicalTimeMessage(claims), binding, key, profile)
+    return signMessage(
+      'time',
+      canonicalTimeMessage(claims),
+      binding,
+      key,
+      options.profile ?? 'release'
+    )
   } catch {
     return fail('internal_error')
   }

@@ -15,7 +15,7 @@ import { parseRfc3339Utc } from '../src/rfc3339_utc.ts'
 import {
   applyTimeAnchor,
   initialTrustedTime,
-  raiseFloor,
+  raiseFloorFromIat,
   ratchetFloor,
   trustedNow,
   type DeviceClock,
@@ -40,7 +40,7 @@ function clock(wall: string, mono: number, boot = '41'): DeviceClock {
 function anchored(serverTime: string, sentAt: DeviceClock): TrustedTimeState {
   const result = applyTimeAnchor(initialTrustedTime, at(serverTime), sentAt.monoNowMs, sentAt)
   if (!result.ok) throw new Error(result.error.code)
-  return result.value
+  return result.value.state
 }
 
 function ctx(time: TrustedTimeState, deviceClock: DeviceClock): TimeContext {
@@ -76,10 +76,58 @@ describe('trusted time', () => {
     expect(ratchetFloor(time, clock('2026-01-06T07:00:00Z', 6, 'b'))).toBe(time)
   })
 
-  it('test_token_iat_only_raises_the_floor_and_never_anchors', () => {
-    const time = raiseFloor(initialTrustedTime, at('2026-01-05T09:00:00Z'))
-    expect(time.anchor).toBeNull()
-    expect(trustedNow(time, clock('2026-01-05T08:00:00Z', 0))).toBe(at('2026-01-05T09:00:00Z'))
+  it('test_token_iat_raises_the_floor_at_most_four_hours_past_anchored_time', () => {
+    const start = clock('2026-01-05T09:00:00Z', 0)
+    const time = anchored('2026-01-05T09:00:00Z', start)
+    const near = raiseFloorFromIat(time, at('2026-01-05T09:30:00Z'), start)
+    expect(near.floor).toBe(at('2026-01-05T09:30:00Z'))
+    expect(near.anchor).toBe(time.anchor)
+    const far = raiseFloorFromIat(time, at('2027-01-01T00:00:00Z'), start)
+    expect(far.floor).toBe(at('2026-01-05T13:00:00Z'))
+  })
+
+  it('test_token_iat_never_raises_the_floor_without_a_current_boot_anchor', () => {
+    const time = anchored('2026-01-05T09:00:00Z', clock('2026-01-05T09:00:00Z', 0))
+    const rebooted = clock('2026-01-05T09:00:00Z', 0, '42')
+    expect(raiseFloorFromIat(time, at('2026-01-05T10:00:00Z'), rebooted)).toBe(time)
+    expect(raiseFloorFromIat(initialTrustedTime, at('2026-01-05T10:00:00Z'), rebooted)).toBe(
+      initialTrustedTime
+    )
+  })
+
+  it('test_verified_time_token_is_authoritative_and_may_lower_the_floor', () => {
+    const start = clock('2026-01-05T09:00:00Z', 0)
+    const trapped = { ...initialTrustedTime, floor: at('2026-06-01T00:00:00Z') }
+    const result = applyTimeAnchor(trapped, at('2026-01-05T09:00:00Z'), 0, start)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.floorLowered).toBe(true)
+    expect(result.value.state.floor).toBe(at('2026-01-05T09:00:00Z'))
+    expect(trustedNow(result.value.state, start)).toBe(at('2026-01-05T09:00:00Z'))
+    const small = applyTimeAnchor(
+      { ...initialTrustedTime, floor: at('2026-01-05T09:01:00Z') },
+      at('2026-01-05T09:00:00Z'),
+      0,
+      start
+    )
+    expect(small.ok && small.value.floorLowered).toBe(false)
+  })
+
+  it('test_incomplete_revocations_persist_until_a_complete_time_token', () => {
+    const start = clock('2026-01-05T09:00:00Z', 0)
+    const incomplete = applyTimeAnchor(
+      initialTrustedTime,
+      at('2026-01-05T09:00:00Z'),
+      0,
+      start,
+      false
+    )
+    if (!incomplete.ok) throw new Error('anchor')
+    expect(incomplete.value.state.revocationsIncomplete).toBe(true)
+    const entry = receive(emptyReplayLedger, WINDOW, ctx(incomplete.value.state, start))
+    expect(entry.ledger.get(JTI)?.stale).toBe(true)
+    const complete = applyTimeAnchor(incomplete.value.state, at('2026-01-05T09:00:00Z'), 0, start)
+    expect(complete.ok && complete.value.state.revocationsIncomplete).toBe(false)
   })
 
   it('test_late_time_answer_does_not_anchor', () => {
