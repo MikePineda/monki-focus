@@ -143,33 +143,6 @@ export type ExplanationKey =
  */
 export type ViewId = string
 /**
- * The surface applies when every `all` predicate, at least one `any` predicate (if present) and no `none` predicate match. Detectors are evaluated by descending `priority`, ties by surface id.
- */
-export type SurfaceDetector = {
-  [k: string]: unknown | undefined
-} & {
-  surface: SurfaceId
-  priority: number
-  all?: NodePredicateList
-  any?: NodePredicateList
-  none?: NodePredicateList
-}
-/**
- * Matches one node. Needs a view id, text or content description; text fields are literal comparisons, never regex.
- */
-export type NodePredicate = {
-  [k: string]: unknown | undefined
-} & {
-  viewId?: ViewId
-  contentDesc?: string
-  contentDescPrefix?: string
-  text?: string
-  className?: string
-  onScreen?: boolean
-  selected?: boolean
-  minHeightRatio?: number
-}
-/**
  * @minItems 1
  * @maxItems 32
  */
@@ -801,6 +774,29 @@ export interface DetectorPack {
    * @maxItems 64
    */
   surfaces: SurfaceDetector[]
+}
+/**
+ * The surface applies when every `all` predicate, at least one `any` predicate (if present) and no `none` predicate match. Detectors are evaluated by descending `priority`, ties by surface id.
+ */
+export interface SurfaceDetector {
+  surface: SurfaceId
+  priority: number
+  all?: NodePredicateList
+  any?: NodePredicateList
+  none?: NodePredicateList
+}
+/**
+ * Matches one node. Needs a view id, text or content description; text fields are literal comparisons, never regex.
+ */
+export interface NodePredicate {
+  viewId?: ViewId
+  contentDesc?: string
+  contentDescPrefix?: string
+  text?: string
+  className?: string
+  onScreen?: boolean
+  selected?: boolean
+  minHeightRatio?: number
 }
 /**
  * A multi-step run of `nextEscalation(state, event, now, guardianLinked)`; each step feeds the previous step's state (SEMANTICS.md §7).
