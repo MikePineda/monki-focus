@@ -123,6 +123,8 @@ describe('LocalDataService today', () => {
     const todayBlock = makeBlock({ blockStart: '2026-01-05T22:00:00Z' })
     await new IdbBlockRepository(db).upsert([makeBlock(), todayBlock])
     await new Outbox(db).enqueueBlocks([makeBlock(), todayBlock], '2026-01-06T07:00:00Z')
+    await db.add('intentions', { at: '2026-01-05T09:00:00Z', kind: 'closed', group: 'r-x' })
+    await db.add('intentions', { at: '2026-01-06T07:00:00Z', kind: 'visit', group: 'r-x' })
     const open = { id: openId, bucketId: BUCKET, event: today }
     await fakeBrowser.storage.session.set({ [OPEN_HEARTBEAT_STORAGE_NAME]: open })
 
@@ -131,12 +133,18 @@ describe('LocalDataService today', () => {
     const range = ['2026-01-01T00:00:00Z', '2026-01-07T00:00:00Z'] as const
     expect(await new IdbEventRepository(db).between(BUCKET, ...range)).toEqual([crossing, today])
     expect(await new IdbBlockRepository(db).between(...range)).toEqual([todayBlock])
-    expect((await db.getAll('outbox')).map((entry) => entry.payload.blockStart)).toEqual([
-      '2026-01-05T22:00:00Z',
-    ])
+    expect(
+      (await db.getAll('outbox')).map(
+        (entry) => (entry.payload as { blockStart: string }).blockStart
+      )
+    ).toEqual(['2026-01-05T22:00:00Z'])
     expect(await fakeBrowser.storage.session.get(OPEN_HEARTBEAT_STORAGE_NAME)).toEqual({
       [OPEN_HEARTBEAT_STORAGE_NAME]: open,
     })
+    // Today's gate facts stay: they set today's escalation counts and the popup line.
+    expect((await db.getAll('intentions')).map((entry) => entry.at)).toEqual([
+      '2026-01-06T07:00:00Z',
+    ])
   })
 })
 

@@ -48,7 +48,8 @@ async function editRedditMode(page: Page, mode: string) {
 const SITE_TABLE = { name: en['rules.sites.title'] }
 
 test.describe('popup and options', () => {
-  test.use({ locale: 'en-US' })
+  // The starter rule set with its friction rules (reddit.com is one of them).
+  test.use({ locale: 'en-US', startingRuleset: 'gated' })
 
   test('popup_shows_today_pulse_and_top_sites', async ({ context, page, extensionUrl }) => {
     await page.goto(extensionUrl('popup.html'))

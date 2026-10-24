@@ -128,6 +128,7 @@ export default defineBackground(() => {
       shortsRedirect,
       tracking: tracking.commands,
       gate,
+      intentions: gate.intentions,
       rules: ruleChanges,
       preferences: new PreferenceService(browser.storage.local),
       localData: tracking.localData,

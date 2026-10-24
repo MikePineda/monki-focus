@@ -330,6 +330,19 @@ export class GateController {
     })
   }
 
+  /**
+   * Popup "End now": the user stops an active intention early. The engine's
+   * `leave` (accepted from `active`) ends it as kept, as a Leave does; the
+   * group's pages are gated again. False when it has no active intention.
+   */
+  endEarly(group: string): Promise<boolean> {
+    return this.serial(async () => {
+      if ((await this.options.escalation.get(group)).phase !== 'active') return false
+      await this.leaveGroup(group)
+      return (await this.options.escalation.get(group)).phase !== 'active'
+    })
+  }
+
   /** The intention or override the page at `url` is inside, for its pill and overlay. */
   async sessionFor(url: string, decision: Decision): Promise<ActiveSession | undefined> {
     const group = groupOf(decision)

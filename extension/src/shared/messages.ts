@@ -292,7 +292,6 @@ export const COMMAND_PAYLOAD_GUARDS: {
   'intention.log': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
 }
 
-
 /**
  * Commands only the extension's own gate page may send: the sender must be
  * `chrome-extension://<this id or its dynamic id>/gate.html` as the top
@@ -311,7 +310,6 @@ export const GATE_PAGE_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>
   'gate.continue',
   'gate.search',
 ])
-
 
 /**
  * Commands that change the user's rules, preferences or data (and the
