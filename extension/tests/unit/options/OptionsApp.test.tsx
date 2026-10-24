@@ -207,6 +207,31 @@ describe('options: rules', () => {
     expect((await storedEffective()).rules).toHaveLength(1)
   })
 
+  it('a_third_time_zone_while_one_waits_is_refused_with_the_waiting_time', async () => {
+    await renderOptions()
+    const picker = await screen.findByTestId('ruleset-import')
+    fireEvent.change(picker, {
+      target: {
+        files: [new File([JSON.stringify(makeRuleset({ timeZone: 'Etc/GMT-5' }))], 'a.json')],
+      },
+    })
+    expect(await screen.findByText('Time zone changed')).toBeInTheDocument()
+    const pending = (await fakeBrowser.storage.local.get(PENDING_RULESET_KEY))[
+      PENDING_RULESET_KEY
+    ] as { effectiveFrom: string }
+
+    fireEvent.change(picker, {
+      target: {
+        files: [new File([JSON.stringify(makeRuleset({ timeZone: 'Etc/GMT-9' }))], 'b.json')],
+      },
+    })
+
+    const when = formatInstantIn(pending.effectiveFrom, 'Etc/GMT-2', 'en')
+    expect(
+      await screen.findByText(en['rules.rejected.zone_change_pending'].replace('{time}', when))
+    ).toBeInTheDocument()
+  })
+
   it('bedtime_turned_off_waits_until_the_change_takes_effect', async () => {
     await renderOptions()
 

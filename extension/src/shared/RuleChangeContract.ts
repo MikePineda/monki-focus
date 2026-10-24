@@ -33,9 +33,11 @@ export function configuredRuleset(state: RulesState): Ruleset {
  * Why a proposal was refused. `stale_revision`: another page saved first;
  * reload. `too_many_rules` / `invalid_ruleset`: the set that would apply
  * today (old waiting parts plus new tightening ones) does not validate.
+ * `zone_change_pending`: a time-zone change already waits and the proposal
+ * names a third zone (a rule set carries at most one waiting zone).
  */
 export type RuleChangeRejection =
-  RejectionCode | 'stale_revision' | 'too_many_rules' | 'invalid_ruleset'
+  RejectionCode | 'stale_revision' | 'too_many_rules' | 'invalid_ruleset' | 'zone_change_pending'
 
 export type RuleChangeOutcome =
   | { status: 'applied'; state: RulesState }
