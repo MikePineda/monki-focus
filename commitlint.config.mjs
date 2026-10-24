@@ -8,9 +8,9 @@
  */
 export default {
   extends: ['@commitlint/config-conventional'],
-  // Dependabot writes sentence-case subjects and cannot be configured
-  // otherwise; its commits are signed off by the bot.
-  ignores: [(message) => /^Signed-off-by: dependabot\[bot\]/m.test(message)],
+  // No message is exempt: the commitlint workflow skips per-commit linting
+  // for Dependabot PRs and lints their squash title instead.
+  defaultIgnores: false,
   rules: {
     'type-enum': [
       2,
