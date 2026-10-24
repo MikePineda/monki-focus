@@ -27,14 +27,15 @@
       "description": "Lower-case ASCII (punycode) host without scheme or port. Matches itself and its subdomains. Rule domains are normalised like URL hosts before matching (`www.`/`m.` dropped, aliases rewritten), so `twitter.com` or `m.youtube.com` are accepted.",
       "type": "string",
       "maxLength": 253,
-      "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+([a-z]{2,63}|xn--[a-z0-9-]{1,59})$"
+      "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+([a-z]{2,63}|xn--[a-z0-9-]{1,59})$",
+      "x-registrableDomain": true
     },
     "pathGlob": {
       "title": "PathGlob",
-      "description": "Path glob starting with `/`. Segments are literals, `*` (exactly one segment) or a final `**` (zero or more segments). No partial wildcards, no regex.",
+      "description": "Path glob starting with `/`. Segments are literals, `*` (exactly one segment) or a final `**` (zero or more segments). No partial wildcards, no regex and no `%` escapes. A glob without literal segments ranks as no path.",
       "type": "string",
       "maxLength": 512,
-      "pattern": "^(/|/\\*\\*|(/([A-Za-z0-9._~%@:+!$,;=-]+|\\*))+(/\\*\\*)?)$"
+      "pattern": "^(/|/\\*\\*|(/([A-Za-z0-9._~@:+!$,;=-]+|\\*))+(/\\*\\*)?)$"
     },
     "surfaceId": {
       "title": "SurfaceId",

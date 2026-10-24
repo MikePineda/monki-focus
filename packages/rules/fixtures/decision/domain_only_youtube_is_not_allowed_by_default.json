@@ -1,7 +1,7 @@
 {
   "id": "decision.domain_only_youtube_is_not_allowed_by_default",
   "kind": "decision",
-  "description": "With only the domain visible the strictest rule of the domain applies: the Shorts block, never a silent allow.",
+  "description": "With only the domain visible the strictest rule of the domain applies, but a surface block counts as friction outside bedtime: remove the feed, not the tool.",
   "given": {
     "ruleset": {
       "schemaVersion": 1,
@@ -124,7 +124,7 @@
         "end": "17:30"
       }
     },
-    "now": "2026-10-26T10:00:00+11:00",
+    "now": "2026-10-26T15:00:00+11:00",
     "state": {
       "escalation": [],
       "usage": null,
@@ -139,10 +139,17 @@
     }
   },
   "then": {
-    "access": "block",
+    "access": "gate",
     "content": "show",
     "ruleId": "starter-youtube-shorts-block",
-    "reason": "rule_match",
-    "explanationKey": "decision.blocked_by_rule"
+    "reason": "intention_required",
+    "gate": {
+      "level": 0,
+      "pauseSeconds": 5,
+      "frictionType": "countdown",
+      "requiresTypedIntention": false,
+      "requiresGuardianKey": false
+    },
+    "explanationKey": "decision.intention_required"
   }
 }

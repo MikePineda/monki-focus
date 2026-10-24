@@ -17,6 +17,7 @@ export const SCHEMA_NAMES = [
   'escalation',
   'escalation-fixture',
   'fixture',
+  'invalid-fixture',
   'rule',
   'rule-change-fixture',
   'ruleset',

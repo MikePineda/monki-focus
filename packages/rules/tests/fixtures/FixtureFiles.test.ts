@@ -17,6 +17,28 @@ const files = listFixtureFiles()
 
 /** Every business rule of the plan has at least one fixture, under exactly this id. */
 const REQUIRED_FIXTURE_IDS = [
+  'rule-change.outrank_check_runs_against_what_applies_today',
+  'rule-change.outrank_check_compares_normalised_domains',
+  'rule-change.disabling_a_budgeted_allow_rule_waits',
+  'rule-change.removing_a_budgeted_allow_rule_waits',
+  'rule-change.raising_a_category_level_at_bedtime_waits_until_bedtime_ends',
+  'decision.budget_on_an_allow_rule_still_counts_under_a_more_specific_friction',
+  'decision.domain_only_url_counts_every_budget_of_the_domain',
+  'decision.pending_zone_behind_gives_no_extra_budget_day',
+  'url-normalize.semicolon_segment_makes_the_path_unknown',
+  'url-normalize.semicolon_inside_a_feed_path_makes_it_unknown',
+  'url-normalize.semicolon_inside_a_shorts_path_makes_it_unknown',
+  'activity.wildcard_only_path_does_not_beat_a_surface',
+  'escalation.counters_saturate_at_their_caps',
+  'invalid.duplicate_category_target_after_www_normalisation',
+  'invalid.duplicate_category_target_after_alias_normalisation',
+  'invalid.duplicate_category_target_after_path_case_normalisation',
+  'invalid.unknown_property_is_rejected',
+  'invalid.regex_looking_glob_is_rejected',
+  'invalid.percent_in_a_glob_is_rejected',
+  'invalid.mobile_prefix_leaving_one_label_is_rejected',
+  'invalid.www_prefix_leaving_a_public_suffix_is_rejected',
+  'invalid.missing_time_zone_is_rejected',
   'specificity.most_specific_rule_wins',
   'specificity.path_rule_beats_domain_rule',
   'specificity.surface_rule_beats_app_rule',
@@ -136,6 +158,7 @@ const MINIMUM_COUNTS: Record<string, number> = {
   'escalation': 4,
   'rule-change': 4,
   'activity': 20,
+  'invalid': 6,
 }
 
 function surfacesIn(node: unknown, found: Set<string>): Set<string> {
@@ -241,7 +264,7 @@ describe('fixture files', () => {
         const zone = match[1] ?? ''
         expect(() => new Intl.DateTimeFormat('en', { timeZone: zone }), zone).not.toThrow()
         expect(
-          ['UTC', 'Australia/Sydney', 'Europe/London'],
+          ['UTC', 'Australia/Sydney', 'Europe/London', 'Pacific/Honolulu'],
           `${file.relativePath}: generic zones only`
         ).toContain(zone)
       }

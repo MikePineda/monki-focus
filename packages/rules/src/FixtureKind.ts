@@ -9,6 +9,7 @@ export const FIXTURE_KINDS = [
   'escalation',
   'rule-change',
   'activity',
+  'invalid',
   'unlock-token',
 ] as const
 

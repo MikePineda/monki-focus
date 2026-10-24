@@ -16,37 +16,112 @@
         "escalation",
         "rule-change",
         "activity",
+        "invalid",
         "unlock-token"
       ]
     }
   },
   "allOf": [
     {
-      "if": { "type": "object", "properties": { "kind": { "enum": ["decision", "specificity"] } } },
-      "then": { "$ref": "decision-fixture.schema.json" }
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": ["decision", "specificity"]
+          }
+        }
+      },
+      "then": {
+        "$ref": "decision-fixture.schema.json"
+      }
     },
     {
-      "if": { "type": "object", "properties": { "kind": { "const": "url-normalize" } } },
-      "then": { "$ref": "url-normalize-fixture.schema.json" }
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "url-normalize"
+          }
+        }
+      },
+      "then": {
+        "$ref": "url-normalize-fixture.schema.json"
+      }
     },
     {
-      "if": { "type": "object", "properties": { "kind": { "const": "schedule" } } },
-      "then": { "$ref": "schedule-fixture.schema.json" }
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "schedule"
+          }
+        }
+      },
+      "then": {
+        "$ref": "schedule-fixture.schema.json"
+      }
     },
     {
-      "if": { "type": "object", "properties": { "kind": { "const": "escalation" } } },
-      "then": { "$ref": "escalation-fixture.schema.json" }
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "escalation"
+          }
+        }
+      },
+      "then": {
+        "$ref": "escalation-fixture.schema.json"
+      }
     },
     {
-      "if": { "type": "object", "properties": { "kind": { "const": "rule-change" } } },
-      "then": { "$ref": "rule-change-fixture.schema.json" }
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "rule-change"
+          }
+        }
+      },
+      "then": {
+        "$ref": "rule-change-fixture.schema.json"
+      }
     },
     {
-      "if": { "type": "object", "properties": { "kind": { "const": "activity" } } },
-      "then": { "$ref": "activity-fixture.schema.json" }
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "activity"
+          }
+        }
+      },
+      "then": {
+        "$ref": "activity-fixture.schema.json"
+      }
     },
     {
-      "if": { "type": "object", "properties": { "kind": { "const": "unlock-token" } } },
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "invalid"
+          }
+        }
+      },
+      "then": {
+        "$ref": "invalid-fixture.schema.json"
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "unlock-token"
+          }
+        }
+      },
       "then": {
         "description": "Reserved: unlock-token vectors live in packages/protocol, never here.",
         "not": {}

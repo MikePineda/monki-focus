@@ -1,0 +1,41 @@
+{
+  "id": "invalid.www_prefix_leaving_a_public_suffix_is_rejected",
+  "kind": "invalid",
+  "description": "`www.co.uk` normalises to the public suffix `co.uk`.",
+  "schema": "ruleset",
+  "document": {
+    "schemaVersion": 1,
+    "revision": 1,
+    "updatedAt": "2026-10-01T00:00:00Z",
+    "timeZone": "Australia/Sydney",
+    "rules": [
+      {
+        "id": "r-x",
+        "target": {
+          "kind": "site",
+          "domain": "www.co.uk"
+        },
+        "mode": "block",
+        "schedules": [],
+        "enabled": true
+      }
+    ],
+    "categories": [],
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    }
+  },
+  "then": {
+    "rejected": true,
+    "code": "invalid_domain"
+  }
+}

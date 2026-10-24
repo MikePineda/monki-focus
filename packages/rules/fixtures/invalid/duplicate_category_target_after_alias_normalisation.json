@@ -1,0 +1,47 @@
+{
+  "id": "invalid.duplicate_category_target_after_alias_normalisation",
+  "kind": "invalid",
+  "description": "`twitter.com` is rewritten to `x.com`, so both assignments target the same site.",
+  "schema": "ruleset",
+  "document": {
+    "schemaVersion": 1,
+    "revision": 1,
+    "updatedAt": "2026-10-01T00:00:00Z",
+    "timeZone": "Australia/Sydney",
+    "rules": [],
+    "categories": [
+      {
+        "target": {
+          "kind": "site",
+          "domain": "twitter.com"
+        },
+        "level": 0,
+        "category": "social"
+      },
+      {
+        "target": {
+          "kind": "site",
+          "domain": "x.com"
+        },
+        "level": 75,
+        "category": "social"
+      }
+    ],
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    }
+  },
+  "then": {
+    "rejected": true,
+    "code": "duplicate_key"
+  }
+}

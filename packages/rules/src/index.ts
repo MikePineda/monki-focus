@@ -16,9 +16,16 @@ export type { SchemaName } from './SchemaName.ts'
 export { SCHEMA_BASE_URI, SCHEMA_NAMES, schemaIdOf } from './SchemaName.ts'
 export type { JsonSchemaDocument } from './SchemaFiles.ts'
 export { loadSchemas } from './SchemaFiles.ts'
-export type { SchemaValidator, ValidationResult } from './SchemaValidator.ts'
+export type {
+  RejectionCode,
+  SchemaValidator,
+  SchemaValidatorOptions,
+  ValidationResult,
+} from './SchemaValidator.ts'
 export { MAX_DOCUMENT_BYTES, createSchemaValidator } from './SchemaValidator.ts'
-export { schemaValidator } from './PackageSchemaValidator.ts'
+export { loadAliasMap, schemaValidator } from './PackageSchemaValidator.ts'
+export type { AliasMap } from './TargetNormaliser.ts'
+export { canonicalTarget, isRegistrableDomain, normaliseDomain } from './TargetNormaliser.ts'
 export type { SiteProfileFile } from './RulesData.ts'
 export {
   loadDefaultCategories,

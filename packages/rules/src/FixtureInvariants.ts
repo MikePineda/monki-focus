@@ -118,8 +118,9 @@ function checkDecision(fixture: DecisionFixture, problems: string[]): void {
       }
       const expected = expectedModes[then.reason]
       // With an unknown path a hide-feed rule of a profiled domain gates (SEMANTICS.md §5.5).
+      // A hide-feed rule, or a surface block outside bedtime, counts as friction there.
       const promoted =
-        rule.mode === 'hide-feed' &&
+        (rule.mode === 'hide-feed' || (rule.mode === 'block' && rule.target.kind === 'surface')) &&
         (then.reason === 'intention_required' || then.reason === 'intention_active')
       if (expected !== undefined && rule.mode !== expected && !promoted) {
         problems.push(
@@ -340,6 +341,7 @@ export function checkFixtureInvariants(fixture: unknown): string[] {
       break
     case 'url-normalize':
     case 'schedule':
+    case 'invalid':
       break
     case 'unlock-token':
       problems.push('unlock-token vectors live in packages/protocol')

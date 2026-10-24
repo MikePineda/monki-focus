@@ -1,0 +1,31 @@
+{
+  "id": "invalid.unknown_property_is_rejected",
+  "kind": "invalid",
+  "description": "Fields the schema does not define are rejected.",
+  "schema": "ruleset",
+  "document": {
+    "schemaVersion": 1,
+    "revision": 1,
+    "updatedAt": "2026-10-01T00:00:00Z",
+    "timeZone": "Australia/Sydney",
+    "rules": [],
+    "categories": [],
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    },
+    "telemetry": true
+  },
+  "then": {
+    "rejected": true,
+    "code": "schema"
+  }
+}

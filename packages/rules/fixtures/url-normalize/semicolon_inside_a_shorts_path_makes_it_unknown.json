@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.semicolon_inside_a_shorts_path_makes_it_unknown",
+  "kind": "url-normalize",
+  "description": "Matrix parameters cannot disguise a Shorts path.",
+  "given": {
+    "urlText": "https://www.youtube.com/shorts;x/abc123DEF45"
+  },
+  "then": {
+    "host": "youtube.com",
+    "path": "/shorts;x/abc123DEF45",
+    "pathKnown": false,
+    "surface": null
+  }
+}

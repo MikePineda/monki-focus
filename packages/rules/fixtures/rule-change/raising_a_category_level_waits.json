@@ -1,7 +1,7 @@
 {
   "id": "rule-change.raising_a_category_level_waits",
   "kind": "rule-change",
-  "description": "Marking a site more productive waits.",
+  "description": "Marking a site more productive waits for midnight and, since categories decide bedtime, for the end of the bedtime window running then (07:00).",
   "given": {
     "old": {
       "schemaVersion": 1,
@@ -94,6 +94,6 @@
         "end": "17:30"
       }
     },
-    "effectiveFrom": "2026-10-26T13:00:00Z"
+    "effectiveFrom": "2026-10-26T20:00:00Z"
   }
 }

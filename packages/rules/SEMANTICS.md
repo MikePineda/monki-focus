@@ -29,9 +29,17 @@ the rule set's pinned `timeZone` (§6.3).
   field the schema does not define (`additionalProperties: false`
   everywhere), when it fails its schema, or when an array marked
   `x-uniqueBy: <pointer>` has two items with an equal value at that JSON
-  pointer (rule ids, category targets, escalation groups, surface ids). Every
-  platform's validator enforces `x-uniqueBy`. Data contains literals, globs
-  and view ids only, never regular expressions or code.
+  pointer (rule ids, category targets, escalation groups, surface ids). Site
+  targets are compared **normalised** (§3.1 domain, glob lower-cased, `/**`
+  dropped), so `www.reddit.com` and `reddit.com`, or `twitter.com` and
+  `x.com`, are duplicates. A domain marked `x-registrableDomain` MUST keep two
+  labels after normalisation and MUST NOT be a bare public suffix (two labels
+  under a two-letter TLD with second label `ac`, `co`, `com`, `edu`, `gov`,
+  `net` or `org`): `m.me` and `www.co.uk` are rejected. Every platform's
+  validator enforces both keywords and reports a rejection code (`schema`,
+  `duplicate_key`, `invalid_domain`, `too_large`, `invalid_json`), checked by
+  the `invalid` fixtures (§12). Data contains literals, globs and view ids
+  only, never regular expressions or code.
 
 ## 2. URL normalisation (`url-normalize`)
 
@@ -59,7 +67,8 @@ the rule set's pinned `timeZone` (§6.3).
    **unreserved** characters (`A-Z a-z 0-9 - . _ ~`) are decoded and the hex
    digits of every other escape are upper-cased (`%73horts` → `shorts`,
    `caf%c3%a9` → `caf%C3%A9`). If a segment still contains `%2F`, or decodes
-   to `.` or `..`, `pathKnown` becomes `false` (the path is kept for
+   to `.` or `..`, or contains `;` (never stripped: matrix parameters cannot
+   disguise a path), `pathKnown` becomes `false` (the path is kept for
    display). Case is otherwise kept. No trailing slash.
 8. **Surface:** `null` when `pathKnown` is false. Otherwise find the profile
    whose `domain` equals the host or is a dot-suffix of it; among its globs
@@ -79,10 +88,11 @@ normalisation.
 - `{kind: "app", package}` matches an app observation with the same package
   (Android package name or macOS bundle id).
 - `{kind: "site", domain, path?}` matches a site observation whose host equals
-  `domain` or ends with `.` + `domain`. A path of `/**` counts as **no path**
-  (here, in §4 and in §9). With another path, the glob must match the
-  observed path; such a target never matches when `pathKnown` is false (but
-  see §5.5).
+  `domain` or ends with `.` + `domain`. A path of `/**` matches every path,
+  also an unknown one. With another path, the glob must match the observed
+  path; such a target never matches when `pathKnown` is false (but see §5.5).
+  For ranking (§4, §9) a glob **without literal segments** (`/**`, `/*`,
+  `/*/**`, …) counts as no path.
 - `{kind: "surface", surface}` matches any observation whose resolved surface
   equals it: on the web from the site profile (§2.8), in an app from the
   detector (`AppObservation.surface`). One surface rule therefore acts on the
@@ -94,17 +104,19 @@ A glob is `/`, or `/`-separated segments where each segment is a literal, `*`
 (exactly one segment) or a final `**` (zero or more segments). `/reels/**`
 matches `/reels`, `/reels/a` and `/reels/a/b`; `/r/*` matches `/r/x` but not
 `/r/x/comments`. Literal segments compare **ASCII case-insensitively**. There
-are no partial wildcards (`/r/foo*` is invalid).
+are no partial wildcards (`/r/foo*` is invalid) and no `%` escapes (rejected
+rather than decoded, so a glob means exactly what it says).
 
 ## 4. Specificity
 
 Among candidates on one axis, the most specific wins. Compare in order; the
 first difference decides:
 
-1. **Refinement:** surface target, or site target with a path other than
-   `/**` = 1; app target or site target without a path = 0. Higher wins.
+1. **Refinement:** surface target, or site target with a path that has at
+   least one literal segment = 1; app target or site target without such a
+   path = 0. Higher wins.
 2. **Literal path segments** (site targets with a path; 0 otherwise). More
-   wins.
+   wins. A path without literal segments counts 0 here and in step 4.
 3. **Domain labels** (site targets; 0 otherwise). More wins
    (`old.reddit.com` over `reddit.com`).
 4. **Wildcards** (`*` and `**` count 1 each). Fewer wins.
@@ -141,9 +153,11 @@ decision is final) or is **lifted** (continue with the next):
    and `state.usage.secondsByRule[rule.id] ≥ dailyBudgetMinutes × 60` →
    `block`, reason `budget_exhausted`, `ruleId` = that rule (several: the most
    specific by §4). `usage` is ignored unless `usage.localDate` is today's
-   date in the pinned zone, so a budget block lasts until local midnight.
-   Usage accrues (in the adapter) to the **winning access rule only**; hide-feed
-   rules take no budget (schema).
+   date in the pinned zone (in either zone while a zone change waits, §6.3),
+   so a budget block lasts until local midnight. Usage accrues (in the
+   adapter) to **every** matching candidate that carries a budget, not only
+   the winner, so adding a more specific rule never hides a spent budget.
+   Hide-feed rules take no budget (schema).
 3. **Rule block**: access winner with mode `block` → `block`, `rule_match`.
 4. **Friction**: access winner with mode `friction` → `gate`, reason
    `intention_required`, with the gate of §7.4.
@@ -202,10 +216,13 @@ candidates** are the enabled, scheduled rules whose target is a site whose
 domain matches the host (any path) or a surface of the host's site profile.
 Their effective access mode is the rule's mode, except that a `hide-feed`
 rule counts as `friction` when it can cover a `feed` surface of that profile
-(a site rule of the domain, or a surface rule on a feed surface). The access
-winner is the unknown-path candidate with the strictest effective mode
-(`block > friction > allow`; ties by §4). `block` → `rule_match`; `friction`
-→ the gate of its group (a promoted hide-feed rule is its own group). For
+(a site rule of the domain, or a surface rule on a feed surface), and a
+surface `block` counts as `friction` too (remove the feed, not the tool; a
+site `block` stays a block). The access winner is the unknown-path candidate
+with the strictest effective mode (`block > friction > allow`; ties by §4).
+`block` → `rule_match`; `friction` → the gate of its group (a promoted rule
+is its own group). All unknown-path candidates take part in the budget step
+(§5.2.2). For
 bedtime the category level is the **minimum** level over all assignments
 (user and default) of that domain: site targets of the domain with any path
 and surface targets of its profile (`youtube.com` counts as 0 because of
@@ -252,7 +269,9 @@ change of `timeZone` waits (§8). While it waits the effective rule set
 carries `pendingTimeZone`, and every schedule and bedtime is evaluated in
 **both** zones with the stricter outcome winning: a restrictive rule or
 bedtime is active when it is active in either zone, an `allow` rule only when
-it is active in both. Budget dates keep using `timeZone`. The starter preset
+it is active in both. A budget's usage counts when its `localDate` is
+today's date in either zone, so a move to a zone behind never grants an extra
+budget day. The starter preset
 ships with `UTC`; clients set the device zone once at install.
 
 ## 7. Escalation (`escalation`)
@@ -270,7 +289,8 @@ changes the state sets `lastActivityAt = now`.
 15 s with a linked guardian, 60 s without.
 `pauseSeconds = min(base << min(brokenCount, 4), 60)`. `requiresTypedIntention`
 from L2; `requiresGuardianKey` only at L3 with a linked guardian. Without a
-guardian L3 is therefore 60 s plus a typed intention.
+guardian L3 is therefore 60 s plus a typed intention. Counters saturate at
+their schema caps: `attemptCount` stays at 1000 and `brokenCount` at 16.
 
 **Friction type** rotates `countdown → breath → reflect → type-intention →
 countdown`, starting with `countdown` when `lastFrictionType` is null, and is
@@ -346,21 +366,28 @@ tightening) waits. Each part is judged on its own:
 
 - **Rules, by id.** Added: tightening iff enabled, mode ≠ `allow` and it
   passes the **outrank check**. Removed: tightening iff it was an enabled
-  `allow` rule. Modified: tightening iff every changed field tightens: target
-  unchanged; `enabled` false → true for a non-allow rule (outrank check), or
-  true → false for an allow rule; mode `allow → any`, `friction → block`,
+  `allow` rule without a budget. Modified: tightening iff every changed field
+  tightens: target unchanged; `enabled` false → true for a non-allow rule
+  (outrank check), or true → false for an allow rule without a budget
+  (removing or disabling any rule that carries a budget waits); mode `allow → any`, `friction → block`,
   `hide-feed → block`; schedules whose week set (§6.1) contains the old one on
-  a non-allow rule (outrank check when it grows); budget added or lowered;
-  `note` is neutral.
+  a non-allow rule (outrank check when it grows); budget added or lowered
+  (raised or removed waits); `note` is neutral.
 - **Outrank check.** A rule that becomes active where it was not (added,
   enabled, schedule widened) is tightening only if, at every instant it is
-  active, it does not outrank (§4, access axis) an overlapping rule of `new`
-  with a stricter mode (`block` above `friction`). Two rules overlap when
-  their week sets intersect and their targets can match a common observation:
-  same package; sites whose domains are equal or one is a dot-suffix of the
-  other (paths ignored); the same surface; a site and a surface of that site's
-  profile; an app and any surface. Otherwise it waits (a friction rule more
-  specific than a block would turn the block into a gate).
+  active, it does not outrank (§4, access axis) an overlapping rule of
+  `effectiveToday` with a stricter mode (`block` above `friction`). The check
+  runs against the rule set that would actually apply now (`old` plus only the
+  immediately applicable parts of `new`) and is iterated to a fixed point:
+  start from every part that tightens by the field rules, send back to waiting
+  any rule that fails the check, and repeat until nothing changes. Two rules
+  overlap when their week sets intersect and their **normalised** targets
+  (§3.1: aliases, `www.`, `m.`, case-insensitive globs) can match a common
+  observation: same package; sites whose domains are equal or one is a
+  dot-suffix of the other (paths ignored); the same surface; a site and a
+  surface of that site's profile; an app and any surface. Otherwise it waits
+  (a friction rule more specific than a block would turn the block into a
+  gate).
 - **Bedtime:** tightening iff it becomes enabled, or stays enabled with
   `days` and window whose week set contains the old one.
   `warnMinutesBefore` is neutral.
@@ -378,9 +405,10 @@ version (added loosening rules left out, removed restrictive rules kept), with
 
 1. the next local midnight after `now` (with a waiting `timeZone` change, the
    later of the next midnights in both zones);
-2. if a waiting change touches bedtime, a schedule of a rule, `workHours` or
-   `timeZone`, and an old bedtime or schedule window of a changed part is
-   active at that instant (in either zone), move to the end of that window;
+2. if a waiting change touches bedtime, categories (they decide bedtime), a
+   schedule of a rule, `workHours` or `timeZone`, and an old bedtime or
+   schedule window of a changed part is active at that instant (in either
+   zone; for categories the bedtime window), move to the end of that window;
    repeat while one is active;
 3. never earlier than `pendingEffectiveFrom`.
 
@@ -394,7 +422,7 @@ Candidates: the rule set's `categories` and, when included,
 `data/categories/default.json`, matched like rule targets (§3; an activity is
 `{source, activityKey, path, surface}` where `activityKey` is the normalised
 domain or the package; `path` null when unknown). The most specific wins by §4
-steps 1–4 (`/**` counts as no path); on a full tie a user assignment beats a
+steps 1–4 (a path without literal segments counts as no path); on a full tie a user assignment beats a
 default, then the lower level, then list order. No match →
 `{level: 50, categoryPath: "uncategorised"}`. Levels are 0, 25, 50, 75, 100
 (RescueTime −2..2 scaled; 0 = very distracting). `decide` always includes the
@@ -469,8 +497,11 @@ recognised again (0 = off).
   `<kind>.<spec_name>`, globally unique, and the test name in every runner.
 - Kinds: `decision`, `specificity` (same shape), `url-normalize`, `schedule`,
   `escalation` (multi-step, each step feeds the previous state), `rule-change`,
-  `activity`, and the reserved `unlock-token` (vectors live in
-  `packages/protocol`). Android adds detector XML fixtures with its work
+  `activity`, `invalid` (a document with the schema it targets and the
+  expected `{rejected: true, code}`), and the reserved `unlock-token`
+  (vectors live in `packages/protocol`). Kotlin and Swift runners MUST run the
+  `invalid` kind as well, and generate the oversized (> 256 KiB) case
+  themselves: it is never committed. Android adds detector XML fixtures with its work
   package.
 - A fixture with an unknown `kind`, an invalid shape, or filed under the wrong
   directory MUST fail the runner (`unknown_fixture_kind_fails_loudly`); nothing

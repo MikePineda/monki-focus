@@ -48,6 +48,7 @@ describe('target schema', () => {
     ['/r/.*', 'regex wildcard'],
     ['/r/', 'trailing slash'],
     ['/search?q=x', 'query'],
+    ['/%73horts/**', 'percent escape'],
   ])('rejects_path_glob %s (%s)', (path) => {
     expect(isValidTarget({ kind: 'site', domain: 'reddit.com', path })).toBe(false)
   })

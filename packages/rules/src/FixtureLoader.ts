@@ -5,7 +5,7 @@ import { assertLoadableFixtureKind } from './FixtureKind.ts'
 import type { LoadableFixtureKind } from './FixtureKind.ts'
 import { loadSchemas } from './SchemaFiles.ts'
 import { createSchemaValidator } from './SchemaValidator.ts'
-import { schemaValidator } from './PackageSchemaValidator.ts'
+import { loadAliasMap, schemaValidator } from './PackageSchemaValidator.ts'
 import { packageRoot } from './PackageRoot.ts'
 
 export interface LoadFixturesOptions {
@@ -25,7 +25,9 @@ export function loadFixtures<K extends LoadableFixtureKind>(
   assertLoadableFixtureKind(kind)
   const root = options.root ?? packageRoot
   const validator =
-    root === packageRoot ? schemaValidator() : createSchemaValidator(loadSchemas(root))
+    root === packageRoot
+      ? schemaValidator()
+      : createSchemaValidator(loadSchemas(root), { aliases: loadAliasMap() })
   const fixtures = listFixtureFiles(root, [kind]).map((file) => {
     const result = validator.validateDocument('fixture', file.text)
     if (!result.valid) {

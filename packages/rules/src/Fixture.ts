@@ -3,6 +3,7 @@ import type {
   ActivityFixture,
   DecisionFixture,
   EscalationFixture,
+  InvalidFixture,
   RuleChangeFixture,
   ScheduleFixture,
   UrlNormalizeFixture,
@@ -18,6 +19,7 @@ export interface FixtureByKind {
   'escalation': EscalationFixture
   'rule-change': RuleChangeFixture
   'activity': ActivityFixture
+  'invalid': InvalidFixture
 }
 
 export type Fixture = FixtureByKind[LoadableFixtureKind]

@@ -1,0 +1,47 @@
+{
+  "id": "invalid.duplicate_category_target_after_www_normalisation",
+  "kind": "invalid",
+  "description": "`www.reddit.com` and `reddit.com` are the same target once normalised.",
+  "schema": "ruleset",
+  "document": {
+    "schemaVersion": 1,
+    "revision": 1,
+    "updatedAt": "2026-10-01T00:00:00Z",
+    "timeZone": "Australia/Sydney",
+    "rules": [],
+    "categories": [
+      {
+        "target": {
+          "kind": "site",
+          "domain": "www.reddit.com"
+        },
+        "level": 0,
+        "category": "social"
+      },
+      {
+        "target": {
+          "kind": "site",
+          "domain": "reddit.com"
+        },
+        "level": 75,
+        "category": "social"
+      }
+    ],
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    }
+  },
+  "then": {
+    "rejected": true,
+    "code": "duplicate_key"
+  }
+}

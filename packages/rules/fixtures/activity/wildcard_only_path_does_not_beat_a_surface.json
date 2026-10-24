@@ -1,0 +1,30 @@
+{
+  "id": "activity.wildcard_only_path_does_not_beat_a_surface",
+  "kind": "activity",
+  "operation": "categorise",
+  "description": "A path without literal segments (`/*/**`) ranks as no path, so the Shorts surface default (0) wins.",
+  "given": {
+    "activity": {
+      "source": "web",
+      "activityKey": "youtube.com",
+      "path": "/shorts/abc123DEF45",
+      "surface": "youtube.shorts"
+    },
+    "assignments": [
+      {
+        "target": {
+          "kind": "site",
+          "domain": "youtube.com",
+          "path": "/*/**"
+        },
+        "level": 50,
+        "category": "video"
+      }
+    ],
+    "includeDefaults": true
+  },
+  "then": {
+    "level": 0,
+    "categoryPath": "video/short-form"
+  }
+}
