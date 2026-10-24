@@ -1,0 +1,41 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+.mf-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-xs);
+}
+
+.mf-stat__label {
+  color: var(--mf-ink-3);
+  font-size: var(--mf-type-caption-size);
+  line-height: var(--mf-type-caption-line-height);
+  letter-spacing: var(--mf-type-caption-letter-spacing);
+}
+
+.mf-stat__value {
+  color: var(--mf-ink-1);
+}
+
+.mf-stat--stat .mf-stat__value {
+  font-size: var(--mf-type-stat-size);
+  line-height: var(--mf-type-stat-line-height);
+  font-weight: var(--mf-type-stat-weight);
+  letter-spacing: var(--mf-type-stat-letter-spacing);
+  font-variant-numeric: var(--mf-type-stat-numeric);
+}
+
+/* The single page hero keeps proportional figures. */
+.mf-stat--display .mf-stat__value {
+  font-size: var(--mf-type-display-size);
+  line-height: var(--mf-type-display-line-height);
+  font-weight: var(--mf-type-display-weight);
+  letter-spacing: var(--mf-type-display-letter-spacing);
+  font-variant-numeric: var(--mf-type-display-numeric);
+}
+
+.mf-stat__context {
+  color: var(--mf-ink-2);
+  font-size: var(--mf-type-body-sm-size);
+  line-height: var(--mf-type-body-sm-line-height);
+  font-variant-numeric: tabular-nums;
+}
