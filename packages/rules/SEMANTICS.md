@@ -524,17 +524,34 @@ Detectors of a pack run by descending `priority`; equal priorities are
 ordered by surface id ascending. A surface applies when every `all`
 predicate, at least one `any` predicate (when present, never empty) and no
 `none` predicate match; each predicate names a `viewId`, `text` or
-`contentDesc`, and all its fields must hold on the same node. Short view ids
-are prefixed with the package on screen (`<package>:id/<id>`); a node whose
-resource id carries no package (a Compose test tag) matches the short id
-verbatim. Text comparisons are literal and case-sensitive. `packVersion` (`YYYY.MM.DD.n`) is compared numerically
-component by component (`2026.10.25.10` > `2026.10.25.9`); a downloaded pack
-is accepted only when signed, newer than the installed one and
-`minSchemaVersion` is supported. `unclassifiedCapMinutes`: when a package has
-an enabled surface `block` rule and the classifier recognises no surface of
-that package for more than this many minutes of foreground time, the engine
-treats the package as having app-level `friction` until a surface is
-recognised again (0 = off).
+`contentDesc`, and all its fields must hold on the same node. A predicate
+that compares `text` or `contentDesc` also names a `viewId`. Short view ids
+are prefixed with the package on screen (`<package>:id/<id>`); only a
+compiled list of Compose test tags (`ADDRESSBAR_URL_BOX`) also matches a
+resource id without a package. Only nodes of the screen's own package count,
+and nothing below a WebView (page content chooses its own ids and text).
+Text comparisons are literal and case-sensitive.
+
+A screen read is bounded (2,500 nodes, depth 40). When a bound cuts it
+short, detectors with a `none` list and the allow-only surfaces
+(`*.reel_from_dm`, `*.stories`, `*.direct`) never match. A `reel_from_dm`
+match is kept only when the previous classified surface was the family's
+`direct` at most 5 s earlier or it continues the same DM reel session, for
+at most 120 s; otherwise it is the family's `reels`.
+
+`packVersion` (`YYYY.MM.DD.n`, a real calendar date, `n` without leading
+zeros) is compared numerically component by component (`2026.10.25.10` >
+`2026.10.25.9`). A downloaded pack is accepted only when signed, free of
+duplicate JSON keys, valid, within the compiled package allowlist and
+invariants, not revoked, dated at most 2 days after the trusted time, its
+`minSchemaVersion` is supported and it is newer than both the installed pack
+and the version bundled with the build. `unclassifiedCapMinutes`: when a
+package has an enabled surface `block` rule and its screens went
+unclassified for at least this many minutes within the last 2 × that many
+minutes of foreground time (a sliding window: short classified blips and app
+switches do not reset it), the engine treats the package as having
+app-level `friction` while it stays unclassified (0 = off; Instagram and
+YouTube at least 5).
 
 ## 12. Fixtures
 

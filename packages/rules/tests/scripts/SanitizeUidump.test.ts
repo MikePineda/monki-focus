@@ -5,7 +5,13 @@ import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { packageRoot } from '../../src/PackageRoot.ts'
-import { findUnsanitized, loadAllowlist, sanitizeUidump } from '../../scripts/sanitize-uidump.mjs'
+import {
+  KNOWN_ATTRIBUTES,
+  TEXT_ATTRIBUTES,
+  findUnsanitized,
+  loadAllowlist,
+  sanitizeUidump,
+} from '../../scripts/sanitize-uidump.mjs'
 
 const script = join(packageRoot, 'scripts', 'sanitize-uidump.mjs')
 const dumpsRoot = join(packageRoot, 'fixtures', 'detectors', 'android')
@@ -67,29 +73,75 @@ describe('sanitize-uidump', () => {
   it('marks_the_root_and_is_idempotent', () => {
     const once = sanitizeUidump(capture)
 
-    expect(once).toContain('<hierarchy monki-sanitized="1" rotation="0">')
+    expect(once).toContain('<hierarchy rotation="0" monki-sanitized="1">')
     expect(sanitizeUidump(once)).toBe(once)
     expect(findUnsanitized(once)).toEqual([])
+  })
+
+  it('replaces_every_text_bearing_attribute', () => {
+    const attributes = TEXT_ATTRIBUTES.map((name) => `${name}="Personal ${name}"`).join(' ')
+    const dump = `<hierarchy rotation="0"><node index="0" ${attributes} bounds="[0,0][1,1]" /></hierarchy>`
+
+    const out = sanitizeUidump(dump)
+
+    expect(out).not.toContain('Personal')
+    for (const name of TEXT_ATTRIBUTES) expect(out).toContain(`${name}="⟨t⟩"`)
+  })
+
+  it('drops_unknown_attributes_and_empties_odd_identifiers', () => {
+    const dump =
+      '<hierarchy rotation="0"><node index="0" user-name="Someone" resource-id="com.example:id/a b" bounds="[0,0][1,1]" /></hierarchy>'
+
+    const out = sanitizeUidump(dump)
+
+    expect(out).not.toContain('Someone')
+    expect(out).not.toContain('user-name')
+    expect(out).toContain('resource-id=""')
+    expect(findUnsanitized(out)).toEqual([])
   })
 
   it('check_reports_unsanitised_dumps_without_printing_values', () => {
     const problems = findUnsanitized(capture)
 
-    expect(problems).toContain('missing monki-sanitized="1" on <hierarchy>')
+    expect(problems).toContain('line 2: missing monki-sanitized="1" on <hierarchy>')
     expect(problems.some((problem) => problem.includes('unsanitised text'))).toBe(true)
+    expect(problems.some((problem) => problem.includes('unsanitised hint'))).toBe(true)
     expect(problems.join('\n')).not.toContain('Private caption')
   })
 
-  it('check_rejects_comments_and_element_text', () => {
-    const sneaky = sanitizeUidump(capture).replace(
-      '</hierarchy>',
-      '<!-- a note -->leak</hierarchy>'
-    )
+  it('check_flags_unknown_attributes_and_comments', () => {
+    const sneaky = sanitizeUidump(capture)
+      .replace('<node index="0"', '<node secret="x" index="0"')
+      .replace('</hierarchy>', '<!-- a note --></hierarchy>')
 
-    expect(findUnsanitized(sneaky)).toEqual([
-      expect.stringMatching(/comment not allowed/),
-      expect.stringMatching(/element text/),
-    ])
+    const problems = findUnsanitized(sneaky)
+
+    expect(problems).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/unknown attribute secret/),
+        expect.stringMatching(/comment not allowed/),
+      ])
+    )
+  })
+
+  it.each([
+    [
+      'element text',
+      '<hierarchy rotation="0">leak<node index="0" bounds="[0,0][1,1]" /></hierarchy>',
+    ],
+    ['CDATA', '<hierarchy rotation="0"><![CDATA[leak]]></hierarchy>'],
+    ['DOCTYPE', '<!DOCTYPE hierarchy [<!ENTITY x "y">]><hierarchy rotation="0"></hierarchy>'],
+    [
+      'an unknown entity',
+      '<hierarchy rotation="0"><node text="&x;" bounds="[0,0][1,1]" /></hierarchy>',
+    ],
+    ['a processing instruction', '<hierarchy rotation="0"><?php echo 1 ?></hierarchy>'],
+    ['an unknown element', '<hierarchy rotation="0"><script /></hierarchy>'],
+    ['unbalanced tags', '<hierarchy rotation="0"><node index="0"></hierarchy>'],
+  ])('the_tokenizer_refuses_%s', (_name, dump) => {
+    expect(() => sanitizeUidump(dump)).toThrow(SyntaxError)
+    expect(findUnsanitized(dump)).toHaveLength(1)
+    expect(findUnsanitized(dump).join('')).not.toContain('leak')
   })
 
   it('cli_sanitises_a_file_and_check_mode_passes_on_the_result', () => {
@@ -104,6 +156,19 @@ describe('sanitize-uidump', () => {
     expect(() =>
       execFileSync(process.execPath, [script, '--check', input], { stdio: 'pipe' })
     ).toThrow()
+  })
+
+  it('the_committed_allowlist_names_the_same_attributes_as_the_sanitiser', () => {
+    const json = JSON.parse(readFileSync(join(dumpsRoot, 'label-allowlist.json'), 'utf8')) as {
+      textAttributes: string[]
+      knownAttributes: { hierarchy: string[]; node: string[] }
+    }
+
+    expect(json.textAttributes).toEqual([...TEXT_ATTRIBUTES])
+    expect([...json.knownAttributes.node].sort()).toEqual([...KNOWN_ATTRIBUTES.node].sort())
+    expect([...json.knownAttributes.hierarchy].sort()).toEqual(
+      [...KNOWN_ATTRIBUTES.hierarchy].sort()
+    )
   })
 
   it('allowlist_holds_only_generic_labels', () => {

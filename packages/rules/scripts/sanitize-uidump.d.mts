@@ -7,6 +7,7 @@ export interface UidumpAllowlist {
 }
 
 export const TEXT_ATTRIBUTES: readonly string[]
+export const KNOWN_ATTRIBUTES: { hierarchy: readonly string[]; node: readonly string[] }
 export const ALLOWED_COMMENTS: readonly string[]
 export const SANITIZED_MARKER: string
 

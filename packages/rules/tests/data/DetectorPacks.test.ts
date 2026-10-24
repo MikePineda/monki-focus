@@ -78,6 +78,41 @@ describe('android detector packs', () => {
     }
   })
 
+  it('dm_reels_need_a_sender_and_a_reply_bar', () => {
+    const detectors = pack('instagram').surfaces.filter(
+      (s) => s.surface === 'instagram.reel_from_dm'
+    )
+    expect(detectors.length).toBeGreaterThan(0)
+    for (const detector of detectors) {
+      const all = (detector.all ?? []).map((predicate) => predicate.viewId)
+      const any = (detector.any ?? []).map((predicate) => predicate.viewId)
+      expect(
+        all.some((id) => id === 'sender_username_or_fullname' || id === 'sender_timestamp')
+      ).toBe(true)
+      expect([...all, ...any].some((id) => id?.startsWith('reply_bar_'))).toBe(true)
+    }
+  })
+
+  it('label_predicates_always_name_a_view_id', () => {
+    for (const current of packs.values()) {
+      for (const detector of current.surfaces) {
+        for (const predicate of [
+          ...(detector.all ?? []),
+          ...(detector.any ?? []),
+          ...(detector.none ?? []),
+        ]) {
+          const readsLabel = predicate.text ?? predicate.contentDesc ?? predicate.contentDescPrefix
+          if (readsLabel !== undefined) expect(predicate.viewId, detector.surface).toBeDefined()
+        }
+      }
+    }
+  })
+
+  it('instagram_and_youtube_keep_the_unclassified_safety_net', () => {
+    expect(pack('instagram').unclassifiedCapMinutes).toBeGreaterThanOrEqual(5)
+    expect(pack('youtube').unclassifiedCapMinutes).toBeGreaterThanOrEqual(5)
+  })
+
   it('shorts_player_ids_need_most_of_the_screen', () => {
     const shorts = pack('youtube').surfaces.find(
       (s) => s.surface === 'youtube.shorts' && s.priority === 100
