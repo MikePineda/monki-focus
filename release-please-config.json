@@ -45,6 +45,18 @@
         }
       ]
     },
+    "packages/analytics": {
+      "release-type": "node",
+      "component": "analytics",
+      "package-name": "@monki-focus/analytics",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "/package-lock.json",
+          "jsonpath": "$.packages['packages/analytics'].version"
+        }
+      ]
+    },
     "packages/protocol": {
       "release-type": "node",
       "component": "protocol",
