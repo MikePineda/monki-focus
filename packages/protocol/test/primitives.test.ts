@@ -89,6 +89,15 @@ describe('parseTokenParts', () => {
     })
   })
 
+  it('test_any_byte_outside_0x21_to_0x7e_is_malformed_before_the_header_check', () => {
+    for (const bad of [' ', '\t', '\n', '\u007f', 'é', '\u0000']) {
+      expect(parseTokenParts(`${bad}v3.local.${body}`)).toEqual({
+        ok: false,
+        error: { code: 'malformed_token' },
+      })
+    }
+  })
+
   it('test_extra_parts_or_empty_footer_are_malformed', () => {
     expect(parseTokenParts(`v4.public.${body}.e30.e30`).ok).toBe(false)
     expect(parseTokenParts(`v4.public.${body}.`)).toEqual({

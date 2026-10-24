@@ -6,15 +6,16 @@
  *   2. The header must be exactly `v4.public.`.
  *   3. Decode base64url(message || signature); the signature is the last 64 bytes.
  *   4. m2 = PAE(header, message, footer, implicitAssertion).
- *   5. Ed25519-verify the signature over m2 with the public key.
+ *   5. Ed25519-verify the signature over m2 with the public key, under the
+ *      strict policy of `ed25519_strict.ts` (canonical, prime-order R; S < L).
  *   6. Only then return the message.
  *
  * Steps 2 and 3 run first in code because the footer cannot be compared
  * before it is decoded; nothing is interpreted before step 5 either way.
  */
-import { verify as ed25519Verify, type KeyObject } from 'node:crypto'
 import { constantTimeEqual } from './constant_time_equal.ts'
-import { publicKeyFromRaw } from './ed25519_key.ts'
+import { publicKeyFromRaw, type Ed25519PublicKey } from './ed25519_key.ts'
+import { verifyEd25519Strict } from './ed25519_strict.ts'
 import { pae } from './pae.ts'
 import { fail, ok, type Result } from './token_error.ts'
 import { parseTokenParts, type TokenParts } from './token_parts.ts'
@@ -38,12 +39,12 @@ const EMPTY = new Uint8Array(0)
 /** Verifies already-split parts against one public key. Never throws. */
 export function verifyV4PublicParts(
   parts: TokenParts,
-  publicKey: KeyObject,
+  publicKey: Ed25519PublicKey,
   implicitAssertion: Uint8Array
 ): Result<VerifiedV4Public> {
   try {
     const signed = pae([parts.header, parts.message, parts.footer, implicitAssertion])
-    if (!ed25519Verify(null, signed, publicKey, parts.signature)) {
+    if (!verifyEd25519Strict(publicKey.raw, publicKey.key, signed, parts.signature)) {
       return fail('invalid_signature')
     }
     return ok({ message: parts.message, footer: parts.footer })

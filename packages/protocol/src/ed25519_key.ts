@@ -6,6 +6,7 @@
  * (X.509 / PKCS#8 encodings); CryptoKit and WebCrypto import raw bytes.
  */
 import { createPrivateKey, createPublicKey, type KeyObject } from 'node:crypto'
+import { isAcceptablePointEncoding } from './ed25519_strict.ts'
 import { fail, ok, type Result } from './token_error.ts'
 
 export const ED25519_PUBLIC_KEY_BYTES = 32
@@ -25,12 +26,24 @@ function concat(a: Uint8Array, b: Uint8Array): Buffer {
   return Buffer.concat([a, b])
 }
 
-export function publicKeyFromRaw(raw: Uint8Array): Result<KeyObject> {
-  if (raw.byteLength !== ED25519_PUBLIC_KEY_BYTES) {
+/** A verification key: the raw encoding (for the strict checks) and Node's key object. */
+export interface Ed25519PublicKey {
+  readonly raw: Uint8Array
+  readonly key: KeyObject
+}
+
+/**
+ * Imports a raw public key, refusing non-canonical encodings, the
+ * small-order points and points outside the prime-order subgroup
+ * (`invalid_input`).
+ */
+export function publicKeyFromRaw(raw: Uint8Array): Result<Ed25519PublicKey> {
+  if (raw.byteLength !== ED25519_PUBLIC_KEY_BYTES || !isAcceptablePointEncoding(raw)) {
     return fail('invalid_input')
   }
   try {
-    return ok(createPublicKey({ key: concat(SPKI_PREFIX, raw), format: 'der', type: 'spki' }))
+    const key = createPublicKey({ key: concat(SPKI_PREFIX, raw), format: 'der', type: 'spki' })
+    return ok({ raw: Uint8Array.from(raw), key })
   } catch {
     return fail('invalid_input')
   }

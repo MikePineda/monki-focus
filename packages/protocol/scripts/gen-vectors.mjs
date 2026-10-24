@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Regenerates the shared token vectors in `fixtures/unlock-tokens/` and
- * `fixtures/policy-tokens/` from the TEST-ONLY keys in `fixtures/keys/`.
+ * Regenerates the shared token vectors in `fixtures/unlock-tokens/`,
+ * `fixtures/policy-tokens/` and `fixtures/time-tokens/` from the TEST-ONLY
+ * keys in `fixtures/keys/`. (The state-machine, scope-match and Ed25519 edge
+ * fixtures are hand-written or vendored, not generated.)
  *
  * Ed25519 is deterministic, so the output is byte-for-byte stable; a test
  * (`test/vectors_are_regenerable.test.ts`) fails if the committed files drift
@@ -18,13 +20,16 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  canonicalPolicyClaims,
-  canonicalUnlockClaims,
+  canonicalPolicyMessage,
+  canonicalTimeMessage,
+  canonicalUnlockMessage,
+  deriveKeyId,
   decodeBase64Url,
   encodeBase64Url,
   encodeKidFooter,
   implicitAssertionText,
   issuePolicyToken,
+  issueTimeToken,
   issueUnlockToken,
   pae,
   parseRfc3339Utc,
@@ -36,7 +41,7 @@ import {
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const KEYS_FILE = 'fixtures/keys/TEST-ONLY-test-key-not-real.ed25519.json'
-const VECTOR_DIRS = ['fixtures/unlock-tokens', 'fixtures/policy-tokens']
+const VECTOR_DIRS = ['fixtures/unlock-tokens', 'fixtures/policy-tokens', 'fixtures/time-tokens']
 const utf8 = new TextEncoder()
 
 const ISSUER = 'https://focus.example.org'
@@ -44,6 +49,11 @@ const OTHER_ISSUER = 'https://other.example.net'
 const DEVICE = '6f1c2d3e-4b5a-4c6d-8e7f-90a1b2c3d4e5'
 const OTHER_DEVICE = '0d9e8f7a-6b5c-4d3e-9f2a-1b0c9d8e7f6a'
 const SUBJECT = 'user-1'
+const NONCE = 'AAECAwQFBgcICQoLDA0ODw'
+const OTHER_NONCE = 'DwAODQwLCgkIBwYFBAMCAQ'
+const BOOT = '41'
+const OTHER_BOOT = '42'
+const L = (1n << 252n) + 27742317777372353535851937790883648493n
 const sha256Base64Url = (text) => createHash('sha256').update(text).digest('base64url')
 const POLICY_HASH = sha256Base64Url('monki-focus synthetic policy v1')
 const RULES_HASH = sha256Base64Url('monki-focus synthetic rule set v1')
@@ -81,7 +91,7 @@ const baseUnlockClaims = Object.freeze({
   sub: SUBJECT,
   dev: DEVICE,
   rule: 'social.video-feed',
-  scope: { kind: 'domain', value: 'video.example.com' },
+  scope: { kind: 'domain', value: 'video.example.com', includeSubdomains: false },
   dur_s: 900,
   iat: '2026-01-05T09:00:00Z',
   nbf: '2026-01-05T09:00:00Z',
@@ -106,6 +116,18 @@ const basePolicyClaims = Object.freeze({
   jti: '9c8b7a6f-5e4d-4c3b-8a29-18f7e6d5c4b3',
 })
 
+const baseTimeClaims = Object.freeze({
+  v: 1,
+  typ: 'time',
+  iss: ISSUER,
+  dev: DEVICE,
+  nonce: NONCE,
+  boot: BOOT,
+  srv: '2026-01-05T09:05:00Z',
+  revoked: [{ jti: '5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a', exp: '2026-01-05T09:40:00Z' }],
+  complete: true,
+})
+
 const NOW = '2026-01-05T09:05:00Z'
 
 /**
@@ -117,8 +139,11 @@ function sign({ payload, key, footer, assertion }) {
     typeof payload === 'string'
       ? payload
       : payload.typ === 'policy'
-        ? canonicalPolicyClaims(payload)
-        : canonicalUnlockClaims(payload)
+        ? canonicalPolicyMessage(payload)
+        : payload.typ === 'time'
+          ? canonicalTimeMessage(payload)
+          : canonicalUnlockMessage(payload)
+  if (claimsJson === null) throw new Error('claims cannot be serialised canonically')
   const footerText = footer ?? new TextDecoder().decode(encodeKidFooter(key.kid))
   const message = utf8.encode(claimsJson)
   const footerBytes = utf8.encode(footerText)
@@ -146,7 +171,7 @@ function signUnlock(
     payload: claims,
     key,
     footer,
-    assertion: implicitAssertionText('unlock', issuer, device),
+    assertion: implicitAssertionText('unlock', { issuer, device }),
   })
 }
 
@@ -154,7 +179,26 @@ function signPolicy(claims, { key = policyA, issuer = claims.iss, device = claim
   return sign({
     payload: claims,
     key,
-    assertion: implicitAssertionText('policy', issuer, device),
+    assertion: implicitAssertionText('policy', { issuer, device }),
+  })
+}
+
+function signTime(
+  claims,
+  {
+    key = unlockA,
+    footer,
+    issuer = claims.iss ?? ISSUER,
+    device = claims.dev ?? DEVICE,
+    nonce = claims.nonce ?? NONCE,
+    boot = claims.boot ?? BOOT,
+  } = {}
+) {
+  return sign({
+    payload: claims,
+    key,
+    footer,
+    assertion: implicitAssertionText('time', { issuer, device, nonce, boot }),
   })
 }
 
@@ -184,12 +228,18 @@ function vector({
   signed,
   token = signed.token,
   tampering,
-  keyring = purpose === 'unlock' ? pinned(unlockA, unlockB) : pinned(policyA),
+  keyring = purpose === 'policy' ? pinned(policyA) : pinned(unlockA, unlockB),
   issuer = ISSUER,
   device = DEVICE,
   now = NOW,
+  nonce = NONCE,
+  boot = BOOT,
   expect,
 }) {
+  const verify =
+    purpose === 'time'
+      ? { purpose, keyring, issuer, device, nonce, boot }
+      : { purpose, keyring, issuer, device, now }
   return {
     $comment:
       'Generated by scripts/gen-vectors.mjs from TEST-ONLY keys (test-key-not-real). Do not edit by hand.',
@@ -197,7 +247,7 @@ function vector({
     kind: `${purpose}-token`,
     description,
     token,
-    verify: { purpose, keyring, issuer, device, now },
+    verify,
     expect,
     construction:
       tampering === undefined ? signed.construction : { ...signed.construction, tampering },
@@ -231,6 +281,12 @@ function unlockVectors() {
     nbf: baseUnlockClaims.nbf,
     exp: baseUnlockClaims.exp,
   }
+
+  // The non-canonical case needs a body whose length leaves unused bits.
+  const withUnusedBits = [base, issuedUnlock(pathClaims), issuedUnlock(appClaims)].find(
+    ({ token }) => token.slice(V4_PUBLIC_HEADER.length).split('.')[0].length % 4 !== 0
+  )
+  if (withUnusedBits === undefined) throw new Error('no candidate body with unused bits')
 
   return [
     vector({
@@ -394,9 +450,7 @@ function unlockVectors() {
     vector({
       id: 'unknown_claim_is_rejected',
       description: 'additionalProperties is false: an extra claim fails the schema.',
-      signed: signUnlock(
-        JSON.stringify({ ...JSON.parse(canonicalUnlockClaims(baseUnlockClaims)), admin: true })
-      ),
+      signed: signUnlock(`${canonicalUnlockMessage(baseUnlockClaims).slice(0, -1)},"admin":true}`),
       expect: invalid('invalid_claims'),
     }),
     vector({
@@ -404,7 +458,7 @@ function unlockVectors() {
       description: 'A scope is always exact; "*.example.com" fails the schema.',
       signed: signUnlock({
         ...baseUnlockClaims,
-        scope: { kind: 'domain', value: '*.example.com' },
+        scope: { kind: 'domain', value: '*.example.com', includeSubdomains: false },
       }),
       expect: invalid('invalid_claims'),
     }),
@@ -448,8 +502,8 @@ function unlockVectors() {
       id: 'malformed_base64url_non_canonical_is_rejected',
       description:
         'The last body character has non-zero unused bits: it decodes to the same bytes but is not canonical.',
-      signed: base,
-      token: nonCanonicalBody(base.token),
+      signed: withUnusedBits,
+      token: nonCanonicalBody(withUnusedBits.token),
       tampering: 'last body character changed so only its unused low bits differ',
       expect: invalid('malformed_base64url'),
     }),
@@ -483,6 +537,7 @@ function unlockVectors() {
       signed: signUnlock(baseUnlockClaims, { footer: `{"kid": "${unlockA.kid}"}` }),
       expect: invalid('malformed_footer'),
     }),
+    ...moreUnlockVectors(base),
   ]
 }
 
@@ -530,7 +585,7 @@ function policyVectors() {
       signed: sign({
         payload: unlockTyp,
         key: policyA,
-        assertion: implicitAssertionText('policy', ISSUER, DEVICE),
+        assertion: implicitAssertionText('policy', { issuer: ISSUER, device: DEVICE }),
       }),
       expect: invalid('wrong_typ'),
     }),
@@ -555,12 +610,401 @@ function policyVectors() {
   ]
 }
 
+/** Replaces the 32-byte S half of the signature with S + L (same value mod L, non-canonical). */
+function addOrderToScalar(token) {
+  return mutateBody(token, (bytes) => {
+    const offset = bytes.length - 32
+    let s = 0n
+    for (let index = 31; index >= 0; index--) s = (s << 8n) | BigInt(bytes[offset + index])
+    let value = s + L
+    for (let index = 0; index < 32; index++) {
+      bytes[offset + index] = Number(value & 0xffn)
+      value >>= 8n
+    }
+  })
+}
+
+/** Signs an arbitrary message with unlock key A, the default footer and the unlock assertion. */
+function signRawUnlock(messageText) {
+  return signUnlock(messageText)
+}
+
+function moreUnlockVectors(base) {
+  const canonical = canonicalUnlockMessage(baseUnlockClaims)
+  const subdomains = {
+    ...baseUnlockClaims,
+    scope: { kind: 'domain', value: 'video.example.com', includeSubdomains: true },
+  }
+  const leapDay = {
+    ...baseUnlockClaims,
+    iat: '2028-02-29T09:00:00Z',
+    nbf: '2028-02-29T09:00:00Z',
+    exp: '2028-02-29T09:30:00Z',
+  }
+  const fourHours = { ...baseUnlockClaims, exp: shift(baseUnlockClaims.iat, 4 * 3600) }
+  const pathScope = (value) => ({ ...baseUnlockClaims, scope: { kind: 'path', value } })
+  const smallOrderKey = '0100000000000000000000000000000000000000000000000000000000000000'
+  const smallOrderKid = deriveKeyId(Uint8Array.from(Buffer.from(smallOrderKey, 'hex')))
+  const footerB64 = base.token.slice(base.token.lastIndexOf('.') + 1)
+  const emptyMessage = signUnlock('')
+
+  return [
+    vector({
+      id: 'valid_unlock_token_with_subdomains_scope',
+      description: 'A domain scope with includeSubdomains true verifies (matching is spec §4.5).',
+      signed: issuedUnlock(subdomains),
+      expect: valid(subdomains),
+    }),
+    vector({
+      id: 'leap_day_in_a_leap_year_is_valid',
+      description: '2028-02-29 exists.',
+      signed: issuedUnlock(leapDay),
+      now: '2028-02-29T09:05:00Z',
+      expect: valid(leapDay),
+    }),
+    vector({
+      id: 'leap_day_in_a_common_year_is_rejected',
+      description: '2027-02-29 does not exist.',
+      signed: signUnlock({
+        ...leapDay,
+        iat: '2027-02-29T09:00:00Z',
+        nbf: '2027-02-29T09:00:00Z',
+        exp: '2027-02-29T09:30:00Z',
+      }),
+      now: '2027-03-01T09:05:00Z',
+      expect: invalid('invalid_claims'),
+    }),
+    vector({
+      id: 'leap_second_is_rejected',
+      description: '23:59:60 is never accepted.',
+      signed: signUnlock({ ...baseUnlockClaims, iat: '2026-01-04T23:59:60Z' }),
+      expect: invalid('invalid_claims'),
+    }),
+    vector({
+      id: 'year_before_1970_is_rejected',
+      description: 'Years before 1970 fail the pattern.',
+      signed: signUnlock({ ...baseUnlockClaims, iat: '1969-12-31T23:59:59Z' }),
+      expect: invalid('invalid_claims'),
+    }),
+    vector({
+      id: 'nbf_equal_to_exp_is_rejected',
+      description: 'nbf < exp is strict.',
+      signed: signUnlock({ ...baseUnlockClaims, nbf: baseUnlockClaims.exp }),
+      expect: invalid('invalid_claims'),
+    }),
+    vector({
+      id: 'unlock_duration_below_sixty_seconds_is_rejected',
+      description: 'dur_s 59 fails the schema minimum.',
+      signed: signUnlock({ ...baseUnlockClaims, dur_s: 59 }),
+      expect: invalid('invalid_claims'),
+    }),
+    vector({
+      id: 'unlock_duration_over_120_minutes_is_rejected',
+      description: 'dur_s 7201 fails the schema maximum even inside a 4 h token.',
+      signed: signUnlock({ ...fourHours, dur_s: 7201 }),
+      expect: invalid('invalid_claims'),
+    }),
+    vector({
+      id: 'domain_scope_without_include_subdomains_is_rejected',
+      description: 'includeSubdomains is required on domain scopes.',
+      signed: signRawUnlock(canonical.replace(',"includeSubdomains":false', '')),
+      expect: invalid('invalid_claims'),
+    }),
+    ...[
+      ['dot', 'forum.example.com/r/.'],
+      ['dot_dot', 'forum.example.com/r/../admin'],
+      ['percent', 'forum.example.com/r/a%2Fb'],
+      ['empty', 'forum.example.com/r//a'],
+    ].map(([label, value]) =>
+      vector({
+        id: `path_scope_with_${label}_segment_is_rejected`,
+        description: `Path scopes forbid ".", "..", "%", empty segments and backslashes (${value}).`,
+        signed: signUnlock(pathScope(value)),
+        expect: invalid('invalid_claims'),
+      })
+    ),
+    vector({
+      id: 'path_scope_with_backslash_is_rejected',
+      description: 'A backslash cannot appear in a path scope (nor, unescaped, in canonical JSON).',
+      signed: signRawUnlock(
+        canonical.replace(
+          '{"kind":"domain","value":"video.example.com","includeSubdomains":false}',
+          '{"kind":"path","value":"forum.example.com/r\\\\a"}'
+        )
+      ),
+      expect: invalid('invalid_claims'),
+    }),
+    // Canonical serialisation (spec §4.0).
+    ...[
+      ['version_written_as_1_0', canonical.replace('"v":1,', '"v":1.0,')],
+      ['version_written_as_1e0', canonical.replace('"v":1,', '"v":1e0,')],
+      ['duplicate_member', `${canonical.slice(0, -1)},"dur_s":7200}`],
+      ['whitespace', canonical.replace('"v":1,', '"v": 1,')],
+      ['escaped_character', canonical.replace('"typ":"unlock"', '"typ":"\\u0075nlock"')],
+      ['escaped_slash', canonical.replace('https://focus', 'https:\\/\\/focus')],
+      ['reordered_members', canonical.replace('"v":1,"typ":"unlock",', '"typ":"unlock","v":1,')],
+      ['byte_order_mark', `\uFEFF${canonical}`],
+    ].map(([label, messageText]) =>
+      vector({
+        id: `non_canonical_claims_with_${label}_are_rejected`,
+        description:
+          'Correctly signed, but the message is not the canonical serialisation of its claims.',
+        signed: signRawUnlock(messageText),
+        expect: invalid('invalid_claims'),
+      })
+    ),
+    // Structure and bytes (spec §1).
+    vector({
+      id: 'token_over_4096_bytes_is_rejected',
+      description: 'A 4097-byte token is refused before anything else is examined.',
+      signed: base,
+      token: `${V4_PUBLIC_HEADER}${'A'.repeat(4097 - V4_PUBLIC_HEADER.length)}`,
+      tampering: 'header followed by "A" up to 4097 bytes',
+      expect: invalid('malformed_token'),
+    }),
+    vector({
+      id: 'token_of_exactly_4096_bytes_passes_the_length_check',
+      description: 'At 4096 bytes the length check passes; this one then lacks a footer.',
+      signed: base,
+      token: `${V4_PUBLIC_HEADER}${'A'.repeat(4096 - V4_PUBLIC_HEADER.length)}`,
+      tampering: 'header followed by "A" up to 4096 bytes',
+      expect: invalid('malformed_footer'),
+    }),
+    vector({
+      id: 'token_with_trailing_newline_is_rejected',
+      description: 'Any byte outside 0x21-0x7E gives malformed_token first.',
+      signed: base,
+      token: `${base.token}\n`,
+      tampering: 'appended a line feed',
+      expect: invalid('malformed_token'),
+    }),
+    vector({
+      id: 'token_with_non_ascii_byte_is_rejected',
+      description: 'A non-ASCII character makes the token malformed, even before the header check.',
+      signed: base,
+      token: `é${base.token}`,
+      tampering: 'prefixed U+00E9',
+      expect: invalid('malformed_token'),
+    }),
+    vector({
+      id: 'token_with_three_parts_after_the_header_is_rejected',
+      description: 'Only body and footer may follow the header.',
+      signed: base,
+      token: `${base.token}.${footerB64}`,
+      tampering: 'footer part repeated',
+      expect: invalid('malformed_token'),
+    }),
+    vector({
+      id: 'token_with_trailing_dot_is_rejected',
+      description: 'An empty part after a trailing "." is not canonical.',
+      signed: base,
+      token: `${base.token}.`,
+      tampering: 'appended "."',
+      expect: invalid('malformed_token'),
+    }),
+    vector({
+      id: 'body_of_63_bytes_is_rejected',
+      description: 'The body must hold at least a 64-byte signature.',
+      signed: base,
+      token: `${V4_PUBLIC_HEADER}${encodeBase64Url(new Uint8Array(63))}.${footerB64}`,
+      tampering: 'body replaced with 63 zero bytes',
+      expect: invalid('malformed_token'),
+    }),
+    vector({
+      id: 'signed_empty_message_is_rejected',
+      description: 'A 64-byte body (a valid signature over an empty message) has no claims.',
+      signed: emptyMessage,
+      expect: invalid('invalid_claims'),
+    }),
+    vector({
+      id: 'capitalised_header_is_rejected',
+      description: 'Header V4.public. is not v4.public.',
+      signed: base,
+      token: `V4.public.${base.token.slice(V4_PUBLIC_HEADER.length)}`,
+      tampering: 'header replaced with V4.public.',
+      expect: invalid('wrong_header'),
+    }),
+    // Footer and keys (spec §2).
+    vector({
+      id: 'footer_kid_of_15_characters_is_rejected',
+      description: 'A kid is exactly 16 characters.',
+      signed: base,
+      token: replaceFooter(base.token, `{"kid":"${unlockA.kid.slice(0, 15)}"}`),
+      tampering: 'kid shortened to 15 characters',
+      expect: invalid('malformed_footer'),
+    }),
+    vector({
+      id: 'footer_kid_of_17_characters_is_rejected',
+      description: 'A kid is exactly 16 characters.',
+      signed: base,
+      token: replaceFooter(base.token, `{"kid":"${unlockA.kid}A"}`),
+      tampering: 'kid lengthened to 17 characters',
+      expect: invalid('malformed_footer'),
+    }),
+    vector({
+      id: 'footer_with_extra_member_is_rejected',
+      description: 'The footer has exactly one member.',
+      signed: signUnlock(baseUnlockClaims, { footer: `{"kid":"${unlockA.kid}","x":1}` }),
+      expect: invalid('malformed_footer'),
+    }),
+    vector({
+      id: 'footer_naming_one_pinned_key_signed_by_the_other_is_rejected',
+      description: 'Footer kid is key A, signature is by pinned key B: the named key decides.',
+      signed: signUnlock(baseUnlockClaims, { key: unlockB, footer: `{"kid":"${unlockA.kid}"}` }),
+      expect: invalid('invalid_signature'),
+    }),
+    vector({
+      id: 'signature_scalar_plus_group_order_is_rejected',
+      description: 'S + L verifies in lenient libraries; the strict policy requires S < L.',
+      signed: base,
+      token: addOrderToScalar(base.token),
+      tampering: 'signature S replaced with S + L',
+      expect: invalid('invalid_signature'),
+    }),
+    vector({
+      id: 'small_order_pinned_key_is_refused',
+      description:
+        'A keyring holding a small-order public key (the identity point) is invalid input.',
+      signed: base,
+      keyring: [{ kid: smallOrderKid, publicKeyHex: smallOrderKey }],
+      expect: invalid('invalid_input'),
+    }),
+    vector({
+      id: 'issuer_with_explicit_port_is_refused',
+      description: 'Release issuers are https://host with no port.',
+      signed: base,
+      issuer: 'https://focus.example.org:443',
+      expect: invalid('invalid_input'),
+    }),
+    vector({
+      id: 'plain_http_issuer_is_refused_in_release_profile',
+      description: 'Plain http is accepted only for loopback, and only in the development profile.',
+      signed: base,
+      issuer: 'http://focus.example.org',
+      expect: invalid('invalid_input'),
+    }),
+  ]
+}
+
+function issuedTime(claims) {
+  const issued = issueTimeToken(claims, { kid: unlockA.kid, secretKey: unlockA.secretKey })
+  const signed = signTime(claims)
+  if (!issued.ok || issued.value !== signed.token) {
+    throw new Error('issueTimeToken and the raw signer disagree')
+  }
+  return signed
+}
+
+function timeVectors() {
+  const base = issuedTime(baseTimeClaims)
+  const incomplete = { ...baseTimeClaims, complete: false }
+  const empty = { ...baseTimeClaims, revoked: [] }
+  const many = {
+    ...baseTimeClaims,
+    revoked: Array.from({ length: 33 }, (_, index) => ({
+      jti: `00000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`,
+      exp: '2026-01-05T09:40:00Z',
+    })),
+  }
+  const time = (options) => vector({ purpose: 'time', ...options })
+  return [
+    time({
+      id: 'valid_time_token',
+      description: 'A time token answering this nonce and boot, with one revocation.',
+      signed: base,
+      expect: valid(baseTimeClaims),
+    }),
+    time({
+      id: 'valid_time_token_with_incomplete_revocations',
+      description: 'complete false: the client must revalidate every received or active unlock.',
+      signed: issuedTime(incomplete),
+      expect: valid(incomplete),
+    }),
+    time({
+      id: 'valid_time_token_without_revocations',
+      description: 'An empty revocation list is written as [].',
+      signed: issuedTime(empty),
+      expect: valid(empty),
+    }),
+    time({
+      id: 'time_token_for_other_nonce_fails_implicit_assertion',
+      description: 'A recorded answer to an earlier request cannot be replayed.',
+      signed: base,
+      nonce: OTHER_NONCE,
+      expect: invalid('invalid_signature'),
+    }),
+    time({
+      id: 'time_token_for_other_boot_fails_implicit_assertion',
+      description: 'An answer for a previous boot cannot anchor this one.',
+      signed: base,
+      boot: OTHER_BOOT,
+      expect: invalid('invalid_signature'),
+    }),
+    time({
+      id: 'time_token_for_other_device_fails_implicit_assertion',
+      description: 'An answer for another device does not verify here.',
+      signed: base,
+      device: OTHER_DEVICE,
+      expect: invalid('invalid_signature'),
+    }),
+    time({
+      id: 'time_claims_with_other_nonce_are_rejected',
+      description: 'Assertion bound to this nonce but claims naming another (defence in depth).',
+      signed: signTime({ ...baseTimeClaims, nonce: OTHER_NONCE }, { nonce: NONCE }),
+      expect: invalid('binding_mismatch'),
+    }),
+    time({
+      id: 'unlock_token_presented_as_time_token_is_rejected',
+      description: 'Same key, different assertion: an unlock token never anchors time.',
+      signed: issuedUnlock(baseUnlockClaims),
+      expect: invalid('invalid_signature'),
+    }),
+    time({
+      id: 'unlock_claims_with_time_assertion_fail_typ',
+      description: 'Unlock claims signed with the time assertion fail on typ.',
+      signed: sign({
+        payload: baseUnlockClaims,
+        key: unlockA,
+        assertion: implicitAssertionText('time', {
+          issuer: ISSUER,
+          device: DEVICE,
+          nonce: NONCE,
+          boot: BOOT,
+        }),
+      }),
+      expect: invalid('wrong_typ'),
+    }),
+    time({
+      id: 'time_token_signed_with_policy_key_is_rejected',
+      description: 'Time tokens are verified with the unlock keyring only.',
+      signed: signTime(baseTimeClaims, { key: policyA }),
+      expect: invalid('unknown_kid'),
+    }),
+    time({
+      id: 'time_token_with_33_revocations_is_rejected',
+      description:
+        'At most 32 revocations fit (the token stays under 4096 bytes); the server sets complete false instead.',
+      signed: signTime(many),
+      expect: invalid('invalid_claims'),
+    }),
+    time({
+      id: 'time_token_with_whitespace_in_revocations_is_rejected',
+      description: 'The revocation list follows the canonical serialisation too.',
+      signed: signTime(
+        canonicalTimeMessage(baseTimeClaims).replace('"revoked":[{', '"revoked":[ {')
+      ),
+      expect: invalid('invalid_claims'),
+    }),
+  ]
+}
+
 /** Every vector file as `{ path, content }`, path relative to the package root. */
 export function generateVectors() {
   const files = []
   for (const [dir, vectors] of [
     ['fixtures/unlock-tokens', unlockVectors()],
     ['fixtures/policy-tokens', policyVectors()],
+    ['fixtures/time-tokens', timeVectors()],
   ]) {
     for (const entry of vectors) {
       files.push({

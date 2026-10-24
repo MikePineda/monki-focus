@@ -1,0 +1,69 @@
+{
+  "$comment": "Hand-written shared vector for the trusted-time and replay-ledger state machine (spec sections 6-9). Every platform replays the events in order and compares each outcome with expect (only the listed fields).",
+  "id": "trusted_floor_survives_reboot_and_ignores_the_wall_clock",
+  "kind": "unlock-state-machine",
+  "description": "The floor ratchets from anchored time only, persists across boots and is never raised by a wall clock set ahead.",
+  "events": [
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "0f8e7d6c-5b4a-4938-8271-605f4e3d2c1b",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:00:00Z",
+        "sentMono": 0
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 600000,
+      "boot": "0f8e7d6c-5b4a-4938-8271-605f4e3d2c1b",
+      "action": {
+        "type": "observe"
+      },
+      "expect": {
+        "ok": true,
+        "trustedNow": "2026-01-05T09:10:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T08:00:00Z",
+      "mono": 10,
+      "boot": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "action": {
+        "type": "observe"
+      },
+      "expect": {
+        "ok": true,
+        "trustedNow": "2026-01-05T09:10:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:30:00Z",
+      "mono": 20,
+      "boot": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "action": {
+        "type": "observe"
+      },
+      "expect": {
+        "ok": true,
+        "trustedNow": "2026-01-05T09:30:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T08:00:00Z",
+      "mono": 30,
+      "boot": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "action": {
+        "type": "observe"
+      },
+      "expect": {
+        "ok": true,
+        "trustedNow": "2026-01-05T09:10:00Z"
+      }
+    }
+  ]
+}

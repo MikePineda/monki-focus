@@ -7,7 +7,10 @@
  * produce the exact code for each vector.
  */
 export const TOKEN_ERROR_CODES = [
-  /** Not a string, too long, wrong number of `.`-separated parts, or too short. */
+  /**
+   * Not a string, longer than 4096 bytes, a byte outside 0x21-0x7E, a wrong
+   * number of `.`-separated parts, or a body shorter than a signature.
+   */
   'malformed_token',
   /** The header is not exactly `v4.public.` (for example `v4.local.` or `v3.public.`). */
   'wrong_header',
@@ -21,7 +24,7 @@ export const TOKEN_ERROR_CODES = [
   'unknown_kid',
   /** The Ed25519 signature over PAE(header, message, footer, implicit assertion) fails. */
   'invalid_signature',
-  /** The signed payload is not UTF-8 JSON matching the claims schema. */
+  /** The signed message is not the canonical serialisation of claims matching the schema. */
   'invalid_claims',
   /** The signed `typ` claim is not the purpose being verified. */
   'wrong_typ',
@@ -29,19 +32,28 @@ export const TOKEN_ERROR_CODES = [
   'issuer_mismatch',
   /** The signed `dev` differs from this device (defence in depth). */
   'device_mismatch',
+  /** Time token: the signed `nonce` or `boot` differs from the request (defence in depth). */
+  'binding_mismatch',
   /** `exp - iat` exceeds the maximum lifetime for the purpose. */
   'lifetime_too_long',
   /** Trusted now is earlier than `nbf - skew`. */
   'not_yet_valid',
   /** Trusted now is later than `exp + skew`. */
   'expired',
-  /** Receipt check: the device rebooted since receipt; revalidate online (offline: fail closed). */
-  'reboot_revalidation_required',
+  /**
+   * Replay store: the entry was received or activated in another boot, or a
+   * revocation list was incomplete; revalidate online (offline: fail closed).
+   */
+  'revalidation_required',
+  /** Trusted time: no time anchor from the current boot; get one online first. */
+  'time_anchor_required',
+  /** Trusted time: a time response arrived too late (or from another boot) to anchor time. */
+  'stale_time',
   /** Replay store: the `jti` was already used and deactivated or expired. */
   'replayed',
-  /** Replay store: the `jti` is in a `revokedTokens` list from a heartbeat. */
+  /** Replay store: the `jti` is in the revocation list of a verified time token. */
   'revoked',
-  /** The caller passed an invalid keyring, issuer, device, key or clock value. */
+  /** The caller passed an invalid keyring, key (non-canonical or small-order), issuer, device, nonce, boot or clock value. */
   'invalid_input',
   /** An unexpected internal failure; treated as a rejection (fail closed). */
   'internal_error',

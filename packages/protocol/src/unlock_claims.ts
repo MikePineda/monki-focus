@@ -30,7 +30,7 @@ import {
 } from './claim_shape.ts'
 
 export type UnlockScope =
-  | { readonly kind: 'domain'; readonly value: string }
+  | { readonly kind: 'domain'; readonly value: string; readonly includeSubdomains: boolean }
   | { readonly kind: 'path'; readonly value: string }
   | { readonly kind: 'app'; readonly value: string }
 
@@ -89,11 +89,18 @@ const SCOPE_FORMATS = {
 } as const
 
 function isUnlockScope(value: unknown): value is UnlockScope {
-  if (!isPlainObject(value) || !hasExactlyKeys(value, ['kind', 'value'])) {
+  if (!isPlainObject(value)) {
     return false
   }
   const kind = value.kind
   if (kind !== 'domain' && kind !== 'path' && kind !== 'app') {
+    return false
+  }
+  const keys = kind === 'domain' ? ['kind', 'value', 'includeSubdomains'] : ['kind', 'value']
+  if (!hasExactlyKeys(value, keys)) {
+    return false
+  }
+  if (kind === 'domain' && typeof value.includeSubdomains !== 'boolean') {
     return false
   }
   const format = SCOPE_FORMATS[kind]
@@ -125,24 +132,4 @@ export function isUnlockClaims(value: unknown): value is UnlockClaims {
 /** Semantic rule beyond the schema: the unlock cannot outlast the token. */
 export function unlockDurationFits(claims: UnlockClaims, times: ClaimTimes): boolean {
   return claims.dur_s <= times.exp - times.iat
-}
-
-/** The claims serialised in canonical key order (what the issuer signs). */
-export function canonicalUnlockClaims(claims: UnlockClaims): string {
-  return JSON.stringify({
-    v: claims.v,
-    typ: claims.typ,
-    iss: claims.iss,
-    sub: claims.sub,
-    dev: claims.dev,
-    rule: claims.rule,
-    scope: { kind: claims.scope.kind, value: claims.scope.value },
-    dur_s: claims.dur_s,
-    iat: claims.iat,
-    nbf: claims.nbf,
-    exp: claims.exp,
-    jti: claims.jti,
-    req: claims.req,
-    pol: claims.pol,
-  })
 }

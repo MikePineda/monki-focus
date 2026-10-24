@@ -77,20 +77,3 @@ export function isPolicyClaims(value: unknown): value is PolicyClaims {
     isPatternString(value.jti, UUID_PATTERN, 36)
   )
 }
-
-export function canonicalPolicyClaims(claims: PolicyClaims): string {
-  return JSON.stringify({
-    v: claims.v,
-    typ: claims.typ,
-    iss: claims.iss,
-    sub: claims.sub,
-    dev: claims.dev,
-    ver: claims.ver,
-    tz: claims.tz,
-    rules_sha256: claims.rules_sha256,
-    iat: claims.iat,
-    nbf: claims.nbf,
-    exp: claims.exp,
-    jti: claims.jti,
-  })
-}

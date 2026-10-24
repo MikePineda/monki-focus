@@ -1,0 +1,64 @@
+{
+  "$comment": "Hand-written shared vector for the trusted-time and replay-ledger state machine (spec sections 6-9). Every platform replays the events in order and compares each outcome with expect (only the listed fields).",
+  "id": "unlock_end_is_capped_at_exp_plus_skew",
+  "kind": "unlock-state-machine",
+  "description": "end = min(activated_at + dur_s, exp + 60 s).",
+  "events": [
+    {
+      "wall": "2026-01-05T09:24:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:24:00Z",
+        "sentMono": 0
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:24:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "unlock_received",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b",
+        "iat": "2026-01-05T09:00:00Z",
+        "nbf": "2026-01-05T09:00:00Z",
+        "exp": "2026-01-05T09:30:00Z",
+        "durS": 900
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:24:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "activate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": true,
+        "end": "2026-01-05T09:31:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:31:00Z",
+      "mono": 420000,
+      "boot": "41",
+      "action": {
+        "type": "activate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": false,
+        "error": "expired",
+        "status": "ended"
+      }
+    }
+  ]
+}

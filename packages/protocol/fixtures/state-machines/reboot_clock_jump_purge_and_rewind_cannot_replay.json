@@ -1,0 +1,141 @@
+{
+  "$comment": "Hand-written shared vector for the trusted-time and replay-ledger state machine (spec sections 6-9). Every platform replays the events in order and compares each outcome with expect (only the listed fields).",
+  "id": "reboot_clock_jump_purge_and_rewind_cannot_replay",
+  "kind": "unlock-state-machine",
+  "description": "Android: an ended unlock, a reboot, the wall clock jumped three days ahead, a purge on wall-only time (a no-op), the clock set back and the same token offered again: refused. With a real anchor the purge runs and the token is still refused as expired.",
+  "events": [
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 10000,
+      "boot": "41",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:00:00Z",
+        "sentMono": 10000
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 10000,
+      "boot": "41",
+      "action": {
+        "type": "unlock_received",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b",
+        "iat": "2026-01-05T09:00:00Z",
+        "nbf": "2026-01-05T09:00:00Z",
+        "exp": "2026-01-05T09:30:00Z",
+        "durS": 900
+      },
+      "expect": {
+        "ok": true,
+        "status": "received"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 10000,
+      "boot": "41",
+      "action": {
+        "type": "activate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": true,
+        "end": "2026-01-05T09:15:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:01:00Z",
+      "mono": 70000,
+      "boot": "41",
+      "action": {
+        "type": "deactivate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": true,
+        "status": "ended"
+      }
+    },
+    {
+      "wall": "2026-01-08T09:00:00Z",
+      "mono": 5000,
+      "boot": "42",
+      "action": {
+        "type": "purge"
+      },
+      "expect": {
+        "ok": true,
+        "entries": ["3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"],
+        "trustedNow": "2026-01-08T09:00:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:02:00Z",
+      "mono": 6000,
+      "boot": "42",
+      "action": {
+        "type": "unlock_received",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b",
+        "iat": "2026-01-05T09:00:00Z",
+        "nbf": "2026-01-05T09:00:00Z",
+        "exp": "2026-01-05T09:30:00Z",
+        "durS": 900
+      },
+      "expect": {
+        "ok": false,
+        "error": "replayed",
+        "status": "ended",
+        "trustedNow": "2026-01-05T09:02:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:02:01Z",
+      "mono": 7000,
+      "boot": "42",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-08T09:00:00Z",
+        "sentMono": 6500
+      },
+      "expect": {
+        "ok": true,
+        "trustedNow": "2026-01-08T09:00:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:02:02Z",
+      "mono": 8000,
+      "boot": "42",
+      "action": {
+        "type": "purge"
+      },
+      "expect": {
+        "ok": true,
+        "entries": [],
+        "trustedNow": "2026-01-08T09:00:01Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:02:02Z",
+      "mono": 8000,
+      "boot": "42",
+      "action": {
+        "type": "unlock_received",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b",
+        "iat": "2026-01-05T09:00:00Z",
+        "nbf": "2026-01-05T09:00:00Z",
+        "exp": "2026-01-05T09:30:00Z",
+        "durS": 900
+      },
+      "expect": {
+        "ok": false,
+        "error": "expired",
+        "status": "absent"
+      }
+    }
+  ]
+}

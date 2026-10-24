@@ -10,9 +10,13 @@ import { fileURLToPath } from 'node:url'
 import type { TokenErrorCode } from '../src/token_error.ts'
 import type { TokenPurpose } from '../src/token_purpose.ts'
 
+export function loadJson(relativePath: string): unknown {
+  return JSON.parse(readFileSync(join(packageRoot, relativePath), 'utf8'))
+}
+
 export interface TokenVector {
   readonly id: string
-  readonly kind: 'unlock-token' | 'policy-token'
+  readonly kind: 'unlock-token' | 'policy-token' | 'time-token'
   readonly description: string
   readonly token: string
   readonly verify: {
@@ -20,7 +24,11 @@ export interface TokenVector {
     readonly keyring: readonly { readonly kid: string; readonly publicKeyHex: string }[]
     readonly issuer: string
     readonly device: string
-    readonly now: string
+    /** Unlock and policy vectors. */
+    readonly now?: string
+    /** Time vectors. */
+    readonly nonce?: string
+    readonly boot?: string
   }
   readonly expect:
     | { readonly result: 'valid'; readonly kid: string; readonly claims: Record<string, unknown> }
@@ -37,7 +45,9 @@ export interface TokenVector {
 
 export const packageRoot = fileURLToPath(new URL('..', import.meta.url))
 
-export function loadTokenVectors(dir: 'unlock-tokens' | 'policy-tokens'): TokenVector[] {
+export function loadTokenVectors(
+  dir: 'unlock-tokens' | 'policy-tokens' | 'time-tokens'
+): TokenVector[] {
   const absolute = join(packageRoot, 'fixtures', dir)
   return readdirSync(absolute)
     .filter((name) => name.endsWith('.json'))

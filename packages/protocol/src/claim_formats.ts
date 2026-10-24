@@ -11,12 +11,24 @@
 const LABEL = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?'
 const HOST = `${LABEL}(?:\\.${LABEL})+`
 
+/** A TCP port from 1 to 65535, without leading zeros, excluding 80 (the http default). */
+const LOOPBACK_PORT =
+  '(?:[1-9]|[1-79][0-9]|8[1-9]|[1-9][0-9]{2,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])'
+
 /**
- * Canonical instance origin: lowercase `https://host[:port]`, no path, no
- * trailing slash. Plain `http` is accepted only for loopback development.
+ * Release profile of the instance origin: lowercase `https://host`, no port
+ * (instances serve on 443, usually behind a reverse proxy), no path, no
+ * trailing slash.
+ */
+export const RELEASE_ISSUER_PATTERN = new RegExp(`^https://${HOST}$`)
+
+/**
+ * Any issuer a claim may carry: the release form, or, for local development
+ * only, `http://localhost` / `http://127.0.0.1` with an optional non-default
+ * port. Verifiers accept the development form only when explicitly told to.
  */
 export const ISSUER_PATTERN = new RegExp(
-  `^(?:https://${HOST}(?::[0-9]{1,5})?|http://(?:localhost|127\\.0\\.0\\.1)(?::[0-9]{1,5})?)$`
+  `^(?:https://${HOST}|http://(?:localhost|127\\.0\\.0\\.1)(?::${LOOPBACK_PORT})?)$`
 )
 export const ISSUER_MAX_LENGTH = 270
 
@@ -34,8 +46,16 @@ export const RULE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/
 export const SCOPE_DOMAIN_PATTERN = new RegExp(`^${HOST}$`)
 export const SCOPE_DOMAIN_MAX_LENGTH = 253
 
-/** Exact host plus one or more literal path segments, no query, fragment or wildcard. */
-export const SCOPE_PATH_PATTERN = new RegExp(`^${HOST}(?:/[A-Za-z0-9._~%!$&'()+,;=:@-]+)+$`)
+const SEGMENT_CHAR = "[A-Za-z0-9._~!$&'()+,;=:@-]"
+const SEGMENT_START = "[A-Za-z0-9_~!$&'()+,;=:@-]"
+/** A non-empty path segment that is not `.` or `..` (and has no `%`, `/` or `\\`). */
+const SEGMENT = `(?:${SEGMENT_START}${SEGMENT_CHAR}*|\\.${SEGMENT_START}${SEGMENT_CHAR}*|\\.\\.${SEGMENT_CHAR}+)`
+
+/**
+ * Exact host plus one or more literal path segments: no query, fragment,
+ * wildcard, percent-encoding, backslash, empty segment, `.` or `..`.
+ */
+export const SCOPE_PATH_PATTERN = new RegExp(`^${HOST}(?:/${SEGMENT})+$`)
 export const SCOPE_PATH_MAX_LENGTH = 512
 
 /** Android package name or Apple bundle id. */
@@ -48,6 +68,15 @@ export const SHA256_BASE64URL_PATTERN = /^[A-Za-z0-9_-]{43}$/
 /** IANA time-zone name such as `Etc/UTC` or `America/New_York`. */
 export const TIME_ZONE_PATTERN = /^(?:UTC|[A-Za-z]+(?:\/[A-Za-z0-9_+-]+){1,2})$/
 export const TIME_ZONE_MAX_LENGTH = 64
+
+/** Client nonce of a time request: 16 random bytes, unpadded base64url. */
+export const NONCE_PATTERN = /^[A-Za-z0-9_-]{22}$/
+
+/**
+ * Boot id: Android `BOOT_COUNT` in decimal, the macOS boot session uuid, or
+ * the extension service worker's per-instance `crypto.randomUUID()`.
+ */
+export const BOOT_ID_PATTERN = /^[A-Za-z0-9._:-]{1,64}$/
 
 /** Key id: the first 16 characters of base64url(SHA-256(raw public key)). */
 export const KEY_ID_PATTERN = /^[A-Za-z0-9_-]{16}$/

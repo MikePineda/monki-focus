@@ -5,6 +5,9 @@ import SwaggerParser from '@apidevtools/swagger-parser'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import {
+  BOOT_ID_PATTERN,
+  NONCE_PATTERN,
+  RELEASE_ISSUER_PATTERN,
   RULE_ID_PATTERN,
   SCOPE_APP_PATTERN,
   SCOPE_DOMAIN_PATTERN,
@@ -108,5 +111,42 @@ describe('openapi.yaml', () => {
         expect(schema.additionalProperties, name).toBe(false)
       }
     }
+  })
+
+  it('test_every_time_anchoring_response_carries_server_time_and_a_signed_time_token', () => {
+    const schemas = spec.components.schemas as Record<
+      string,
+      { required?: string[]; properties?: Record<string, unknown> }
+    >
+    expect(schemas.HeartbeatResponse?.required).toEqual(
+      expect.arrayContaining(['serverTime', 'timeToken'])
+    )
+    expect(schemas.UnlockRequestStatus?.required).toContain('serverTime')
+    expect(Object.keys(schemas.UnlockRequestStatus?.properties ?? {})).toContain('timeToken')
+    expect(schemas.EnrollResponse?.required).toContain('serverTime')
+    expect(schemas.HeartbeatRequest?.required).toEqual(
+      expect.arrayContaining(['nonce', 'boot', 'pinnedKids'])
+    )
+  })
+
+  it('test_revocations_travel_only_inside_the_signed_time_token', () => {
+    expect(readFileSync(specPath, 'utf8')).not.toMatch(/revokedTokens|RevokedToken/)
+  })
+
+  it('test_enrolment_codes_lock_after_five_failed_attempts', () => {
+    const enroll = spec.paths['/device/enroll']?.post as unknown as { description: string }
+    expect(enroll.description).toMatch(/at most 5 failed\s+attempts/)
+  })
+
+  it('test_nonce_boot_and_issuer_formats_match_the_tokens', () => {
+    const schemas = spec.components.schemas as Record<
+      string,
+      { pattern?: string; properties?: Record<string, { pattern?: string }> }
+    >
+    expect(new RegExp(schemas.Nonce?.pattern ?? '').source).toBe(NONCE_PATTERN.source)
+    expect(new RegExp(schemas.BootId?.pattern ?? '').source).toBe(BOOT_ID_PATTERN.source)
+    expect(new RegExp(schemas.KeySet?.properties?.issuer?.pattern ?? '').source).toBe(
+      RELEASE_ISSUER_PATTERN.source
+    )
   })
 })

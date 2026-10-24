@@ -1,0 +1,52 @@
+{
+  "$comment": "Hand-written shared vector for the trusted-time and replay-ledger state machine (spec sections 6-9). Every platform replays the events in order and compares each outcome with expect (only the listed fields).",
+  "id": "stale_time_response_is_refused",
+  "kind": "unlock-state-machine",
+  "description": "A time answer is accepted only within 60 s of sending its request, and never with the monotonic clock behind the send.",
+  "events": [
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 70000,
+      "boot": "41",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:00:00Z",
+        "sentMono": 9000
+      },
+      "expect": {
+        "ok": false,
+        "error": "stale_time",
+        "trustedNow": "2026-01-05T09:00:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 70000,
+      "boot": "41",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:00:00Z",
+        "sentMono": 10000
+      },
+      "expect": {
+        "ok": true,
+        "trustedNow": "2026-01-05T09:01:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 70000,
+      "boot": "41",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:00:00Z",
+        "sentMono": 80000
+      },
+      "expect": {
+        "ok": false,
+        "error": "stale_time",
+        "trustedNow": "2026-01-05T09:01:00Z"
+      }
+    }
+  ]
+}

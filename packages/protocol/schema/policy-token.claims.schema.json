@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:monki-focus:protocol:policy-token-claims:v1",
   "title": "monki-focus policy token claims (v1)",
-  "description": "Claims of a PASETO v4.public policy token, signed with the policy-signing key. Semantic rules beyond this schema: iat <= nbf < exp; exp - iat <= 2592000 (30 days); iss and dev equal the pinned issuer and this device; ver never decreases on a device.",
+  "description": "Claims of a PASETO v4.public policy token, signed with the policy-signing key. The signed message must also be the canonical serialisation of these claims (docs/protocol/unlock-tokens.md §4.0). Semantic rules beyond this schema: iat <= nbf < exp; exp - iat <= 2592000 (30 days); iss and dev equal the pinned issuer and this device; ver never decreases on a device.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -74,8 +74,8 @@
     "issuer": {
       "type": "string",
       "maxLength": 270,
-      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+(?::[0-9]{1,5})?|http://(?:localhost|127\\.0\\.0\\.1)(?::[0-9]{1,5})?)$",
-      "description": "Canonical instance origin: lowercase https://host[:port], no path or trailing slash; http only for localhost or 127.0.0.1. Never contains \"|\"."
+      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+|http://(?:localhost|127\\.0\\.0\\.1)(?::(?:[1-9]|[1-79][0-9]|8[1-9]|[1-9][0-9]{2,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?)$",
+      "description": "Instance origin. Release: lowercase https://host, no port, path or trailing slash. Development only: http://localhost or http://127.0.0.1 with an optional non-default port. Never contains \"|\"."
     },
     "uuid": {
       "type": "string",

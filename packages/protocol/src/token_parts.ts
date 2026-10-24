@@ -14,10 +14,15 @@ import { fail, ok, type Result } from './token_error.ts'
 export const V4_PUBLIC_HEADER = 'v4.public.'
 
 /**
- * Upper bound on the token string. Unlock and policy tokens are well under
- * 1 KiB; the bound keeps hostile input from costing more than a fixed amount.
+ * Upper bound on the token, in bytes. Every valid token is printable ASCII,
+ * so bytes and string characters coincide. Unlock and policy tokens are well
+ * under 1 KiB; the bound keeps hostile input from costing more than a fixed
+ * amount.
  */
 export const MAX_TOKEN_LENGTH = 4096
+
+/** Only bytes 0x21-0x7E can appear in a token (no space, no control, no non-ASCII). */
+const PRINTABLE = /^[\x21-\x7e]*$/
 
 export interface TokenParts {
   /** The header bytes, always `v4.public.`. */
@@ -33,7 +38,7 @@ export interface TokenParts {
 const HEADER_BYTES = new TextEncoder().encode(V4_PUBLIC_HEADER)
 
 export function parseTokenParts(token: unknown): Result<TokenParts> {
-  if (typeof token !== 'string' || token.length > MAX_TOKEN_LENGTH) {
+  if (typeof token !== 'string' || token.length > MAX_TOKEN_LENGTH || !PRINTABLE.test(token)) {
     return fail('malformed_token')
   }
   if (!token.startsWith(V4_PUBLIC_HEADER)) {

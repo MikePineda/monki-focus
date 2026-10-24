@@ -3,14 +3,14 @@
  * The pinned public keys a client trusts for one purpose. A keyring holds at
  * most two keys (the current one and, during a rotation, its successor or
  * predecessor), never mixes purposes, and refuses any entry whose kid is not
- * derived from its key. Only keyrings built here are accepted by the
+ * derived from its key or whose key is non-canonical, small-order or outside
+ * the prime-order subgroup. Only keyrings built here are accepted by the
  * verifiers.
  */
-import type { KeyObject } from 'node:crypto'
-import { publicKeyFromRaw } from './ed25519_key.ts'
+import { publicKeyFromRaw, type Ed25519PublicKey } from './ed25519_key.ts'
 import { deriveKeyId } from './key_id.ts'
 import { fail, ok, type Result } from './token_error.ts'
-import type { TokenPurpose } from './token_purpose.ts'
+import type { KeyPurpose } from './token_purpose.ts'
 
 export const MAX_ACTIVE_KEYS = 2
 
@@ -21,20 +21,17 @@ export interface PinnedKey {
 }
 
 export interface Keyring {
-  readonly purpose: TokenPurpose
+  readonly purpose: KeyPurpose
   readonly kids: readonly string[]
 }
 
-const keysByKeyring = new WeakMap<Keyring, ReadonlyMap<string, KeyObject>>()
+const keysByKeyring = new WeakMap<Keyring, ReadonlyMap<string, Ed25519PublicKey>>()
 
-export function createKeyring(
-  purpose: TokenPurpose,
-  pinned: readonly PinnedKey[]
-): Result<Keyring> {
+export function createKeyring(purpose: KeyPurpose, pinned: readonly PinnedKey[]): Result<Keyring> {
   if (pinned.length === 0 || pinned.length > MAX_ACTIVE_KEYS) {
     return fail('invalid_input')
   }
-  const keys = new Map<string, KeyObject>()
+  const keys = new Map<string, Ed25519PublicKey>()
   for (const entry of pinned) {
     const key = publicKeyFromRaw(entry.publicKey)
     if (!key.ok || keys.has(entry.kid) || deriveKeyId(entry.publicKey) !== entry.kid) {
@@ -51,7 +48,7 @@ export function createKeyring(
  * The key for `kid`, `unknown_kid` when the keyring does not hold it, or
  * `invalid_input` when `keyring` was not built by `createKeyring`.
  */
-export function lookupKey(keyring: Keyring, kid: string): Result<KeyObject> {
+export function lookupKey(keyring: Keyring, kid: string): Result<Ed25519PublicKey> {
   const keys = keysByKeyring.get(keyring)
   if (keys === undefined) {
     return fail('invalid_input')

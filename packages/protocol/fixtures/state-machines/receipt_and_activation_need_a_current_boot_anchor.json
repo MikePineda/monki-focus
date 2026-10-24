@@ -1,0 +1,127 @@
+{
+  "$comment": "Hand-written shared vector for the trusted-time and replay-ledger state machine (spec sections 6-9). Every platform replays the events in order and compares each outcome with expect (only the listed fields).",
+  "id": "receipt_and_activation_need_a_current_boot_anchor",
+  "kind": "unlock-state-machine",
+  "description": "No first receipt or activation on wall-only time; after a reboot the receipt needs revalidation before activation.",
+  "events": [
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "unlock_received",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b",
+        "iat": "2026-01-05T09:00:00Z",
+        "nbf": "2026-01-05T09:00:00Z",
+        "exp": "2026-01-05T09:30:00Z",
+        "durS": 900
+      },
+      "expect": {
+        "ok": false,
+        "error": "time_anchor_required",
+        "status": "absent",
+        "trustedNow": "2026-01-05T09:00:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:00:00Z",
+        "sentMono": 0
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "unlock_received",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b",
+        "iat": "2026-01-05T09:00:00Z",
+        "nbf": "2026-01-05T09:00:00Z",
+        "exp": "2026-01-05T09:30:00Z",
+        "durS": 900
+      },
+      "expect": {
+        "ok": true,
+        "status": "received"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:01:00Z",
+      "mono": 100,
+      "boot": "42",
+      "action": {
+        "type": "activate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": false,
+        "error": "time_anchor_required",
+        "status": "received",
+        "trustedNow": "2026-01-05T09:01:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:01:00Z",
+      "mono": 200,
+      "boot": "42",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:01:00Z",
+        "sentMono": 100
+      },
+      "expect": {
+        "ok": true,
+        "trustedNow": "2026-01-05T09:01:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:01:00Z",
+      "mono": 200,
+      "boot": "42",
+      "action": {
+        "type": "activate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": false,
+        "error": "revalidation_required",
+        "status": "received"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:01:00Z",
+      "mono": 200,
+      "boot": "42",
+      "action": {
+        "type": "revalidate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": true,
+        "status": "received"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:01:00Z",
+      "mono": 200,
+      "boot": "42",
+      "action": {
+        "type": "activate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": true,
+        "end": "2026-01-05T09:16:00Z",
+        "status": "active"
+      }
+    }
+  ]
+}

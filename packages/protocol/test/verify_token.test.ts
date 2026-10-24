@@ -3,12 +3,13 @@ import { randomBytes } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { encodeBase64Url } from '../src/base64url.ts'
 import { privateKeyFromSeed } from '../src/ed25519_key.ts'
-import { issuePolicyToken, issueUnlockToken } from '../src/issue_token.ts'
+import { issuePolicyToken, issueTimeToken, issueUnlockToken } from '../src/issue_token.ts'
 import { createKeyring, type Keyring } from '../src/keyring.ts'
 import type { PolicyClaims } from '../src/policy_claims.ts'
 import { parseRfc3339Utc } from '../src/rfc3339_utc.ts'
+import type { TimeClaims } from '../src/time_claims.ts'
 import type { UnlockClaims } from '../src/unlock_claims.ts'
-import { verifyPolicyToken, verifyUnlockToken } from '../src/verify_token.ts'
+import { verifyPolicyToken, verifyTimeToken, verifyUnlockToken } from '../src/verify_token.ts'
 import { hexBytes, loadTokenVectors, testOnlySeed } from './token_vector_loader.ts'
 
 const vectors = loadTokenVectors('unlock-tokens')
@@ -46,7 +47,7 @@ const context = {
   keyring: keyring(),
   issuer: valid.verify.issuer,
   device: valid.verify.device,
-  now: parseRfc3339Utc(valid.verify.now) ?? 0,
+  now: parseRfc3339Utc(valid.verify.now ?? '') ?? 0,
 }
 
 afterEach(() => {
@@ -207,5 +208,55 @@ describe('issuePolicyToken', () => {
       ok: false,
       error: { code: 'lifetime_too_long' },
     })
+  })
+})
+
+describe('verifyTimeToken', () => {
+  const timeVector = loadTokenVectors('time-tokens').find(
+    (vector) => vector.id === 'valid_time_token'
+  )
+  if (timeVector === undefined) throw new Error('missing time vector')
+  const timeContext = {
+    keyring: bothKeys,
+    issuer: timeVector.verify.issuer,
+    device: timeVector.verify.device,
+    nonce: timeVector.verify.nonce ?? '',
+    boot: timeVector.verify.boot ?? '',
+  }
+
+  it('test_issuer_reproduces_the_shared_time_vector', () => {
+    const timeClaims = JSON.parse(timeVector.construction.claimsJson) as TimeClaims
+    expect(issueTimeToken(timeClaims, signingKeyA)).toEqual({ ok: true, value: timeVector.token })
+  })
+
+  it('test_time_token_needs_a_well_formed_nonce_and_boot', () => {
+    for (const bad of [{ nonce: 'short' }, { boot: '41|x' }, { boot: '' }]) {
+      expect(verifyTimeToken(timeVector.token, { ...timeContext, ...bad })).toEqual({
+        ok: false,
+        error: { code: 'invalid_input' },
+      })
+    }
+  })
+
+  it('test_time_token_needs_the_unlock_keyring', () => {
+    expect(
+      verifyTimeToken(timeVector.token, { ...timeContext, keyring: keyring('policy') })
+    ).toEqual({ ok: false, error: { code: 'invalid_input' } })
+  })
+})
+
+describe('issuer profiles', () => {
+  it('test_development_profile_accepts_only_loopback_http', () => {
+    const local = { ...claims, iss: 'http://localhost:3333' }
+    expect(issueUnlockToken(local, signingKeyA).ok).toBe(false)
+    const issued = issueUnlockToken(local, signingKeyA, 'development')
+    expect(issued.ok).toBe(true)
+    if (!issued.ok) return
+    const base = { ...context, keyring: bothKeys, issuer: local.iss }
+    expect(verifyUnlockToken(issued.value, base)).toEqual({
+      ok: false,
+      error: { code: 'invalid_input' },
+    })
+    expect(verifyUnlockToken(issued.value, { ...base, issuerProfile: 'development' }).ok).toBe(true)
   })
 })

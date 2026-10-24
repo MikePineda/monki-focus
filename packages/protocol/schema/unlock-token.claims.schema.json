@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:monki-focus:protocol:unlock-token-claims:v1",
   "title": "monki-focus unlock token claims (v1)",
-  "description": "Claims of a PASETO v4.public unlock token. Semantic rules beyond this schema (docs/protocol/unlock-tokens.md): iat <= nbf < exp; exp - iat <= 14400; dur_s <= exp - iat; scope, iss and dev are exact values; iss and dev equal the pinned issuer and this device.",
+  "description": "Claims of a PASETO v4.public unlock token. The signed message must also be the canonical serialisation of these claims (docs/protocol/unlock-tokens.md §4.0). Semantic rules beyond this schema: iat <= nbf < exp; exp - iat <= 14400; dur_s <= exp - iat; iss and dev equal the pinned issuer and this device.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -46,12 +46,12 @@
       "description": "Rule id the unlock lifts."
     },
     "scope": {
-      "description": "Exactly what is unlocked. Never a wildcard.",
+      "description": "Exactly what is unlocked. Never a wildcard. Matching rules: spec §4.5.",
       "oneOf": [
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "value"],
+          "required": ["kind", "value", "includeSubdomains"],
           "properties": {
             "kind": {
               "const": "domain"
@@ -60,9 +60,13 @@
               "type": "string",
               "maxLength": 253,
               "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$"
+            },
+            "includeSubdomains": {
+              "type": "boolean",
+              "description": "Also match hosts ending in \".\" + value. Issuers default to false."
             }
           },
-          "description": "An exact hostname with at least two labels."
+          "description": "An exact hostname with at least two labels; subdomains only when includeSubdomains is true."
         },
         {
           "type": "object",
@@ -75,10 +79,10 @@
             "value": {
               "type": "string",
               "maxLength": 512,
-              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+(?:/[A-Za-z0-9._~%!$&'()+,;=:@-]+)+$"
+              "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+(?:/(?:[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.\\.[A-Za-z0-9._~!$&'()+,;=:@-]+))+$"
             }
           },
-          "description": "An exact host plus literal path segments; no query, fragment or wildcard."
+          "description": "An exact host plus literal path segments (segment-prefix match); no query, fragment, wildcard, %, backslash, empty, \".\" or \"..\" segment."
         },
         {
           "type": "object",
@@ -94,7 +98,7 @@
               "pattern": "^[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z][A-Za-z0-9_-]*)+$"
             }
           },
-          "description": "An Android package name or Apple bundle id."
+          "description": "An Android package name or Apple bundle id (exact match)."
         }
       ]
     },
@@ -133,8 +137,8 @@
     "issuer": {
       "type": "string",
       "maxLength": 270,
-      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+(?::[0-9]{1,5})?|http://(?:localhost|127\\.0\\.0\\.1)(?::[0-9]{1,5})?)$",
-      "description": "Canonical instance origin: lowercase https://host[:port], no path or trailing slash; http only for localhost or 127.0.0.1. Never contains \"|\"."
+      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+|http://(?:localhost|127\\.0\\.0\\.1)(?::(?:[1-9]|[1-79][0-9]|8[1-9]|[1-9][0-9]{2,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?)$",
+      "description": "Instance origin. Release: lowercase https://host, no port, path or trailing slash. Development only: http://localhost or http://127.0.0.1 with an optional non-default port. Never contains \"|\"."
     },
     "uuid": {
       "type": "string",

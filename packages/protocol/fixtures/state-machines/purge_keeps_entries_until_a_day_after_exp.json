@@ -1,0 +1,76 @@
+{
+  "$comment": "Hand-written shared vector for the trusted-time and replay-ledger state machine (spec sections 6-9). Every platform replays the events in order and compares each outcome with expect (only the listed fields).",
+  "id": "purge_keeps_entries_until_a_day_after_exp",
+  "kind": "unlock-state-machine",
+  "description": "Purge runs only with a current-boot anchor and drops an entry once trusted now passes exp + 1 day.",
+  "events": [
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:00:00Z",
+        "sentMono": 0
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "unlock_received",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b",
+        "iat": "2026-01-05T09:00:00Z",
+        "nbf": "2026-01-05T09:00:00Z",
+        "exp": "2026-01-05T09:30:00Z",
+        "durS": 900
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "deactivate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": true,
+        "status": "ended"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 88200000,
+      "boot": "41",
+      "action": {
+        "type": "purge"
+      },
+      "expect": {
+        "ok": true,
+        "entries": ["3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"],
+        "trustedNow": "2026-01-06T09:30:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 88201000,
+      "boot": "41",
+      "action": {
+        "type": "purge"
+      },
+      "expect": {
+        "ok": true,
+        "entries": [],
+        "trustedNow": "2026-01-06T09:30:01Z"
+      }
+    }
+  ]
+}

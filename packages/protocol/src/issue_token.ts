@@ -1,24 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * Server-side issuance of unlock and policy tokens. The issuer refuses to
- * sign anything a verifier would reject on its claims (schema, time order,
- * lifetime, duration), and refuses a signing key whose kid does not match.
+ * Server-side issuance of unlock, policy and time tokens. The issuer signs
+ * exactly the canonical serialisation (spec §4.0) and refuses anything a
+ * verifier would reject on its claims (schema, time order, lifetime,
+ * duration), and a signing key whose kid does not match.
  */
 import type { KeyObject } from 'node:crypto'
+import {
+  canonicalPolicyMessage,
+  canonicalTimeMessage,
+  canonicalUnlockMessage,
+} from './canonical_claims.ts'
 import { checkClaimTimes } from './claim_times.ts'
 import { isEd25519PrivateKey, rawPublicKey } from './ed25519_key.ts'
-import { implicitAssertion } from './implicit_assertion.ts'
+import {
+  implicitAssertion,
+  type AssertionBinding,
+  type IssuerProfile,
+} from './implicit_assertion.ts'
 import { deriveKeyId } from './key_id.ts'
 import { encodeKidFooter } from './kid_footer.ts'
-import { canonicalPolicyClaims, isPolicyClaims, type PolicyClaims } from './policy_claims.ts'
+import { isPolicyClaims, type PolicyClaims } from './policy_claims.ts'
 import { signV4Public } from './sign_v4_public.ts'
+import { isTimeClaims, type TimeClaims } from './time_claims.ts'
 import { fail, ok, type Result } from './token_error.ts'
-import {
-  canonicalUnlockClaims,
-  isUnlockClaims,
-  unlockDurationFits,
-  type UnlockClaims,
-} from './unlock_claims.ts'
+import type { TokenPurpose } from './token_purpose.ts'
+import { isUnlockClaims, unlockDurationFits, type UnlockClaims } from './unlock_claims.ts'
 
 export interface SigningKey {
   readonly kid: string
@@ -26,30 +33,38 @@ export interface SigningKey {
   readonly secretKey: KeyObject
 }
 
-function signClaims(
-  purpose: 'unlock' | 'policy',
-  claimsJson: string,
-  claims: { readonly iss: string; readonly dev: string },
-  key: SigningKey
+function signMessage(
+  purpose: TokenPurpose,
+  message: string | null,
+  binding: AssertionBinding,
+  key: SigningKey,
+  profile: IssuerProfile
 ): Result<string> {
+  if (message === null) {
+    return fail('invalid_claims')
+  }
   if (!isEd25519PrivateKey(key.secretKey) || deriveKeyId(rawPublicKey(key.secretKey)) !== key.kid) {
     return fail('invalid_input')
   }
-  const assertion = implicitAssertion(purpose, claims.iss, claims.dev)
+  const assertion = implicitAssertion(purpose, binding, profile)
   if (!assertion.ok) {
     return assertion
   }
   return ok(
     signV4Public(
       key.secretKey,
-      new TextEncoder().encode(claimsJson),
+      new TextEncoder().encode(message),
       encodeKidFooter(key.kid),
       assertion.value
     )
   )
 }
 
-export function issueUnlockToken(claims: UnlockClaims, key: SigningKey): Result<string> {
+export function issueUnlockToken(
+  claims: UnlockClaims,
+  key: SigningKey,
+  profile: IssuerProfile = 'release'
+): Result<string> {
   try {
     if (!isUnlockClaims(claims)) {
       return fail('invalid_claims')
@@ -61,13 +76,18 @@ export function issueUnlockToken(claims: UnlockClaims, key: SigningKey): Result<
     if (!unlockDurationFits(claims, times.value)) {
       return fail('invalid_claims')
     }
-    return signClaims('unlock', canonicalUnlockClaims(claims), claims, key)
+    const binding = { issuer: claims.iss, device: claims.dev }
+    return signMessage('unlock', canonicalUnlockMessage(claims), binding, key, profile)
   } catch {
     return fail('internal_error')
   }
 }
 
-export function issuePolicyToken(claims: PolicyClaims, key: SigningKey): Result<string> {
+export function issuePolicyToken(
+  claims: PolicyClaims,
+  key: SigningKey,
+  profile: IssuerProfile = 'release'
+): Result<string> {
   try {
     if (!isPolicyClaims(claims)) {
       return fail('invalid_claims')
@@ -76,7 +96,29 @@ export function issuePolicyToken(claims: PolicyClaims, key: SigningKey): Result<
     if (!times.ok) {
       return times
     }
-    return signClaims('policy', canonicalPolicyClaims(claims), claims, key)
+    const binding = { issuer: claims.iss, device: claims.dev }
+    return signMessage('policy', canonicalPolicyMessage(claims), binding, key, profile)
+  } catch {
+    return fail('internal_error')
+  }
+}
+
+export function issueTimeToken(
+  claims: TimeClaims,
+  key: SigningKey,
+  profile: IssuerProfile = 'release'
+): Result<string> {
+  try {
+    if (!isTimeClaims(claims)) {
+      return fail('invalid_claims')
+    }
+    const binding = {
+      issuer: claims.iss,
+      device: claims.dev,
+      nonce: claims.nonce,
+      boot: claims.boot,
+    }
+    return signMessage('time', canonicalTimeMessage(claims), binding, key, profile)
   } catch {
     return fail('internal_error')
   }

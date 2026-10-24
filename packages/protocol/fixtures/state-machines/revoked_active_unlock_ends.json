@@ -1,0 +1,84 @@
+{
+  "$comment": "Hand-written shared vector for the trusted-time and replay-ledger state machine (spec sections 6-9). Every platform replays the events in order and compares each outcome with expect (only the listed fields).",
+  "id": "revoked_active_unlock_ends",
+  "kind": "unlock-state-machine",
+  "description": "A revocation in a later time token stops an active unlock.",
+  "events": [
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:00:00Z",
+        "sentMono": 0
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "unlock_received",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b",
+        "iat": "2026-01-05T09:00:00Z",
+        "nbf": "2026-01-05T09:00:00Z",
+        "exp": "2026-01-05T09:30:00Z",
+        "durS": 900
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:00:00Z",
+      "mono": 0,
+      "boot": "41",
+      "action": {
+        "type": "activate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": true,
+        "end": "2026-01-05T09:15:00Z"
+      }
+    },
+    {
+      "wall": "2026-01-05T09:01:00Z",
+      "mono": 60000,
+      "boot": "41",
+      "action": {
+        "type": "time_response",
+        "srv": "2026-01-05T09:01:00Z",
+        "sentMono": 60000,
+        "revoked": [
+          {
+            "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b",
+            "exp": "2026-01-05T09:30:00Z"
+          }
+        ],
+        "complete": true
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "wall": "2026-01-05T09:01:00Z",
+      "mono": 60000,
+      "boot": "41",
+      "action": {
+        "type": "activate",
+        "jti": "3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b"
+      },
+      "expect": {
+        "ok": false,
+        "error": "revoked",
+        "status": "revoked"
+      }
+    }
+  ]
+}

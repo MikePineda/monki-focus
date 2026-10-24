@@ -76,8 +76,17 @@ paths:
       summary: Enrol a device with a one-time code from the dashboard
       description: |
         The 8-character code is generated in the dashboard, valid for 10
-        minutes, single use and rate limited per IP. The device token is
-        returned exactly once.
+        minutes and single use. Each code tolerates at most 5 failed
+        attempts: the fifth wrong attempt invalidates it (the dashboard must
+        issue a new one), and attempts are also rate limited per IP. The
+        device token is returned exactly once.
+
+        Key pinning: the dashboard shows the code together with the kid of
+        each active signing key (also encoded in its QR code, see
+        docs/protocol/unlock-tokens.md §2). The device pins `keys` from the
+        response only if every kid matches the kids it was shown or scanned;
+        otherwise it discards the enrolment. The guardian is shown the same
+        kids when pairing.
       security: []
       parameters:
         - $ref: '#/components/parameters/ClientVersion'
@@ -106,9 +115,14 @@ paths:
       tags: [heartbeat]
       summary: Report device state and receive server time, key and policy updates
       description: |
-        Sent every 15 minutes and on wake. The response anchors trusted
-        time (`serverTime`), announces key changes (`keysEtag`), may carry a
-        newer signed policy, and lists revoked unlock tokens.
+        Sent every 15 minutes and on wake. The request carries a fresh
+        nonce, the boot id and the kids the device has pinned; the server
+        raises a `key_pin_mismatch` bypass event for the guardian when the
+        pinned kids are not the instance's keys. The response carries a
+        signed time token (server time plus the revocation list, bound to
+        the nonce and boot id), announces key changes (`keysEtag`) and may
+        carry a newer signed policy. Only the signed time token anchors
+        trusted time or revokes anything; `serverTime` is informative.
       parameters:
         - $ref: '#/components/parameters/ClientVersion'
       requestBody:
@@ -209,7 +223,12 @@ paths:
         With `wait`, the server holds the request up to that many seconds
         until the status changes. When the guardian approves, the response
         carries the unlock token; the client verifies it offline before
-        relaxing anything.
+        relaxing anything. The same call is the online **revalidation** of
+        an already received token (after a reboot, a service-worker restart
+        or an incomplete revocation list): while the token is valid and not
+        revoked the response returns it again. With `nonce` and `boot` the
+        response also carries a signed time token, which the client needs
+        to anchor trusted time for the receipt, activation or revalidation.
       parameters:
         - name: wait
           in: query
@@ -219,6 +238,16 @@ paths:
             minimum: 0
             maximum: 25
             default: 0
+        - name: nonce
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Nonce'
+        - name: boot
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/BootId'
       responses:
         '200':
           description: Current state.
@@ -318,6 +347,14 @@ components:
       pattern: '^v4\.public\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'
       maxLength: 4096
       description: A PASETO v4.public token with a kid footer. Opaque to the API; verify per docs/protocol/unlock-tokens.md.
+    Nonce:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{22}$'
+      description: 16 fresh random bytes per request, unpadded base64url.
+    BootId:
+      type: string
+      pattern: '^[A-Za-z0-9._:-]{1,64}$'
+      description: Android BOOT_COUNT, the macOS boot session uuid, or the extension service worker's per-instance random uuid.
     Platform:
       type: string
       enum: [chrome_extension, android, macos, other]
@@ -344,6 +381,10 @@ components:
           const: client_upgrade_required
         minimumVersion:
           type: string
+    Kid:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{16}$'
+      description: First 16 characters of base64url(SHA-256(raw public key)).
     PublicKey:
       type: object
       additionalProperties: false
@@ -380,7 +421,8 @@ components:
       properties:
         issuer:
           type: string
-          description: Canonical instance origin; the `iss` of every token and part of the implicit assertion.
+          pattern: "^https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$"
+          description: Canonical instance origin (release profile, https without port); the `iss` of every token and part of the implicit assertion.
           examples: [https://focus.example.org]
         keys:
           type: array
@@ -425,7 +467,17 @@ components:
     HeartbeatRequest:
       type: object
       additionalProperties: false
-      required: [clientTime, protectionActive, rulesHash, policyHash, clientVersion, bootCount]
+      required:
+        [
+          clientTime,
+          protectionActive,
+          rulesHash,
+          policyHash,
+          clientVersion,
+          nonce,
+          boot,
+          pinnedKids,
+        ]
       properties:
         clientTime:
           $ref: '#/components/schemas/Timestamp'
@@ -438,10 +490,28 @@ components:
         clientVersion:
           type: string
           maxLength: 32
-        bootCount:
-          type: integer
-          minimum: 0
-          description: Boot counter the client anchors tokens to; a change tells the server the device rebooted.
+        nonce:
+          $ref: '#/components/schemas/Nonce'
+        boot:
+          $ref: '#/components/schemas/BootId'
+        pinnedKids:
+          type: object
+          additionalProperties: false
+          required: [unlock, policy]
+          description: The kids this device has pinned, per purpose; a mismatch alerts the guardian.
+          properties:
+            unlock:
+              type: array
+              minItems: 1
+              maxItems: 2
+              items:
+                $ref: '#/components/schemas/Kid'
+            policy:
+              type: array
+              minItems: 1
+              maxItems: 2
+              items:
+                $ref: '#/components/schemas/Kid'
         a11yEnabled:
           type: boolean
           description: Android only. Whether the accessibility service is enabled.
@@ -455,22 +525,21 @@ components:
         goingOffline:
           type: boolean
           description: The device announces a planned shutdown; it labels, never suppresses, a dead-man alert.
-    RevokedToken:
-      type: object
-      additionalProperties: false
-      required: [jti, exp]
-      properties:
-        jti:
-          $ref: '#/components/schemas/Uuid'
-        exp:
-          $ref: '#/components/schemas/Timestamp'
     HeartbeatResponse:
       type: object
       additionalProperties: false
-      required: [serverTime, keysEtag, rulesVersion, revokedTokens]
+      required: [serverTime, timeToken, keysEtag, rulesVersion]
       properties:
         serverTime:
           $ref: '#/components/schemas/Timestamp'
+          description: Informative only (TLS-protected); trusted time comes from `timeToken`.
+        timeToken:
+          $ref: '#/components/schemas/PasetoV4Public'
+          description: |
+            Signed time token (typ `time`): server time and every revoked,
+            unexpired unlock token of this device (at most 32, with
+            `complete: false` when more exist; never truncated silently),
+            bound to the request's nonce and boot id.
         keysEtag:
           type: string
           maxLength: 64
@@ -481,12 +550,6 @@ components:
         policyToken:
           $ref: '#/components/schemas/PasetoV4Public'
           description: A newer signed policy for this device, when there is one.
-        revokedTokens:
-          type: array
-          maxItems: 256
-          description: Unlock tokens for this device revoked and not yet expired. Clients store them in the replay ledger.
-          items:
-            $ref: '#/components/schemas/RevokedToken'
     BypassEvent:
       type: object
       additionalProperties: false
@@ -499,7 +562,14 @@ components:
         kind:
           type: string
           pattern: '^[a-z][a-z0-9_]{0,47}$'
-          examples: [accessibility_disabled, extension_removed, time_changed, emergency_override]
+          examples:
+            [
+              accessibility_disabled,
+              extension_removed,
+              time_changed,
+              emergency_override,
+              key_pin_mismatch,
+            ]
         occurredAt:
           $ref: '#/components/schemas/Timestamp'
         details:
@@ -536,10 +606,13 @@ components:
       oneOf:
         - type: object
           additionalProperties: false
-          required: [kind, value]
+          required: [kind, value, includeSubdomains]
           properties:
             kind:
               const: domain
+            includeSubdomains:
+              type: boolean
+              description: Also match subdomains. Clients send false unless the user chose otherwise.
             value:
               type: string
               maxLength: 253
@@ -553,7 +626,7 @@ components:
             value:
               type: string
               maxLength: 512
-              pattern: "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+(?:/[A-Za-z0-9._~%!$&'()+,;=:@-]+)+$"
+              pattern: "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+(?:/(?:[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.[A-Za-z0-9_~!$&'()+,;=:@-][A-Za-z0-9._~!$&'()+,;=:@-]*|\\.\\.[A-Za-z0-9._~!$&'()+,;=:@-]+))+$"
         - type: object
           additionalProperties: false
           required: [kind, value]
@@ -606,8 +679,14 @@ components:
     UnlockRequestStatus:
       type: object
       additionalProperties: false
-      required: [uuid, status]
+      required: [uuid, status, serverTime]
       properties:
+        serverTime:
+          $ref: '#/components/schemas/Timestamp'
+          description: Informative only; trusted time comes from `timeToken`.
+        timeToken:
+          $ref: '#/components/schemas/PasetoV4Public'
+          description: Signed time token, present when the request carried `nonce` and `boot`.
         uuid:
           $ref: '#/components/schemas/Uuid'
         status:

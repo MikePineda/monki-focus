@@ -6,148 +6,188 @@ import {
   deactivate,
   emptyReplayLedger,
   purge,
-  recordReceipt,
+  receive,
+  revalidate,
   type ReplayLedger,
+  type TimeContext,
 } from '../src/replay_ledger.ts'
 import { parseRfc3339Utc } from '../src/rfc3339_utc.ts'
-import type { Result } from '../src/token_error.ts'
-import { trustedNow } from '../src/trusted_time.ts'
-import { checkReceipt, receiveUnlock } from '../src/unlock_receipt.ts'
+import {
+  applyTimeAnchor,
+  initialTrustedTime,
+  raiseFloor,
+  ratchetFloor,
+  trustedNow,
+  type DeviceClock,
+  type TrustedTimeState,
+} from '../src/trusted_time.ts'
 
 const at = (text: string) => parseRfc3339Utc(text) ?? Number.NaN
-// A 30-minute token: iat = nbf = 09:00, exp = 09:30.
-const times = {
+const JTI = '3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b'
+const WINDOW = {
+  jti: JTI,
   iat: at('2026-01-05T09:00:00Z'),
   nbf: at('2026-01-05T09:00:00Z'),
   exp: at('2026-01-05T09:30:00Z'),
+  durS: 900,
 }
-const JTI = '3b0e5f1a-7c2d-4e8f-9a6b-1c2d3e4f5a6b'
-const BOOT = 41
-const MINUTE_MS = 60_000
+const MINUTE = 60_000
 
-function unwrap(result: Result<ReplayLedger>): ReplayLedger {
-  if (!result.ok) throw new Error(`unexpected ${result.error.code}`)
+function clock(wall: string, mono: number, boot = '41'): DeviceClock {
+  return { wallNow: at(wall), monoNowMs: mono, boot }
+}
+
+function anchored(serverTime: string, sentAt: DeviceClock): TrustedTimeState {
+  const result = applyTimeAnchor(initialTrustedTime, at(serverTime), sentAt.monoNowMs, sentAt)
+  if (!result.ok) throw new Error(result.error.code)
   return result.value
 }
 
-describe('trustedNow', () => {
-  const anchor = { serverTime: times.iat, monoAtMs: 1_000_000, bootCount: BOOT }
+function ctx(time: TrustedTimeState, deviceClock: DeviceClock): TimeContext {
+  return { time, clock: deviceClock }
+}
 
+function must(step: { readonly ledger: ReplayLedger; readonly result: { readonly ok: boolean } }) {
+  if (!step.result.ok) throw new Error('unexpected failure')
+  return step.ledger
+}
+
+describe('trusted time', () => {
   it('test_wall_clock_rewind_does_not_extend_unlock', () => {
-    // 45 real minutes later the user has set the wall clock back to 09:10.
-    const clock = {
-      wallNow: at('2026-01-05T09:10:00Z'),
-      monoNowMs: 1_000_000 + 45 * MINUTE_MS,
-      bootCount: BOOT,
-    }
-    const now = trustedNow(clock, anchor)
-    expect(now).toBe(at('2026-01-05T09:45:00Z'))
-    const receipt = receiveUnlock(JTI, times, { monoNowMs: 1_000_000, bootCount: BOOT })
-    expect(checkReceipt(receipt, clock, now)).toEqual({ ok: false, error: { code: 'expired' } })
-  })
-
-  it('test_wall_clock_ahead_of_anchor_wins', () => {
-    const clock = {
-      wallNow: at('2026-01-05T12:00:00Z'),
-      monoNowMs: 1_000_000 + MINUTE_MS,
-      bootCount: BOOT,
-    }
-    expect(trustedNow(clock, anchor)).toBe(at('2026-01-05T12:00:00Z'))
-  })
-
-  it('test_anchor_from_another_boot_is_ignored', () => {
-    const clock = { wallNow: at('2026-01-05T09:10:00Z'), monoNowMs: 5_000, bootCount: BOOT + 1 }
-    expect(trustedNow(clock, anchor)).toBe(at('2026-01-05T09:10:00Z'))
-  })
-
-  it('test_without_anchor_trusted_now_is_the_wall_clock', () => {
-    const clock = { wallNow: at('2026-01-05T09:10:00Z') + 0.9, monoNowMs: 0, bootCount: BOOT }
-    expect(trustedNow(clock, null)).toBe(at('2026-01-05T09:10:00Z'))
-  })
-})
-
-describe('checkReceipt', () => {
-  const receivedAtMs = 2_000_000
-  const receipt = receiveUnlock(JTI, times, { monoNowMs: receivedAtMs, bootCount: BOOT })
-
-  it('test_receipt_is_valid_inside_the_window', () => {
-    const clock = { monoNowMs: receivedAtMs + 10 * MINUTE_MS, bootCount: BOOT }
-    expect(checkReceipt(receipt, clock, at('2026-01-05T09:10:00Z')).ok).toBe(true)
-  })
-
-  it('test_token_invalid_after_reboot_until_online_revalidation', () => {
-    const clock = { monoNowMs: 10_000, bootCount: BOOT + 1 }
-    expect(checkReceipt(receipt, clock, at('2026-01-05T09:10:00Z'))).toEqual({
-      ok: false,
-      error: { code: 'reboot_revalidation_required' },
-    })
-  })
-
-  it('test_monotonic_budget_is_lifetime_plus_skew', () => {
-    const budgetMs = (30 * 60 + 60) * 1000
-    const inside = { monoNowMs: receivedAtMs + budgetMs, bootCount: BOOT }
-    const outside = { monoNowMs: receivedAtMs + budgetMs + 1, bootCount: BOOT }
-    // Wall clock frozen at 09:10 (user tampering): only the monotonic budget catches it.
-    expect(checkReceipt(receipt, inside, at('2026-01-05T09:10:00Z')).ok).toBe(true)
-    expect(checkReceipt(receipt, outside, at('2026-01-05T09:10:00Z'))).toEqual({
+    const start = clock('2026-01-05T09:00:00Z', 0)
+    const time = anchored('2026-01-05T09:00:00Z', start)
+    let ledger = must(receive(emptyReplayLedger, WINDOW, ctx(time, start)))
+    ledger = must(activate(ledger, JTI, ctx(time, start)))
+    // 20 real minutes later, wall clock set back to 08:30.
+    const later = clock('2026-01-05T08:30:00Z', 20 * MINUTE)
+    expect(trustedNow(time, later)).toBe(at('2026-01-05T09:20:00Z'))
+    expect(activate(ledger, JTI, ctx(time, later)).result).toEqual({
       ok: false,
       error: { code: 'expired' },
     })
   })
 
-  it('test_monotonic_clock_going_backwards_fails_closed', () => {
-    const clock = { monoNowMs: receivedAtMs - 1, bootCount: BOOT }
-    expect(checkReceipt(receipt, clock, at('2026-01-05T09:10:00Z')).ok).toBe(false)
+  it('test_floor_survives_a_restart_and_is_never_raised_by_the_wall_clock', () => {
+    let time = anchored('2026-01-05T09:00:00Z', clock('2026-01-05T09:00:00Z', 0, 'a'))
+    time = ratchetFloor(time, clock('2026-01-05T09:00:00Z', 10 * MINUTE, 'a'))
+    expect(time.floor).toBe(at('2026-01-05T09:10:00Z'))
+    const restarted = clock('2026-01-05T07:00:00Z', 5, 'b')
+    expect(trustedNow(time, restarted)).toBe(at('2026-01-05T09:10:00Z'))
+    expect(ratchetFloor(time, clock('2026-01-06T07:00:00Z', 6, 'b'))).toBe(time)
+  })
+
+  it('test_token_iat_only_raises_the_floor_and_never_anchors', () => {
+    const time = raiseFloor(initialTrustedTime, at('2026-01-05T09:00:00Z'))
+    expect(time.anchor).toBeNull()
+    expect(trustedNow(time, clock('2026-01-05T08:00:00Z', 0))).toBe(at('2026-01-05T09:00:00Z'))
+  })
+
+  it('test_late_time_answer_does_not_anchor', () => {
+    const sentAt = 0
+    const result = applyTimeAnchor(
+      initialTrustedTime,
+      at('2026-01-05T09:00:00Z'),
+      sentAt,
+      clock('2026-01-05T09:00:00Z', 60_001)
+    )
+    expect(result).toEqual({ ok: false, error: { code: 'stale_time' } })
   })
 })
 
 describe('replay ledger', () => {
-  const now = at('2026-01-05T09:05:00Z')
-  const received = unwrap(recordReceipt(emptyReplayLedger, JTI, times.exp))
+  const start = clock('2026-01-05T09:00:00Z', 0)
+  const time = anchored('2026-01-05T09:00:00Z', start)
 
-  it('test_receipt_and_activation_are_idempotent_within_the_window', () => {
-    expect(unwrap(recordReceipt(received, JTI, times.exp))).toBe(received)
-    const active = unwrap(activate(received, JTI, now))
-    expect(active.get(JTI)?.status).toBe('active')
-    expect(unwrap(activate(active, JTI, now))).toBe(active)
+  it('test_no_first_receipt_without_a_current_boot_anchor', () => {
+    expect(receive(emptyReplayLedger, WINDOW, ctx(initialTrustedTime, start)).result).toEqual({
+      ok: false,
+      error: { code: 'time_anchor_required' },
+    })
+  })
+
+  it('test_reactivation_returns_the_original_end', () => {
+    let ledger = must(receive(emptyReplayLedger, WINDOW, ctx(time, start)))
+    const first = activate(ledger, JTI, ctx(time, start))
+    ledger = first.ledger
+    expect(first.result).toEqual({ ok: true, value: at('2026-01-05T09:15:00Z') })
+    const again = activate(ledger, JTI, ctx(time, clock('2026-01-05T09:00:00Z', 5 * MINUTE)))
+    expect(again.result).toEqual({ ok: true, value: at('2026-01-05T09:15:00Z') })
+  })
+
+  it('test_token_invalid_after_reboot_until_online_revalidation', () => {
+    let ledger = must(receive(emptyReplayLedger, WINDOW, ctx(time, start)))
+    ledger = must(activate(ledger, JTI, ctx(time, start)))
+    const rebooted = clock('2026-01-05T09:02:00Z', 1000, '42')
+    expect(activate(ledger, JTI, ctx(time, rebooted)).result).toEqual({
+      ok: false,
+      error: { code: 'time_anchor_required' },
+    })
+    const fresh = anchored('2026-01-05T09:02:00Z', rebooted)
+    expect(activate(ledger, JTI, ctx(fresh, rebooted)).result).toEqual({
+      ok: false,
+      error: { code: 'revalidation_required' },
+    })
+    ledger = must(revalidate(ledger, JTI, ctx(fresh, rebooted)))
+    expect(activate(ledger, JTI, ctx(fresh, rebooted)).result).toEqual({
+      ok: true,
+      value: at('2026-01-05T09:15:00Z'),
+    })
   })
 
   it('test_replayed_jti_after_deactivation_is_rejected', () => {
-    const ended = deactivate(unwrap(activate(received, JTI, now)), JTI)
-    expect(activate(ended, JTI, now)).toEqual({ ok: false, error: { code: 'replayed' } })
-    expect(recordReceipt(ended, JTI, times.exp)).toEqual({ ok: false, error: { code: 'replayed' } })
+    let ledger = must(receive(emptyReplayLedger, WINDOW, ctx(time, start)))
+    ledger = deactivate(must(activate(ledger, JTI, ctx(time, start))), JTI)
+    expect(activate(ledger, JTI, ctx(time, start)).result).toEqual({
+      ok: false,
+      error: { code: 'replayed' },
+    })
+    expect(receive(ledger, WINDOW, ctx(time, start)).result).toEqual({
+      ok: false,
+      error: { code: 'replayed' },
+    })
   })
 
   it('test_revoked_jti_from_heartbeat_is_rejected', () => {
-    const revoked = applyRevocations(received, [{ jti: JTI, exp: times.exp }])
-    expect(activate(revoked, JTI, now)).toEqual({ ok: false, error: { code: 'revoked' } })
-  })
-
-  it('test_revocation_before_delivery_still_refuses_the_token', () => {
-    const revoked = applyRevocations(emptyReplayLedger, [{ jti: JTI, exp: times.exp }])
-    expect(recordReceipt(revoked, JTI, times.exp)).toEqual({
+    const ledger = must(receive(emptyReplayLedger, WINDOW, ctx(time, start)))
+    const revoked = applyRevocations(ledger, [{ jti: JTI, exp: WINDOW.exp }], true)
+    expect(activate(revoked, JTI, ctx(time, start)).result).toEqual({
       ok: false,
       error: { code: 'revoked' },
     })
   })
 
-  it('test_expired_jti_never_activates', () => {
-    expect(activate(received, JTI, times.exp + 61)).toEqual({
+  it('test_service_worker_restart_and_clock_rewind_do_not_extend_an_active_unlock', () => {
+    let ledger = must(receive(emptyReplayLedger, WINDOW, ctx(time, start)))
+    ledger = must(activate(ledger, JTI, ctx(time, start)))
+    const restarted = clock('2026-01-05T08:10:00Z', 500, 'sw-b')
+    expect(activate(ledger, JTI, ctx(time, restarted)).result.ok).toBe(false)
+    const fresh = anchored('2026-01-05T10:00:00Z', restarted)
+    expect(activate(ledger, JTI, ctx(fresh, restarted)).result.ok).toBe(false)
+    const step = revalidate(ledger, JTI, ctx(fresh, restarted))
+    expect(step.result).toEqual({ ok: false, error: { code: 'expired' } })
+    expect(step.ledger.get(JTI)?.status).toBe('ended')
+  })
+
+  it('test_reboot_clock_jump_purge_and_rewind_cannot_replay', () => {
+    let ledger = must(receive(emptyReplayLedger, WINDOW, ctx(time, start)))
+    ledger = deactivate(must(activate(ledger, JTI, ctx(time, start))), JTI)
+    const jumped = clock('2026-01-08T09:00:00Z', 10, '42')
+    ledger = purge(ledger, ctx(time, jumped))
+    expect(ledger.has(JTI)).toBe(true)
+    const rewound = clock('2026-01-05T09:02:00Z', 20, '42')
+    const fresh = anchored('2026-01-05T09:02:00Z', rewound)
+    expect(receive(ledger, WINDOW, ctx(fresh, rewound)).result).toEqual({
       ok: false,
-      error: { code: 'expired' },
+      error: { code: 'replayed' },
     })
   })
 
-  it('test_activation_of_an_unseen_jti_is_refused', () => {
-    expect(activate(emptyReplayLedger, JTI, now)).toEqual({
-      ok: false,
-      error: { code: 'invalid_input' },
-    })
-  })
-
-  it('test_entries_are_purged_one_day_after_exp', () => {
-    const day = 24 * 60 * 60
-    expect(purge(received, times.exp + day).has(JTI)).toBe(true)
-    expect(purge(received, times.exp + day + 1).has(JTI)).toBe(false)
+  it('test_purge_and_expiry_never_run_on_wall_only_time', () => {
+    const ledger = must(receive(emptyReplayLedger, WINDOW, ctx(time, start)))
+    const wallOnly = clock('2027-01-01T00:00:00Z', 5, '42')
+    expect(purge(ledger, ctx(time, wallOnly))).toBe(ledger)
+    const step = activate(ledger, JTI, ctx(time, wallOnly))
+    expect(step.result).toEqual({ ok: false, error: { code: 'time_anchor_required' } })
+    expect(step.ledger.get(JTI)?.status).toBe('received')
   })
 })
