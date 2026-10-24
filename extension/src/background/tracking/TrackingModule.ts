@@ -126,6 +126,7 @@ export function createTrackingModule(deps: TrackingModuleDependencies): Tracking
       bucketId,
       session: browser.storage.session,
       local,
+      timeZone: async () => (await rules()).timeZone,
       // Waits for pulses and aggregation runs in flight (the job queues runs).
       quiesce: async () => {
         await tracker.settled()

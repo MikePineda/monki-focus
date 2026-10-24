@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import {
-  MAX_DOCUMENT_BYTES,
-  type RejectionCode,
-  type Ruleset,
-  type ValidationResult,
-} from '@monki-focus/rules/pure'
+import type { RejectionCode, Ruleset, ValidationResult } from '@monki-focus/rules/pure'
 import { validateRuleset as generatedValidateRuleset } from 'virtual:monki-ruleset-validator'
+
+/**
+ * SEMANTICS.md §1: no rules document may exceed 256 KiB of UTF-8. Kept here
+ * (not imported from the rules package's validator module) so nothing pulls
+ * Ajv's run-time compiler into the bundle.
+ */
+export const MAX_RULESET_BYTES = 256 * 1024
+
+/** UTF-8 size of `value` serialised as JSON. */
+export function serialisedBytes(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).length
+}
 
 function codeOf(keywords: readonly string[]): RejectionCode {
   if (keywords.includes('x-uniqueBy')) return 'duplicate_key'
@@ -20,6 +27,9 @@ function codeOf(keywords: readonly string[]): RejectionCode {
  * the same rejection codes as `bundledSchemaValidator().validate('ruleset', …)`.
  */
 export function validateRuleset(value: unknown): ValidationResult {
+  if (serialisedBytes(value) > MAX_RULESET_BYTES) {
+    return { valid: false, code: 'too_large', errors: ['document_too_large'] }
+  }
   if (generatedValidateRuleset(value)) return { valid: true }
   const failures = generatedValidateRuleset.errors ?? []
   return {
@@ -36,7 +46,7 @@ export type RulesetDocumentResult =
 
 /** Raw text (an imported file): size limit, then JSON syntax, then the schema. */
 export function validateRulesetDocument(text: string): RulesetDocumentResult {
-  if (new TextEncoder().encode(text).length > MAX_DOCUMENT_BYTES) {
+  if (new TextEncoder().encode(text).length > MAX_RULESET_BYTES) {
     return { valid: false, code: 'too_large' }
   }
   let value: unknown

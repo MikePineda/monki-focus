@@ -29,8 +29,13 @@ export function configuredRuleset(state: RulesState): Ruleset {
   return state.pending?.ruleset ?? state.effective
 }
 
-/** Why a proposal was refused. `stale_revision`: another page saved first; reload. */
-export type RuleChangeRejection = RejectionCode | 'stale_revision'
+/**
+ * Why a proposal was refused. `stale_revision`: another page saved first;
+ * reload. `too_many_rules` / `invalid_ruleset`: the set that would apply
+ * today (old waiting parts plus new tightening ones) does not validate.
+ */
+export type RuleChangeRejection =
+  RejectionCode | 'stale_revision' | 'too_many_rules' | 'invalid_ruleset'
 
 export type RuleChangeOutcome =
   | { status: 'applied'; state: RulesState }

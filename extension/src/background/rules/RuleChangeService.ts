@@ -7,12 +7,13 @@ import {
   utcInstantOf,
   type RulesCatalog,
 } from '@monki-focus/engine'
-import type { Ruleset, UtcInstant, ValidationResult } from '@monki-focus/rules/pure'
+import type { RejectionCode, Ruleset, UtcInstant, ValidationResult } from '@monki-focus/rules/pure'
 import type { Clock } from '../../shared/clock'
 import {
   configuredRuleset,
   type PendingRuleChange,
   type RuleChangeOutcome,
+  type RuleChangeRejection,
   type RuleChangeProposal,
   type RulesState,
 } from '../../shared/RuleChangeContract'
@@ -48,6 +49,14 @@ export function pendingRulesAlarm(
     if (effectiveFrom === null) await alarms.clear(PENDING_RULES_ALARM)
     else await alarms.create(PENDING_RULES_ALARM, { when: Date.parse(effectiveFrom) })
   }
+}
+
+const DAY_SECONDS = 86_400
+const MAX_RULES = 500
+
+function todayRejection(today: Ruleset, code: RejectionCode): RuleChangeRejection {
+  if (today.rules.length > MAX_RULES) return 'too_many_rules'
+  return code === 'too_large' ? 'too_large' : 'invalid_ruleset'
 }
 
 function revisionOf(ruleset: Ruleset): number {
@@ -98,7 +107,33 @@ export class RuleChangeService {
       const verdict = this.validate(next)
       if (!verdict.valid) return { status: 'rejected', code: verdict.code }
 
-      const { effectiveToday, effectiveFrom } = this.judge(current, next, now)
+      if (!this.validate(current.effective).valid) {
+        // The stored set cannot be compared with: it stays (fail closed in
+        // the engine) and the proposal waits in full.
+        const effectiveFrom = this.fallbackEffectiveFrom(current, next, now)
+        const pending: PendingRuleChange = { ruleset: next, effectiveFrom }
+        await this.options.pending.save(pending)
+        await this.options.onPendingChanged?.(effectiveFrom)
+        return {
+          status: 'pending',
+          effectiveFrom,
+          state: { effective: current.effective, pending },
+        }
+      }
+
+      const { effectiveToday, effectiveFrom } = effectiveRuleSet(
+        current.effective,
+        next,
+        now,
+        current.pending?.effectiveFrom ?? null,
+        this.options.catalog
+      )
+      // What applies today must itself be a valid set, or it would be stored
+      // and later read as unreadable: refuse the change, save nothing.
+      const today = this.validate(effectiveToday)
+      if (!today.valid) {
+        return { status: 'rejected', code: todayRejection(effectiveToday, today.code) }
+      }
       await this.options.rulesets.save(effectiveToday)
       if (effectiveFrom === null) {
         await this.options.pending.clear()
@@ -112,12 +147,37 @@ export class RuleChangeService {
     })
   }
 
-  /** Drops the pending change: what applies now stays, nothing gets looser. */
+  /**
+   * Drops the pending change: what applies now stays, nothing gets looser.
+   * The effective set gets the next revision, so pages that edited the
+   * cancelled set are refused (`stale_revision`). A waiting time-zone change
+   * leaves `pendingTimeZone` in force (both zones apply); removing it is a
+   * loosening, so it stays pending until the cancelled `effectiveFrom`.
+   */
   cancelPending(): Promise<RulesState> {
     return this.exclusive(async () => {
-      await this.options.pending.clear()
-      await this.options.onPendingChanged?.(null)
-      return this.read()
+      const current = await this.read()
+      if (current.pending === null) return current
+      const effective: Ruleset = {
+        ...current.effective,
+        revision: revisionOf(configuredRuleset(current)) + 1,
+        updatedAt: utcInstantOf(epochSecondsOf(instantOf(this.options.clock.now()))),
+      }
+      await this.options.rulesets.save(effective)
+      if (effective.pendingTimeZone === undefined) {
+        await this.options.pending.clear()
+        await this.options.onPendingChanged?.(null)
+        return { effective, pending: null }
+      }
+      const ruleset: Ruleset = { ...effective }
+      delete ruleset.pendingTimeZone
+      const pending: PendingRuleChange = {
+        ruleset,
+        effectiveFrom: current.pending.effectiveFrom,
+      }
+      await this.options.pending.save(pending)
+      await this.options.onPendingChanged?.(pending.effectiveFrom)
+      return { effective, pending }
     })
   }
 
@@ -126,24 +186,28 @@ export class RuleChangeService {
     return this.exclusive(() => this.promoteWhenDue())
   }
 
-  private judge(
-    current: RulesState,
-    next: Ruleset,
-    now: string
-  ): { effectiveToday: Ruleset; effectiveFrom: UtcInstant | null } {
-    if (!this.validate(current.effective).valid) {
-      // An unreadable effective set cannot be compared with: the stored copy
-      // fails closed until the next local midnight, then the proposal applies.
-      const midnight = nextLocalMidnight(epochSecondsOf(now), next.timeZone)
-      return { effectiveToday: current.effective, effectiveFrom: utcInstantOf(midnight) }
+  /**
+   * `effectiveFrom` when the stored set cannot be judged: the latest next
+   * local midnight of every zone involved (the stored set's zones, never only
+   * the proposal's), a full day when a zone does not resolve, and never
+   * earlier than a pending change.
+   */
+  private fallbackEffectiveFrom(current: RulesState, next: Ruleset, now: string): UtcInstant {
+    const nowSeconds = epochSecondsOf(now)
+    const stored = current.effective as Partial<Ruleset>
+    const zones: unknown[] = [stored.timeZone, next.timeZone]
+    if (stored.pendingTimeZone !== undefined) zones.push(stored.pendingTimeZone)
+    const candidates: number[] = []
+    for (const zone of zones) {
+      try {
+        if (typeof zone !== 'string') throw new RangeError('no zone')
+        candidates.push(nextLocalMidnight(nowSeconds, zone))
+      } catch {
+        candidates.push(nowSeconds + DAY_SECONDS)
+      }
     }
-    return effectiveRuleSet(
-      current.effective,
-      next,
-      now,
-      current.pending?.effectiveFrom ?? null,
-      this.options.catalog
-    )
+    if (current.pending) candidates.push(epochSecondsOf(current.pending.effectiveFrom))
+    return utcInstantOf(Math.max(...candidates))
   }
 
   private async promoteWhenDue(): Promise<boolean> {

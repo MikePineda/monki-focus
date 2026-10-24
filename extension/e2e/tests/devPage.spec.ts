@@ -5,7 +5,8 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 import en from '../../src/i18n/catalogs/en.json' with { type: 'json' }
 import { expect, test } from '../support/extensionTest'
-import { E2E_BUILD_DIR } from '../support/launchExtension'
+import { findEvalUses } from '../../config/bundleEvalCheck'
+import { DEV_BUILD_DIR, E2E_BUILD_DIR } from '../support/launchExtension'
 
 const COLOR_SCHEMES = ['light', 'dark'] as const
 
@@ -85,4 +86,12 @@ test.describe('UI kit gallery (dev build)', () => {
 test('e2e_build_never_contains_the_dev_page', () => {
   expect(existsSync(join(E2E_BUILD_DIR, 'dev.html'))).toBe(false)
   expect(readFileSync(join(E2E_BUILD_DIR, 'manifest.json'), 'utf8')).not.toContain('dev.html')
+})
+
+test('built_bundles_never_generate_code_at_run_time', () => {
+  // MV3 forbids it; a hit would also mean Ajv's run-time compiler shipped.
+  const production = join(E2E_BUILD_DIR, '../chrome-mv3')
+  for (const dir of [E2E_BUILD_DIR, DEV_BUILD_DIR, production]) {
+    if (existsSync(dir)) expect({ dir, hits: findEvalUses(dir) }).toEqual({ dir, hits: [] })
+  }
 })

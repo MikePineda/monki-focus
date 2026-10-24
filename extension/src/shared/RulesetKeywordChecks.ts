@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { bundledAliasMap, canonicalTarget, isRegistrableDomain } from '@monki-focus/rules/pure'
+import {
+  aliasMapOf,
+  canonicalTarget,
+  isRegistrableDomain,
+  siteProfiles,
+} from '@monki-focus/rules/pure'
+
+// Built here, not imported as `bundledAliasMap`: that module also builds the
+// run-time Ajv validator, whose code generator must never ship (MV3 CSP).
+const bundledAliasMap = aliasMapOf(siteProfiles)
 
 /**
  * Run-time checks of the rules schemas' custom keywords (`x-uniqueBy`,

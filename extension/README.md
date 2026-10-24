@@ -353,8 +353,10 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   (off by default) and "count a playing tab while idle"; the 7-day pulse,
   the hour × weekday heatmap (each with its table), the intentions log (E6),
   export (ActivityWatch JSON, CSV of blocks) and "Delete all local data"
-  behind an in-page confirmation (rules and preferences stay; bypass records
-  of a later package are never erased).
+  behind an in-page confirmation. It erases history before the current
+  local day: today's events and blocks stay, so a delete cannot reset a
+  daily budget; rules, preferences and bypass records (a later package)
+  are never erased.
 - **Rule changes** go only through `rules.propose` with the whole edited set
   and the revision the page started from (`stale_revision` otherwise).
   `RuleChangeService` validates it, then runs the engine's
@@ -364,13 +366,23 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   whole proposal waits in `rules.pending` with its `effectiveFrom`, an alarm
   (`rules.pending`, plus the per-minute check and every `rules.state` read)
   applies it once due, and `rules.cancelPending` drops it, which never
-  loosens anything. Editors start from the pending set while one waits.
+  loosens anything (it bumps the revision; a waiting time-zone change keeps
+  both zones until the cancelled `effectiveFrom`). Editors start from the
+  pending set while one waits. A proposal is refused (nothing saved) when it
+  exceeds 256 KiB or when the set that would apply today does not validate
+  (`too_many_rules`, `invalid_ruleset`). When the stored set itself is
+  unreadable, the proposal waits until the latest next local midnight of
+  every zone involved (a full day if a zone does not resolve), never
+  earlier than a pending change.
 - **Validation without eval.** MV3 forbids Ajv's run-time code generation,
   so `config/rulesetValidatorPlugin.ts` compiles the rules package's schemas
   at build time (Ajv standalone, same options) into
   `virtual:monki-ruleset-validator`; `src/shared/RulesetValidation.ts`
   answers the same rejection codes, and a test runs every `invalid` fixture
-  through both validators.
+  through both validators. Every build and zip ends with
+  `config/bundleEvalCheck.ts`, which fails on any `Function(`,
+  `new Function` or `eval(` in the output (an E2E spec checks the built
+  folders too).
 - **Commands for pages only.** `rules.*`, `preferences.*`, `data.*` and
   `intention.*` are answered only when `sender.url` is one of this
   extension's pages (never a content script). Preference writes go through
