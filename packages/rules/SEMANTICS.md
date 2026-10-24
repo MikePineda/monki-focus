@@ -16,7 +16,7 @@ the rule set's pinned `timeZone` (§6.3).
 - **Instants** in inputs (`now` included) MUST be RFC 3339 with an explicit
   offset or `Z` and whole seconds (the schema pattern); a floating local time
   is invalid input. Every instant an engine **computes** (escalation state, rule-change
-  `effectiveFrom`, analytics) is written in UTC with `Z` and no fractional
+  `effectiveFrom`, `validUntil`, analytics) is written in UTC with `Z` and no fractional
   seconds (`2026-10-25T23:00:00Z`), so fixture comparison is a string compare.
 - **Local time** means the wall clock in the pinned IANA time zone. Days of
   the week, local dates and schedules are always evaluated in local time.
@@ -164,8 +164,8 @@ decision is final) or is **lifted** (continue with the next):
    date in the pinned zone (in either zone while a zone change waits, §6.3),
    so a budget block lasts until local midnight. Usage accrues (in the
    adapter) to **every** matching candidate that carries a budget, not only
-   the winner, so adding a more specific rule never hides a spent budget.
-   Hide-feed rules take no budget (schema).
+   the winner, so adding a more specific rule never hides a spent budget
+   (`budgetedRulesFor`, §5.7). Hide-feed rules take no budget (schema).
 3. **Rule block**: access winner with mode `block` → `block`, `rule_match`.
 4. **Friction**: access winner with mode `friction` → `gate`, reason
    `intention_required`, with the gate of §7.4.
@@ -236,6 +236,58 @@ bedtime the category level is the **minimum** level over all assignments
 (user and default) of that domain: site targets of the domain with any path
 and surface targets of its profile (`youtube.com` counts as 0 because of
 Shorts). No assignment → 50. The content axis shows (§5.3).
+
+### 5.6 Validity (`validUntil`)
+
+Every decision carries `validUntil`: the earliest instant `t` with
+`now < t ≤ now + 24 h` (86 400 s) at which `decide` with the **same**
+ruleset, observation and state, and `t` as `now`, returns a decision that
+differs in any other field (`access`, `content`, `ruleId`, `reason`, `gate`,
+`explanationKey`); `now + 24 h` when there is none. When
+`state.pendingEffectiveFrom` (the `effectiveFrom` of a waiting rule change,
+§8) is after `now`, the 24-hour bound is replaced by it if it is earlier, so
+the adapter re-decides with the new effective rule set. Instants are whole
+seconds, so the value is unique; it is written in UTC (§1). `validUntil` is
+`null` only for `engine_error` (§14).
+
+The decision is therefore constant on `[now, validUntil)`. Adapters MUST
+decide again at `validUntil` at the latest (one timer instead of polling)
+and whenever an input changes: an escalation event, a new rule set, a new
+unlock, or usage that keeps accruing (a budget runs out because usage grows,
+which `validUntil` does not predict). They MAY decide earlier.
+
+Informative: with fixed inputs a decision can only change at these instants,
+so an engine evaluates `decide` at each one in the window, in order, and
+stops at the first that differs: in each pinned zone (both while one waits,
+§6.3) the start and end of every schedule window (`workHours` resolved) of a
+rule that is enabled and matches the target or the unknown-path pool (§5.5),
+of the bedtime window, and local midnights (the budget day); a boundary in a
+spring-forward gap is reached at the first instant after the gap, and one in
+a repeated fall-back hour once per pass; the zone's UTC-offset transitions;
+unlock `notBefore` and `expiresAt`; `intentionExpiresAt` and `overrideEndsAt`;
+and `lastActivityAt + 2 h` (the session reset of §7.2 changes the gate).
+
+### 5.7 Adapter helpers (`candidates`)
+
+Two pure helpers expose what `decide` matches, so adapters never re-implement
+it. Both return rule ids in code-unit ascending order.
+
+- `frictionCandidates(ruleset, observation, now) → RuleId[]`: the access
+  candidates at `now` whose effective mode is `friction` (§5.5 promotions
+  included): exactly the groups whose states §7.4 combines. With a gate,
+  adapters call `effectiveEscalationState` for the winner (`ruleId`) with
+  these rules and store `nextEscalation(…, visit)`; they never run `decide`
+  once per rule.
+- `budgetedRulesFor(ruleset, observation, at) → RuleId[]`: the rules an
+  activity at `at` accrues usage to: every candidate of the budget step
+  (§5.2.2) at `at` that has `dailyBudgetMinutes`: enabled, scheduled at `at`
+  in the pinned zones (§6.3) and matching the target, or with an unknown path
+  every rule of the unknown-path pool (§5.5). Adapters add an activity's
+  seconds to each returned id (split at schedule edges and local midnight).
+
+On inputs that make `decide` fail closed (§14), `frictionCandidates` returns
+`[]` (`decide` then blocks without a gate) and `budgetedRulesFor` returns
+every enabled rule with a budget (an error never leaves time uncounted).
 
 ## 6. Schedules and bedtime (`schedule`)
 
@@ -330,8 +382,8 @@ short extension path; the third and later require a full gate.
 - **`close`** in `pausing`, `asking`, `override_waiting`: `idle`; gate, pause,
   extension and override timers cleared (the attempt still counts).
 - **`commit`** in `asking`: `active`, `intentionExpiresAt = now + minutes`;
-  ignored when typing is required and `typedWords < 3`, or the guardian key is
-  required and not verified.
+  ignored when typing is required and `typedWords < 3` (words counted as in
+  §7.5), or the guardian key is required and not verified.
 - **`intention_expired`** in `active` with `now ≥ intentionExpiresAt`:
   `timed_out`.
 - **`leave`** in `active` or `timed_out`: `idle`; the intention ends and
@@ -373,7 +425,26 @@ For a friction restriction without a lift, `decide` returns:
   `lastActivityAt` (ties: the winner's group, then the smallest rule id,
   code-unit order). Adapters MUST call `nextEscalation`
   for the winner's group with that effective state, so the stored gate equals
-  the returned one.
+  the returned one; the matching friction candidates are
+  `frictionCandidates` (§5.7).
+
+### 7.5 Typed intentions
+
+When the gate has `requiresTypedIntention` (from L2; never the short
+extension gate), the intention text MUST have **at least 3 words** and MUST
+**differ from the previous intention text** of the same group. A word is a
+word-like segment under Unicode default word boundaries (UAX #29; in
+JavaScript `Intl.Segmenter` with `granularity: "word"` and `isWordLike`), so
+punctuation and repeated spaces never count; a platform without a word
+segmenter counts whitespace-separated tokens that contain a letter or digit.
+Texts are compared after trimming, collapsing runs of whitespace to one space
+and lower-casing (locale-independent): `Reply to a message` and
+`reply TO a  message` are the same text. A null or blank previous text
+imposes nothing. `intentionRequirements(gate)` returns `{minWords: 3,
+mustDifferFromPrevious: true}` when typing is required, otherwise
+`{minWords: 0, mustDifferFromPrevious: false}`; `isIntentionAcceptable(text,
+previous, gate)` applies the rule. Only the word count reaches the engine
+(`commit.typedWords`); the text never leaves the device.
 
 ## 8. Rule changes (`rule-change`)
 
@@ -559,7 +630,8 @@ YouTube at least 5).
   `<kind>.<spec_name>`, globally unique, and the test name in every runner.
 - Kinds: `decision`, `specificity` (same shape), `url-normalize`, `schedule`,
   `escalation` (multi-step, each step feeds the previous state), `rule-change`,
-  `activity`, `invalid` (a document with the schema it targets and the
+  `candidates` (§5.7: `{frictionCandidates, budgetedRules}` for a rule set, an
+  instant and an observation), `activity`, `invalid` (a document with the schema it targets and the
   expected `{rejected: true, code}`), and the reserved `unlock-token`
   (vectors live in `packages/protocol`). Kotlin and Swift runners MUST run the
   `invalid` kind as well, and generate the oversized (> 256 KiB) case
@@ -605,7 +677,7 @@ decisions are folded into the sections above):
   (an input that fails its schema, an unresolvable time zone, an instant
   without an offset, an internal error) yields
   `{access: block, content: hide-feed, ruleId: null, reason: engine_error,
-explanationKey: decision.engine_error}` and no gate. Adapters log the
+explanationKey: decision.engine_error, validUntil: null}` and no gate. Adapters log the
   reason code only, never URLs or titles.
 - **Validated inputs.** Rule sets are validated (§1) before they reach an
   engine; an unknown time zone is rejected with `invalid_time_zone`, so at

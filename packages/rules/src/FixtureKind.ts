@@ -8,6 +8,7 @@ export const FIXTURE_KINDS = [
   'schedule',
   'escalation',
   'rule-change',
+  'candidates',
   'activity',
   'invalid',
   'unlock-token',

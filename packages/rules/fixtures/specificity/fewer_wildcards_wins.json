@@ -65,6 +65,7 @@
     "content": "show",
     "ruleId": "r-watch-allow",
     "reason": "rule_match",
-    "explanationKey": "decision.allowed_by_rule"
+    "explanationKey": "decision.allowed_by_rule",
+    "validUntil": "2026-10-26T23:00:00Z"
   }
 }

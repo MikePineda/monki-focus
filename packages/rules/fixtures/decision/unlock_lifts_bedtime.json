@@ -152,6 +152,7 @@
     "content": "show",
     "ruleId": null,
     "reason": "unlock_active",
-    "explanationKey": "decision.unlock_active"
+    "explanationKey": "decision.unlock_active",
+    "validUntil": "2026-10-26T12:25:00Z"
   }
 }

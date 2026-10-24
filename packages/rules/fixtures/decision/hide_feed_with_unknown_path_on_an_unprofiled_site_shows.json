@@ -53,6 +53,7 @@
     "content": "show",
     "ruleId": "r-news-hide",
     "reason": "path_unknown_allow",
-    "explanationKey": "decision.path_unknown_allow"
+    "explanationKey": "decision.path_unknown_allow",
+    "validUntil": "2026-10-26T23:00:00Z"
   }
 }

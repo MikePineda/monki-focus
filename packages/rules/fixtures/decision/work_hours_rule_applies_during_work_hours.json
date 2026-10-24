@@ -57,6 +57,7 @@
     "content": "show",
     "ruleId": "r-reddit-block",
     "reason": "rule_match",
-    "explanationKey": "decision.blocked_by_rule"
+    "explanationKey": "decision.blocked_by_rule",
+    "validUntil": "2026-10-26T06:30:00Z"
   }
 }

@@ -5,7 +5,7 @@
   "description": "Output of `decide`. Two independent axes (`access`, `content`); `ruleId`, `reason` and `explanationKey` describe the primary outcome (SEMANTICS.md §5). The domain never returns text, only reason codes and i18n keys.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["access", "content", "ruleId", "reason", "explanationKey"],
+  "required": ["access", "content", "ruleId", "reason", "explanationKey", "validUntil"],
   "properties": {
     "access": { "$ref": "#/$defs/access" },
     "content": { "$ref": "#/$defs/content" },
@@ -14,7 +14,11 @@
     },
     "reason": { "$ref": "#/$defs/reasonCode" },
     "gate": { "$ref": "#/$defs/gate" },
-    "explanationKey": { "$ref": "#/$defs/explanationKey" }
+    "explanationKey": { "$ref": "#/$defs/explanationKey" },
+    "validUntil": {
+      "description": "The earliest instant at which the same inputs can yield a different decision, at most `now` + 24 h; adapters re-decide then at the latest. Null only for `engine_error` (SEMANTICS.md §5.6).",
+      "oneOf": [{ "$ref": "time.schema.json#/$defs/utcInstant" }, { "type": "null" }]
+    }
   },
   "if": {
     "type": "object",

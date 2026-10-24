@@ -18,6 +18,16 @@ const files = listFixtureFiles()
 
 /** Every business rule of the plan has at least one fixture, under exactly this id. */
 const REQUIRED_FIXTURE_IDS = [
+  'candidates.every_matching_friction_rule_is_a_friction_candidate',
+  'candidates.unknown_path_promotes_hide_feed_and_surface_blocks_to_friction',
+  'candidates.budget_accrues_to_every_matching_budgeted_rule',
+  'candidates.budget_accrues_from_the_start_of_its_schedule',
+  'candidates.budget_stops_accruing_at_the_end_of_its_schedule',
+  'candidates.pending_zone_counts_an_allow_budget_only_when_active_in_both_zones',
+  'decision.valid_until_stops_at_a_waiting_rule_change',
+  'decision.valid_until_finds_a_window_start_in_the_spring_forward_gap',
+  'decision.valid_until_sees_the_repeated_fall_back_hour',
+  'decision.valid_until_waits_for_an_unlock_to_start',
   'rule-change.outrank_check_runs_against_what_applies_today',
   'rule-change.outrank_check_compares_normalised_domains',
   'rule-change.disabling_a_budgeted_allow_rule_waits',
@@ -158,6 +168,7 @@ const MINIMUM_COUNTS: Record<string, number> = {
   'schedule': 6,
   'escalation': 4,
   'rule-change': 4,
+  'candidates': 6,
   'activity': 20,
   'invalid': 6,
 }

@@ -1,0 +1,75 @@
+{
+  "id": "candidates.pending_zone_counts_an_allow_budget_only_when_active_in_both_zones",
+  "kind": "candidates",
+  "description": "While a zone change waits an allow rule needs its window in both zones and a friction rule in either; only active rules accrue.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "pendingTimeZone": "Europe/London",
+      "rules": [
+        {
+          "id": "r-yt-allow",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com"
+          },
+          "mode": "allow",
+          "schedules": [
+            {
+              "days": ["mon"],
+              "start": "09:00",
+              "end": "17:00"
+            }
+          ],
+          "enabled": true,
+          "dailyBudgetMinutes": 30
+        },
+        {
+          "id": "r-watch-friction",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com",
+            "path": "/watch"
+          },
+          "mode": "friction",
+          "schedules": [
+            {
+              "days": ["mon"],
+              "start": "09:00",
+              "end": "17:00"
+            }
+          ],
+          "enabled": true,
+          "dailyBudgetMinutes": 10
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-25T23:00:00Z"
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.youtube.com/watch?v=abc123DEF45"
+    }
+  },
+  "then": {
+    "frictionCandidates": ["r-watch-friction"],
+    "budgetedRules": ["r-watch-friction"]
+  }
+}

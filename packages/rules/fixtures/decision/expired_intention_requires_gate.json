@@ -76,6 +76,7 @@
       "requiresTypedIntention": false,
       "requiresGuardianKey": false
     },
-    "explanationKey": "decision.intention_required"
+    "explanationKey": "decision.intention_required",
+    "validUntil": "2026-10-26T00:54:10Z"
   }
 }

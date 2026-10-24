@@ -8,6 +8,7 @@ export const SCHEMA_NAMES = [
   'activity',
   'activity-fixture',
   'bedtime',
+  'candidates-fixture',
   'category-assignment',
   'category-catalog',
   'decision',

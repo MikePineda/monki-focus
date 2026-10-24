@@ -1,0 +1,80 @@
+{
+  "id": "candidates.every_matching_friction_rule_is_a_friction_candidate",
+  "kind": "candidates",
+  "description": "Both reddit friction rules match a subreddit permalink; a friction rule of another site and a disabled block do not.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit-friction",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "r-ah-friction",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com",
+            "path": "/r/AskHistorians/**"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "r-x-friction",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "r-reddit-block",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": false
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00"
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "reddit.com/r/AskHistorians/comments/xyz789"
+    }
+  },
+  "then": {
+    "frictionCandidates": ["r-ah-friction", "r-reddit-friction"],
+    "budgetedRules": []
+  }
+}

@@ -15,6 +15,7 @@
         "schedule",
         "escalation",
         "rule-change",
+        "candidates",
         "activity",
         "invalid",
         "unlock-token"
@@ -85,6 +86,19 @@
       },
       "then": {
         "$ref": "rule-change-fixture.schema.json"
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "candidates"
+          }
+        }
+      },
+      "then": {
+        "$ref": "candidates-fixture.schema.json"
       }
     },
     {

@@ -1,0 +1,54 @@
+{
+  "id": "candidates.budget_accrues_from_the_start_of_its_schedule",
+  "kind": "candidates",
+  "description": "A work-hours rule counts from 09:00 local time on a weekday (windows are half-open, the start is inside).",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit-work",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "friction",
+          "schedules": [
+            {
+              "ref": "workHours"
+            }
+          ],
+          "enabled": true,
+          "dailyBudgetMinutes": 20
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T09:00:00+11:00"
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.reddit.com/r/AskHistorians/"
+    }
+  },
+  "then": {
+    "frictionCandidates": ["r-reddit-work"],
+    "budgetedRules": ["r-reddit-work"]
+  }
+}

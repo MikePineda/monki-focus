@@ -75,6 +75,7 @@
     "content": "show",
     "ruleId": "r-reddit-friction",
     "reason": "budget_exhausted",
-    "explanationKey": "decision.budget_exhausted"
+    "explanationKey": "decision.budget_exhausted",
+    "validUntil": "2026-10-26T11:30:00Z"
   }
 }

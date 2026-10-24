@@ -132,6 +132,17 @@
         },
         "guardianLinked": {
           "type": "boolean"
+        },
+        "pendingEffectiveFrom": {
+          "description": "`effectiveFrom` of the rule change that waits (SEMANTICS.md §8), or null when none waits. `decide` never applies it; `validUntil` stops there so the adapter re-decides with the new effective rule set (§5.6).",
+          "oneOf": [
+            {
+              "$ref": "time.schema.json#/$defs/instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     }

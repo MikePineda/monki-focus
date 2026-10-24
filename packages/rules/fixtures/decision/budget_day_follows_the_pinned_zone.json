@@ -59,6 +59,7 @@
     "content": "show",
     "ruleId": "r-yt-budget",
     "reason": "budget_exhausted",
-    "explanationKey": "decision.budget_exhausted"
+    "explanationKey": "decision.budget_exhausted",
+    "validUntil": "2026-10-27T13:00:00Z"
   }
 }

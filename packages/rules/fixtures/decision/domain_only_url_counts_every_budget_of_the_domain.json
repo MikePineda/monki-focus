@@ -60,6 +60,7 @@
     "content": "show",
     "ruleId": "r-watch-budget",
     "reason": "budget_exhausted",
-    "explanationKey": "decision.budget_exhausted"
+    "explanationKey": "decision.budget_exhausted",
+    "validUntil": "2026-10-26T13:00:00Z"
   }
 }
