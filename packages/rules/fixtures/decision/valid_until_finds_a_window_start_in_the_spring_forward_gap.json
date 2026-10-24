@@ -1,0 +1,65 @@
+{
+  "id": "decision.valid_until_finds_a_window_start_in_the_spring_forward_gap",
+  "kind": "decision",
+  "description": "A block from 02:30 on the Sunday clocks skip 02:00 to 03:00 begins at the first existing minute, 03:00 AEDT.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-03-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-x-block",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "block",
+          "schedules": [
+            {
+              "days": ["sun"],
+              "start": "02:30",
+              "end": "04:00"
+            }
+          ],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-04T01:00:00+10:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "x.com/home"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "show",
+    "ruleId": null,
+    "reason": "no_rule",
+    "explanationKey": "decision.no_rule",
+    "validUntil": "2026-10-03T16:00:00Z"
+  }
+}

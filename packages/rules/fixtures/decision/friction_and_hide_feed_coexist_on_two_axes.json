@@ -79,6 +79,7 @@
     "content": "hide-feed",
     "ruleId": "r-reddit-friction",
     "reason": "intention_active",
-    "explanationKey": "decision.intention_active"
+    "explanationKey": "decision.intention_active",
+    "validUntil": "2026-10-25T23:04:00Z"
   }
 }

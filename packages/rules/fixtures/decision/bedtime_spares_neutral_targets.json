@@ -143,6 +143,7 @@
     "content": "show",
     "ruleId": null,
     "reason": "no_rule",
-    "explanationKey": "decision.no_rule"
+    "explanationKey": "decision.no_rule",
+    "validUntil": "2026-10-27T12:00:00Z"
   }
 }

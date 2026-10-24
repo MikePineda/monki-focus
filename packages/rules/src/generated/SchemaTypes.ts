@@ -83,6 +83,16 @@ export type Weekdays = Weekday[]
  */
 export type TimeOfDay = string
 /**
+ * ASCII id (a ULID or a slug). Ties are broken by code-unit order. `bedtime` is reserved for the bedtime target group.
+ */
+export type RuleId = string
+export type RuleMode = 'allow' | 'hide-feed' | 'friction' | 'block'
+export type RuleSchedule = Schedule | ScheduleRef
+/**
+ * RFC 3339 instant with an explicit offset and whole seconds (inputs may use any offset).
+ */
+export type Instant = string
+/**
  * What the user is about to see: raw URL text (normalised by the engine) or an app with the surface its detector resolved.
  */
 export type Observation = SiteObservation | AppObservation
@@ -97,16 +107,6 @@ export type EscalationPhase =
  */
 export type FrictionType = 'countdown' | 'breath' | 'reflect' | 'type-intention'
 export type EscalationLevel = 0 | 1 | 2 | 3
-/**
- * RFC 3339 instant with an explicit offset and whole seconds (inputs may use any offset).
- */
-export type Instant = string
-/**
- * ASCII id (a ULID or a slug). Ties are broken by code-unit order. `bedtime` is reserved for the bedtime target group.
- */
-export type RuleId = string
-export type RuleMode = 'allow' | 'hide-feed' | 'friction' | 'block'
-export type RuleSchedule = Schedule | ScheduleRef
 export type Access = 'allow' | 'gate' | 'block'
 export type Content = 'show' | 'hide-feed'
 export type ReasonCode =
@@ -195,6 +195,7 @@ export interface RulesSchemaBundle {
   'activity.schema.json#webTabData'?: WebTabData
   'activity.schema.json#windowData'?: WindowData
   'bedtime.schema.json'?: Bedtime
+  'candidates-fixture.schema.json'?: CandidatesFixture
   'category-assignment.schema.json'?: CategoryAssignment
   'category-assignment.schema.json#categoryPath'?: CategoryPath
   'category-assignment.schema.json#level'?: CategoryLevel
@@ -565,101 +566,19 @@ export interface Bedtime {
   warnMinutesBefore: number
 }
 /**
- * Factory category assignments (data/categories/default.json). A rule set's `categories` override these.
+ * One case of the adapter helpers `frictionCandidates(ruleset, observation, now)` and `budgetedRulesFor(ruleset, observation, at)` (SEMANTICS.md §5.7). Both lists are rule ids in code-unit ascending order.
  */
-export interface CategoryCatalog {
-  schemaVersion: 1
-  /**
-   * @maxItems 2000
-   */
-  assignments: CategoryAssignment[]
-}
-export interface AppObservation {
-  kind: 'app'
-  package: AppPackage
-  surface: SurfaceId | null
-}
-/**
- * Active seconds spent today per budgeted rule. Ignored when `localDate` is not today's local date.
- */
-export interface DailyUsage {
-  localDate: LocalDate
-  secondsByRule: {
-    [k: string]: number | undefined
-  }
-}
-export interface SiteObservation {
-  kind: 'site'
-  urlText: string
-}
-export interface DecisionState {
-  /**
-   * At most one state per target group; a missing group is the initial idle state.
-   *
-   * @maxItems 500
-   */
-  escalation: EscalationState[]
-  usage: DailyUsage | null
-  /**
-   * @maxItems 64
-   */
-  unlocks: VerifiedUnlock[]
-  guardianLinked: boolean
-}
-export interface EscalationState {
-  targetGroup: TargetGroup
-  phase: EscalationPhase
-  /**
-   * Gate attempts in the current session (resets after 2 quiet hours).
-   */
-  attemptCount: number
-  lastAttemptAt: UtcInstant | null
-  lastActivityAt: UtcInstant | null
-  /**
-   * Intentions extended (broken) in the current session; the third extension needs a full gate.
-   */
-  brokenCount: number
-  lastFrictionType: FrictionType | null
-  gate: Gate | null
-  pauseEndsAt: UtcInstant | null
-  /**
-   * True while the doubled pause of an extension runs; `pause_elapsed` then grants 5 minutes.
-   */
-  pendingExtension: boolean
-  intentionExpiresAt: UtcInstant | null
-  overrideReadyAt: UtcInstant | null
-  overrideEndsAt: UtcInstant | null
-}
-export interface Gate {
-  level: EscalationLevel
-  pauseSeconds: number
-  frictionType: FrictionType
-  requiresTypedIntention: boolean
-  requiresGuardianKey: boolean
-}
-/**
- * An unlock whose token an adapter already verified (signature, device, replay). The engine only checks its time window and target.
- */
-export interface VerifiedUnlock {
-  target: Target
-  notBefore: Instant
-  expiresAt: Instant
-}
-/**
- * One `decide(ruleset, observation, state, now)` case. The time zone is the rule set's pinned `timeZone`. Kinds `decision` and `specificity` share this shape.
- */
-export interface DecisionFixture {
+export interface CandidatesFixture {
   id: string
-  kind: 'decision' | 'specificity'
+  kind: 'candidates'
   description: string
-  given: DecisionGiven
-  when: DecisionWhen
-  then: Decision
+  given: CandidatesGiven
+  when: CandidatesWhen
+  then: CandidatesThen
 }
-export interface DecisionGiven {
+export interface CandidatesGiven {
   ruleset: Ruleset
   now: Instant
-  state: DecisionState
 }
 /**
  * A user's rule set: the document that is imported, exported, synced and enforced. `timeZone` pins the zone every schedule, bedtime and budget day is evaluated in (the device zone is never an input). `pendingTimeZone` is set only while a time-zone change waits (both zones apply, the stricter wins). `workHours` is the user's working hours, which rules opt into with `{ "ref": "workHours" }`. Strict: unknown fields are rejected, keys are unique (`x-uniqueBy`) and the serialised document must not exceed 256 KB.
@@ -720,6 +639,124 @@ export interface Schedule {
 export interface ScheduleRef {
   ref: 'workHours'
 }
+export interface CandidatesWhen {
+  target: Observation
+}
+export interface SiteObservation {
+  kind: 'site'
+  urlText: string
+}
+export interface AppObservation {
+  kind: 'app'
+  package: AppPackage
+  surface: SurfaceId | null
+}
+export interface CandidatesThen {
+  /**
+   * The friction candidates whose escalation states `effectiveEscalationState` combines (§7.4).
+   *
+   * @maxItems 500
+   */
+  frictionCandidates: RuleId[]
+  /**
+   * The rules an activity at `now` accrues usage to (§5.2.2).
+   *
+   * @maxItems 500
+   */
+  budgetedRules: RuleId[]
+}
+/**
+ * Factory category assignments (data/categories/default.json). A rule set's `categories` override these.
+ */
+export interface CategoryCatalog {
+  schemaVersion: 1
+  /**
+   * @maxItems 2000
+   */
+  assignments: CategoryAssignment[]
+}
+/**
+ * Active seconds spent today per budgeted rule. Ignored when `localDate` is not today's local date.
+ */
+export interface DailyUsage {
+  localDate: LocalDate
+  secondsByRule: {
+    [k: string]: number | undefined
+  }
+}
+export interface DecisionState {
+  /**
+   * At most one state per target group; a missing group is the initial idle state.
+   *
+   * @maxItems 500
+   */
+  escalation: EscalationState[]
+  usage: DailyUsage | null
+  /**
+   * @maxItems 64
+   */
+  unlocks: VerifiedUnlock[]
+  guardianLinked: boolean
+  /**
+   * `effectiveFrom` of the rule change that waits (SEMANTICS.md §8), or null when none waits. `decide` never applies it; `validUntil` stops there so the adapter re-decides with the new effective rule set (§5.6).
+   */
+  pendingEffectiveFrom?: Instant | null
+}
+export interface EscalationState {
+  targetGroup: TargetGroup
+  phase: EscalationPhase
+  /**
+   * Gate attempts in the current session (resets after 2 quiet hours).
+   */
+  attemptCount: number
+  lastAttemptAt: UtcInstant | null
+  lastActivityAt: UtcInstant | null
+  /**
+   * Intentions extended (broken) in the current session; the third extension needs a full gate.
+   */
+  brokenCount: number
+  lastFrictionType: FrictionType | null
+  gate: Gate | null
+  pauseEndsAt: UtcInstant | null
+  /**
+   * True while the doubled pause of an extension runs; `pause_elapsed` then grants 5 minutes.
+   */
+  pendingExtension: boolean
+  intentionExpiresAt: UtcInstant | null
+  overrideReadyAt: UtcInstant | null
+  overrideEndsAt: UtcInstant | null
+}
+export interface Gate {
+  level: EscalationLevel
+  pauseSeconds: number
+  frictionType: FrictionType
+  requiresTypedIntention: boolean
+  requiresGuardianKey: boolean
+}
+/**
+ * An unlock whose token an adapter already verified (signature, device, replay). The engine only checks its time window and target.
+ */
+export interface VerifiedUnlock {
+  target: Target
+  notBefore: Instant
+  expiresAt: Instant
+}
+/**
+ * One `decide(ruleset, observation, state, now)` case. The time zone is the rule set's pinned `timeZone`. Kinds `decision` and `specificity` share this shape.
+ */
+export interface DecisionFixture {
+  id: string
+  kind: 'decision' | 'specificity'
+  description: string
+  given: DecisionGiven
+  when: DecisionWhen
+  then: Decision
+}
+export interface DecisionGiven {
+  ruleset: Ruleset
+  now: Instant
+  state: DecisionState
+}
 export interface DecisionWhen {
   target: Observation
 }
@@ -733,6 +770,10 @@ export interface Decision {
   reason: ReasonCode
   gate?: Gate
   explanationKey: ExplanationKey
+  /**
+   * The earliest instant at which the same inputs can yield a different decision, at most `now` + 24 h; adapters re-decide then at the latest. Null only for `engine_error` (SEMANTICS.md §5.6).
+   */
+  validUntil: UtcInstant | null
 }
 /**
  * Android detector pack: data-only predicates over the accessibility tree that classify a screen into a surface. No scripting and no regex. Packs are signed (Ed25519, offline key) and only accepted with a higher `packVersion`.
@@ -865,6 +906,7 @@ export interface InvalidFixture {
     | 'activity'
     | 'activity-fixture'
     | 'bedtime'
+    | 'candidates-fixture'
     | 'category-assignment'
     | 'category-catalog'
     | 'decision'

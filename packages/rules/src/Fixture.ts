@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type {
   ActivityFixture,
+  CandidatesFixture,
   DecisionFixture,
   EscalationFixture,
   InvalidFixture,
@@ -18,6 +19,7 @@ export interface FixtureByKind {
   'schedule': ScheduleFixture
   'escalation': EscalationFixture
   'rule-change': RuleChangeFixture
+  'candidates': CandidatesFixture
   'activity': ActivityFixture
   'invalid': InvalidFixture
 }

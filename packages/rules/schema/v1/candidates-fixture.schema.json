@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://monkifocus.dev/schema/rules/v1/candidates-fixture.schema.json",
+  "title": "CandidatesFixture",
+  "description": "One case of the adapter helpers `frictionCandidates(ruleset, observation, now)` and `budgetedRulesFor(ruleset, observation, at)` (SEMANTICS.md §5.7). Both lists are rule ids in code-unit ascending order.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "description", "given", "when", "then"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^candidates\\.[a-z0-9]+(_[a-z0-9]+)*$"
+    },
+    "kind": {
+      "const": "candidates"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "given": {
+      "title": "CandidatesGiven",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleset", "now"],
+      "properties": {
+        "ruleset": {
+          "$ref": "ruleset.schema.json"
+        },
+        "now": {
+          "$ref": "time.schema.json#/$defs/instant"
+        }
+      }
+    },
+    "when": {
+      "title": "CandidatesWhen",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target"],
+      "properties": {
+        "target": {
+          "$ref": "decision-context.schema.json#/$defs/observation"
+        }
+      }
+    },
+    "then": {
+      "title": "CandidatesThen",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frictionCandidates", "budgetedRules"],
+      "properties": {
+        "frictionCandidates": {
+          "description": "The friction candidates whose escalation states `effectiveEscalationState` combines (§7.4).",
+          "type": "array",
+          "maxItems": 500,
+          "uniqueItems": true,
+          "items": { "$ref": "rule.schema.json#/$defs/ruleId" }
+        },
+        "budgetedRules": {
+          "description": "The rules an activity at `now` accrues usage to (§5.2.2).",
+          "type": "array",
+          "maxItems": 500,
+          "uniqueItems": true,
+          "items": { "$ref": "rule.schema.json#/$defs/ruleId" }
+        }
+      }
+    }
+  }
+}

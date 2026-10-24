@@ -64,6 +64,7 @@
     "content": "show",
     "ruleId": "r-ml-allow",
     "reason": "rule_match",
-    "explanationKey": "decision.allowed_by_rule"
+    "explanationKey": "decision.allowed_by_rule",
+    "validUntil": "2026-10-26T11:30:00Z"
   }
 }
