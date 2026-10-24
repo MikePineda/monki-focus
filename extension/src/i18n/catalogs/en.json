@@ -127,11 +127,11 @@
   "gate.blocked.budget": "Today's time for {site} is used up.",
   "gate.blocked.bedtime": "It's bedtime.",
   "gate.blocked.rule": "You chose to block {site}.",
-  "gate.blocked.error": "{site} stays closed for now.",
+  "gate.blocked.error": "Something went wrong deciding {site}.",
   "gate.blockedWhy.budget": "Your budget comes back at midnight.",
   "gate.blockedWhy.bedtime": "Distracting sites rest until morning. So can you.",
   "gate.blockedWhy.rule": "You can change this in Settings.",
-  "gate.blockedWhy.error": "Something went wrong, so the extension kept it closed.",
+  "gate.blockedWhy.error": "You can continue; its feeds stay hidden.",
   "gate.none.title": "Nothing to continue to",
   "gate.none.body": "This page was opened without a destination.",
   "gate.wait.title": "Emergency access",
@@ -145,5 +145,6 @@
   "timeout.leave": "Leave {site}",
   "timeout.more": "5 more min",
   "timeout.note": "Counts as a broken intention · next pause will be {seconds} s",
-  "pill.label": "Time left for your intention"
+  "pill.label": "Time left for your intention",
+  "gate.continueFeedsHidden": "Continue (feeds stay hidden)"
 }

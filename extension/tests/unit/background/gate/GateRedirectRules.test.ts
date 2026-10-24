@@ -126,6 +126,30 @@ describe('GateRedirectRules', () => {
     ])
   })
 
+  it('an_engine_error_keeps_the_last_installed_redirects', async () => {
+    const harness = gateHarness()
+    const dnr = fakeDnr()
+    let failing = false
+    const onEngineError = vi.fn()
+    const sync = new GateRedirectRules({
+      dnr: dnr.api,
+      catalog: bundledRulesCatalog(),
+      rulesets: { load: () => Promise.resolve(harness.state.ruleset) },
+      decide: (url) =>
+        failing ? Promise.resolve({ ...ENGINE_ERROR_DECISION }) : harness.decisions.decide(url),
+      ticket: () => Promise.resolve(TICKET),
+      runtimeId: 'test-extension',
+      onEngineError,
+    })
+    await sync.sync()
+    failing = true
+
+    expect(await sync.sync()).toBe(false)
+
+    expect(dnr.rules()).toHaveLength(2)
+    expect(onEngineError).toHaveBeenCalledOnce()
+  })
+
   it('an_engine_error_never_installs_a_redirect', async () => {
     const dnr = fakeDnr()
     const sync = new GateRedirectRules({

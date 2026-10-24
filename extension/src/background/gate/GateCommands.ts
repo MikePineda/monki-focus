@@ -9,18 +9,18 @@ import type { ClosedAnswer, GateHandoff } from '../../shared/messages'
 import type { CommandSender } from '../commands/CommandRouter'
 import type { GateController } from './GateController'
 
-/** A command that acts on a tab: the sender's own tab, never one it names. */
-function tabOf(sender: CommandSender): number {
+/**
+ * The tab a command acts on: the sender's own tab, never one it names, and
+ * only from the tab's top frame (the gate page and the feed guard alike).
+ */
+function topFrameTabOf(sender: CommandSender): number {
   const tabId = sender.tab?.id
   if (typeof tabId !== 'number') throw new Error('gate.noTab')
+  if (sender.frameId !== 0) throw new Error('gate.notTopFrame')
   return tabId
 }
 
-/** Content-script commands only count from the tab's top frame. */
-function topFrameTabOf(sender: CommandSender): number {
-  if (sender.frameId !== 0) throw new Error('gate.notTopFrame')
-  return tabOf(sender)
-}
+const tabOf = topFrameTabOf
 
 /**
  * The router's side of the gate: every command acts on the sending tab
@@ -69,6 +69,10 @@ export class GateCommands {
 
   extend(sender: CommandSender): Promise<GateView> {
     return this.controller.extend(tabOf(sender))
+  }
+
+  continueThroughError(sender: CommandSender): Promise<GateView> {
+    return this.controller.continueThroughError(tabOf(sender))
   }
 
   search(query: string, sender: CommandSender): Promise<GateView> {

@@ -231,8 +231,11 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   an emergency override drops its group's rule and the expiry (or the next
   sync) restores it. Syncs run on start, on every escalation change, on rule
   set changes and on the per-minute `decision.refresh` alarm (schedule
-  edges, budgets). `engine_error` never redirects (the feed guard already
-  hides every feed). Verified in Chromium: a DNR redirect to the static
+  edges, budgets). An `engine_error` for any domain keeps the last installed
+  rules (never "remove all"; the feed guard already hides every feed).
+  After every sync and timer tick, open tabs whose page the engine now gates
+  are sent to the gate (timed-out tabs on sites without the feed guard,
+  tabs restored after a restart). Verified in Chromium: a DNR redirect to the static
   `chrome-extension://<id>/` URL loads the page although `gate.html` is
   `use_dynamic_url`; `extensionPath` loads too, but it loses the original
   URL (no `tabs.onUpdated` event carries it), so it cannot bring the user
@@ -245,11 +248,14 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   later answer uses the tab's stored destination (`sender.tab.id`), never the
   page's URL, so `gate.html?to=…` opened by anyone else has nothing to
   continue to. `gate.*` commands are answered only from the extension's own
-  `gate.html` in a tab (static or dynamic id).
+  `gate.html` as the top frame of a tab (static or dynamic id).
 - **Passes.** A page the engine allows inside a gated domain (an allowed
   community), or the gate's search box, gets a one-off `allow` session rule
-  for that exact URL in that tab (`TabPasses`); it is spent once the tab has
-  loaded, when the tab closes or after a minute.
+  for that exact URL in that tab (`TabPasses`, never host-wide; URLs over
+  1000 characters get none and go through the gate); it is spent once the
+  tab has loaded, when the tab closes or after a minute, and the sweep on
+  start and on the alarms removes expired and untracked passes. Search only
+  works from a friction view.
 - **SPA navigations** inside a site: the feed guard's answer for the new URL
   says `gate`/`block` and it sends `gate.open`; the service worker records the
   destination for the tab and `tabs.update`s it to `gate.html`.
@@ -260,12 +266,32 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   per-tab destinations (`gate.tabs`), the ticket, the passes and the words of
   each intention (`gate.intentions`, for the overlay and the "different from
   last time" check) live in `storage.session`. The intention text never
-  reaches the engine (only its word count), IndexedDB or the outbox.
+  reaches the engine (only its word count), IndexedDB or the outbox. Every
+  stored entry is checked on read (shape here, instants by the engine's own
+  `decide` input guard; the rules schema validator compiles with
+  `new Function`, which the MV3 CSP forbids) and only invalid entries are
+  dropped, with a diagnostic.
   `visit` is fed on the effective state of every matching friction group;
   the matching friction rules come from the engine itself (`decide` with
   each rule alone, `FrictionCandidates`). Budgets: `DailyUsageQuery` sums
   today's tracked web events (E7) per budgeted rule with the engine's
-  `normalizeUrl` + `matchesTarget` into `DecisionState.usage`.
+  `normalizeUrl` + `matchesTarget` into `DecisionState.usage`, counting
+  only the part of each event inside today (split at local midnight), in
+  both zones while a time-zone change waits (the larger wins). When the
+  events cannot be read the last good value of the day is kept; without one
+  the decision goes ahead without a budget block (diagnostic). Incognito
+  time is tracked by domain only (path `/`, no surface), so it accrues to
+  site budgets but never to path or surface budgets.
+- **Robustness.** Close and Leave close the tab first and record after,
+  best-effort; if the service worker cannot answer, the page closes its own
+  tab through the tabs API (a new tab first when it is the last one), never
+  `window.close()`. One IndexedDB connection (`DbConnection`) is shared and
+  a failed open is retried. A wall clock set back behind the last
+  escalation event ends active intentions (the engine's `leave`) and
+  overrides (the engine's idle state, counters kept) and re-syncs: it fails
+  toward friction. Recovered failures leave reason codes in
+  `GateDiagnostics`, never a URL or text. An `engine_error` on the gate
+  offers "Continue (feeds stay hidden)" and Emergency, as on the site.
 - **Timers.** One alarm (`gate.timers`) at the earliest intention or
   override end. The page's own timer shows the overlay on time (alarms can
   run ~30 s late); the alarm restores the redirect and ends what nobody is
@@ -275,7 +301,12 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   intention) → a 2:00 wait with Cancel → 15 minutes; the engine's
   `record_bypass` effect queues a `BypassEvent` in the outbox
   (`kind: 'emergency_override'`, details: the rule group and timestamps,
-  never a URL).
+  never a URL). The override is always granted and always recorded: if the
+  outbox cannot be opened the event waits in `storage.local`
+  (`gate.pendingBypasses`, drained into the outbox on the next successful
+  open); if that fails too, `bypass.unrecorded` is set for the popup. The
+  grant is stored after the record attempt, the redirect is re-synced on
+  every path, and if the grant cannot be stored the tab gets a pass.
 - **Page** (`src/gate`, 02 §8.1): context line (visits today from the
   intention log, minutes today from `stats.today`), the pause (Countdown,
   1px progress, the breath circle, a "why" line per friction type), Close

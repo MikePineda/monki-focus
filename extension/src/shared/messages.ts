@@ -99,6 +99,8 @@ export interface CommandMap {
   'gate.leave': { request: Record<string, never>; response: ClosedAnswer }
   /** Timed out on the gate page: 5 more minutes (a broken intention). */
   'gate.extend': { request: Record<string, never>; response: GateView }
+  /** `engine_error` on the gate: continue with the feeds hidden. */
+  'gate.continue': { request: Record<string, never>; response: GateView }
   /** The gate's search box: answers the site search URL to open (never gated). */
   'gate.search': { request: { query: string }; response: GateView }
   /** A site page whose decision gates or blocks it asks to be sent to the gate. */
@@ -222,6 +224,7 @@ export const COMMAND_PAYLOAD_GUARDS: {
   'gate.emergencyCancel': NO_PAYLOAD,
   'gate.leave': NO_PAYLOAD,
   'gate.extend': NO_PAYLOAD,
+  'gate.continue': NO_PAYLOAD,
   'gate.search': (payload): payload is { query: string } => {
     const { query } = payload as { query?: unknown }
     return (
@@ -238,8 +241,8 @@ export const COMMAND_PAYLOAD_GUARDS: {
 
 /**
  * Commands only the extension's own gate page may send: the sender must be
- * `chrome-extension://<this id or its dynamic id>/gate.html` in a tab, and
- * the tab is the one the command acts on.
+ * `chrome-extension://<this id or its dynamic id>/gate.html` as the top
+ * frame of a tab, and the tab is the one the command acts on.
  */
 export const GATE_PAGE_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
   'gate.load',
@@ -251,6 +254,7 @@ export const GATE_PAGE_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>
   'gate.emergencyCancel',
   'gate.leave',
   'gate.extend',
+  'gate.continue',
   'gate.search',
 ])
 

@@ -17,6 +17,7 @@ import { deviceTimeZone } from '../background/rules/DeviceTimeZone'
 import { RulesetStore } from '../background/rules/RulesetStore'
 import { ShortsRedirectSync } from '../background/shorts/ShortsRedirectSync'
 import { openMonkiDb } from '../background/storage/db'
+import { DbConnection } from '../background/storage/DbConnection'
 import { createTrackingModule } from '../background/tracking/TrackingModule'
 import { trackingTimingFor } from '../background/tracking/TrackingTiming'
 import { bundledRulesCatalog } from '../shared/bundledRulesCatalog'
@@ -57,15 +58,15 @@ export default defineBackground(() => {
     onChange: decisionsChanged,
   })
 
-  const db = openMonkiDb()
-  db.catch(() => undefined)
+  // One connection for tracking and the gate; a failed open is retried, never cached.
+  const db = new DbConnection(() => openMonkiDb())
   const tracking = createTrackingModule({
     browser,
     clock: systemClock,
     timing: trackingTimingFor(import.meta.env.MODE),
     catalog,
     rulesets,
-    openDb: () => db,
+    openDb: () => db.get(),
   })
 
   const gate = createGateModule({
@@ -85,7 +86,7 @@ export default defineBackground(() => {
     clock: gateClock,
     catalog,
     rulesets,
-    openDb: () => db,
+    openDb: () => db.get(),
     decide: (url) => decisionService.decide(url),
     minutesToday: async (site) => {
       const today = await tracking.commands.today()

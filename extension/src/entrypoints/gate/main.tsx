@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { browser } from 'wxt/browser'
+import { TabCloser } from '../../background/gate/TabCloser'
 import { gateClient } from '../../gate/GateClient'
 import { parseHandoff } from '../../gate/GateHandoff'
 import { GatePage } from '../../gate/GatePage'
@@ -24,7 +25,16 @@ void clock.ready.then(() =>
         clock={clock}
         handoff={handoff}
         navigate={(url) => location.replace(url)}
-        closeWindow={() => window.close()}
+        closeOwnTab={async () => {
+          const tab = await browser.tabs.getCurrent()
+          if (typeof tab?.id !== 'number') return
+          await new TabCloser({
+            get: (tabId) => browser.tabs.get(tabId),
+            query: (query) => browser.tabs.query(query),
+            create: (properties) => browser.tabs.create(properties),
+            remove: (tabId) => browser.tabs.remove(tabId),
+          }).close(tab.id)
+        }}
       />
     ),
   })

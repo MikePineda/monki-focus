@@ -59,7 +59,14 @@ export type GateView =
       /** Picks the rotating placeholder example. */
       exampleIndex: number
     }
-  | { kind: 'blocked'; context: GateContext; reason: GateBlockReason; emergencyAvailable: boolean }
+  | {
+      kind: 'blocked'
+      context: GateContext
+      reason: GateBlockReason
+      emergencyAvailable: boolean
+      /** `engine_error`: continue with the feeds hidden, as on the site itself. */
+      continueAvailable: boolean
+    }
   | { kind: 'waiting'; context: GateContext; readyAtMs: number }
   | {
       kind: 'timed_out'

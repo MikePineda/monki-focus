@@ -23,6 +23,7 @@ export interface GateClient {
   leave(): Promise<ClosedAnswer>
   extend(): Promise<GateView>
   search(query: string): Promise<GateView>
+  continueThroughError(): Promise<GateView>
 }
 
 export type SendCommand = (message: CommandMessage) => Promise<unknown>
@@ -50,5 +51,6 @@ export function gateClient(send: SendCommand): GateClient {
     leave: () => call('gate.leave', {}),
     extend: () => call('gate.extend', {}),
     search: (query) => call('gate.search', { query }),
+    continueThroughError: () => call('gate.continue', {}),
   }
 }

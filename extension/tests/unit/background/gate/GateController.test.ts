@@ -343,6 +343,7 @@ describe('GateController', () => {
       context: { site: 'reddit.com', visitsToday: 0, minutesToday: 12 },
       reason: 'rule_match',
       emergencyAvailable: true,
+      continueAvailable: false,
     })
   })
 })

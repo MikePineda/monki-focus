@@ -68,7 +68,7 @@ export const GATE_PAGE_PATH = '/gate.html'
  */
 function isGatePageAllowed(type: CommandType, sender: CommandSender): boolean {
   if (!GATE_PAGE_COMMANDS.has(type)) return true
-  if (typeof sender.tab?.id !== 'number' || !sender.url) return false
+  if (typeof sender.tab?.id !== 'number' || !sender.url || sender.frameId !== 0) return false
   try {
     const { protocol, pathname } = new URL(sender.url)
     return protocol === 'chrome-extension:' && pathname === GATE_PAGE_PATH

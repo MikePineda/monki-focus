@@ -58,23 +58,25 @@ function fakeClient(view: GateView, overrides: Partial<GateClient> = {}): GateCl
     leave: vi.fn(() => Promise.resolve({ closed: true })),
     extend: vi.fn(() => Promise.resolve(view)),
     search: vi.fn(() => Promise.resolve(view)),
+    continueThroughError: vi.fn(() => Promise.resolve(view)),
     ...overrides,
   }
 }
 
 function renderGate(client: GateClient, clock: ManualClock, locale: 'en' | 'es' = 'en') {
   const navigate = vi.fn()
+  const closeOwnTab = vi.fn(() => Promise.resolve())
   renderWithI18n(
     <GatePage
       client={client}
       clock={clock}
       handoff={null}
       navigate={navigate}
-      closeWindow={vi.fn()}
+      closeOwnTab={closeOwnTab}
     />,
     locale
   )
-  return { navigate }
+  return { navigate, closeOwnTab }
 }
 
 describe('GatePage', () => {
@@ -187,6 +189,7 @@ describe('GatePage', () => {
       context: CONTEXT,
       reason: 'budget_exhausted',
       emergencyAvailable: true,
+      continueAvailable: false,
     }
 
     renderGate(fakeClient(view), clock)
@@ -236,6 +239,40 @@ describe('GatePage', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Close tab' }))
 
     expect(client.close).toHaveBeenCalledOnce()
+  })
+
+  it('when_the_service_worker_cannot_close_the_page_closes_its_own_tab', async () => {
+    const clock = new ManualClock('2026-01-05T09:00:00Z')
+    const client = fakeClient(frictionView(clock), {
+      close: vi.fn(() => Promise.reject(new Error('command.failed'))),
+    })
+    const close = vi.spyOn(window, 'close')
+    const { closeOwnTab } = renderGate(client, clock)
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Close tab' }))
+
+    await waitFor(() => expect(closeOwnTab).toHaveBeenCalledOnce())
+    expect(close).not.toHaveBeenCalled()
+  })
+
+  it('an_engine_error_offers_continue_with_feeds_hidden_and_emergency', async () => {
+    const clock = new ManualClock('2026-01-05T09:00:00Z')
+    const view: GateView = {
+      kind: 'blocked',
+      context: { site: 'reddit.com', visitsToday: 0, minutesToday: 0 },
+      reason: 'engine_error',
+      emergencyAvailable: true,
+      continueAvailable: true,
+    }
+    const client = fakeClient(view)
+    renderGate(client, clock)
+
+    await userEvent
+      .setup()
+      .click(await screen.findByRole('button', { name: 'Continue (feeds stay hidden)' }))
+
+    expect(client.continueThroughError).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'Emergency' })).toBeVisible()
   })
 
   it('the_search_box_opens_the_site_search', async () => {

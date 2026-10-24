@@ -35,6 +35,8 @@ export interface GateRedirectRulesOptions {
   /** This browser session's ticket (`GateTicket`). */
   ticket: () => Promise<string>
   runtimeId: string
+  /** Called when a sync is skipped because the engine failed closed. */
+  onEngineError?: () => void
 }
 
 function isRedirectRuleId(id: number): boolean {
@@ -74,8 +76,9 @@ function candidateDomains(ruleset: Ruleset, catalog: RulesCatalog): string[] {
  * and an expired one restores it). A page the engine allows inside a gated
  * domain passes through the gate at once (`TabPasses`); a page the engine
  * gates inside an ungated domain is sent to the gate by the feed guard.
- * `engine_error` never installs a redirect: the feed guard already fails
- * closed by hiding every feed.
+ * An `engine_error` for any domain never changes the installed rules: the
+ * last good redirects stay (never "remove all"), and the feed guard fails
+ * closed on its own by hiding every feed.
  *
  * `sync()` runs one at a time and only touches the browser when the
  * desired rules differ from the installed ones.
@@ -94,13 +97,15 @@ export class GateRedirectRules {
   }
 
   /** The redirect rules the decisions call for now, ordered by group. */
-  async desiredRules(): Promise<GateDnrRule[]> {
+  /** Null when the engine failed closed for a domain (keep what is installed). */
+  async desiredRules(): Promise<GateDnrRule[] | null> {
     const { catalog, rulesets, decide, ticket, runtimeId } = this.options
     const ruleset = await rulesets.load()
     const byGroup = new Map<string, Set<string>>()
     for (const domain of candidateDomains(ruleset, catalog)) {
       const decision = await decide(`https://${domain}/`)
-      if (decision.access === 'allow' || decision.reason === 'engine_error') continue
+      if (decision.reason === 'engine_error') return null
+      if (decision.access === 'allow') continue
       const group = groupOf(decision)
       if (group === null) continue
       const domains = byGroup.get(group) ?? new Set<string>()
@@ -126,6 +131,10 @@ export class GateRedirectRules {
   private async syncNow(): Promise<boolean> {
     const { dnr } = this.options
     const desired = await this.desiredRules()
+    if (desired === null) {
+      this.options.onEngineError?.()
+      return false
+    }
     const fingerprint = JSON.stringify(desired)
     const existing = (await dnr.getSessionRules()).map(({ id }) => id).filter(isRedirectRuleId)
     if (fingerprint === this.installed && existing.length === desired.length) return false

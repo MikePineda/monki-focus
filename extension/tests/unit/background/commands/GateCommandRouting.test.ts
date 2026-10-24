@@ -31,6 +31,7 @@ describe('gate command routing', () => {
       id: OWN_ID,
       url: GATE_PAGE,
       tab: { id: 7, url: GATE_PAGE },
+      frameId: 0,
     })
 
     expect(result.ok).toBe(true)
@@ -45,6 +46,7 @@ describe('gate command routing', () => {
       id: OWN_ID,
       url: dynamic,
       tab: { id: 7, url: dynamic },
+      frameId: 0,
     })
 
     expect(result.ok).toBe(true)
@@ -61,6 +63,20 @@ describe('gate command routing', () => {
       id: OWN_ID,
       url,
       tab,
+    })
+
+    expect(result).toEqual({ ok: false, error: 'sender.rejected' })
+    expect(load).not.toHaveBeenCalled()
+  })
+
+  it('gate_commands_from_a_gate_page_inside_a_frame_are_rejected', async () => {
+    const { router, load } = makeRouter()
+
+    const result = await router.route(commandMessage('gate.load', { handoff: null }), {
+      id: OWN_ID,
+      url: GATE_PAGE,
+      tab: { id: 7, url: 'https://www.reddit.com/' },
+      frameId: 3,
     })
 
     expect(result).toEqual({ ok: false, error: 'sender.rejected' })
@@ -89,7 +105,7 @@ describe('gate command routing', () => {
 
     const result = await router.route(
       { v: 1, type: 'gate.commit', payload },
-      { id: OWN_ID, url: GATE_PAGE, tab: { id: 7 } }
+      { id: OWN_ID, url: GATE_PAGE, tab: { id: 7 }, frameId: 0 }
     )
 
     expect(result).toEqual({ ok: false, error: 'message.malformed' })
@@ -101,7 +117,7 @@ describe('gate command routing', () => {
 
     const result = await router.route(
       commandMessage('gate.load', { handoff: { ticket: TICKET, to: 'javascript:alert(1)' } }),
-      { id: OWN_ID, url: GATE_PAGE, tab: { id: 7 } }
+      { id: OWN_ID, url: GATE_PAGE, tab: { id: 7 }, frameId: 0 }
     )
 
     expect(result).toEqual({ ok: false, error: 'message.malformed' })

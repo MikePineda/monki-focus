@@ -72,6 +72,35 @@ describe('TabPasses', () => {
     expect(dnr.rules()).toEqual([])
   })
 
+  it('a_url_too_long_for_an_exact_pass_gets_none_and_never_a_host_wide_one', async () => {
+    const dnr = fakeDnr()
+    const passes = new TabPasses(dnr, fakeBrowser.storage.session, () => now)
+
+    expect(await passes.grant(7, `https://www.reddit.com/${'a'.repeat(1100)}`)).toBe(false)
+    expect(dnr.rules()).toEqual([])
+  })
+
+  it('the_sweep_removes_expired_and_untracked_passes', async () => {
+    const dnr = fakeDnr()
+    const passes = new TabPasses(dnr, fakeBrowser.storage.session, () => now)
+    await passes.grant(7, 'https://www.reddit.com/a')
+    await dnr.updateSessionRules({
+      addRules: [
+        {
+          id: PASS_RULE_FIRST_ID + 9,
+          priority: 2,
+          action: { type: 'allow' },
+          condition: { tabIds: [8], resourceTypes: ['main_frame'] },
+        },
+      ],
+    })
+    now += PASS_LIFETIME_MS + 1
+
+    await passes.sweep()
+
+    expect(dnr.rules()).toEqual([])
+  })
+
   it('an_unused_pass_expires', async () => {
     const dnr = fakeDnr()
     const passes = new TabPasses(dnr, fakeBrowser.storage.session, () => now)

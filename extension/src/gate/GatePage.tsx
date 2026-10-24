@@ -23,8 +23,12 @@ export interface GatePageProps {
   handoff: GateHandoff | null
   /** Moves the tab on (`location.replace`, so the gate leaves no history entry). */
   navigate: (url: string) => void
-  /** Last resort when the service worker cannot close the tab. */
-  closeWindow: () => void
+  /**
+   * Last resort when the service worker cannot close the tab: the page
+   * closes its own tab through the tabs API (a new tab first when it is the
+   * last one), never `window.close()` of the window.
+   */
+  closeOwnTab: () => Promise<unknown>
 }
 
 const BLOCKED_TITLE: Readonly<Record<GateBlockReason, SimpleKey>> = {
@@ -51,7 +55,7 @@ function contextOf(view: GateView | null): GateContext | null {
  * something is gated or blocked. Everything shown is the service worker's
  * view of the engine's state; the page only counts down to stored times.
  */
-export function GatePage({ client, clock, handoff, navigate, closeWindow }: GatePageProps) {
+export function GatePage({ client, clock, handoff, navigate, closeOwnTab }: GatePageProps) {
   const { t } = useI18n()
   const [view, setView] = useState<GateView | null>(null)
 
@@ -74,7 +78,7 @@ export function GatePage({ client, clock, handoff, navigate, closeWindow }: Gate
   }, [])
 
   const close = () => {
-    void client.close().catch(() => closeWindow())
+    void client.close().catch(() => closeOwnTab().catch(() => undefined))
   }
 
   const context = contextOf(view)
@@ -95,7 +99,7 @@ export function GatePage({ client, clock, handoff, navigate, closeWindow }: Gate
           minutes={view.minutes}
           intention={view.intention}
           nextPauseSeconds={view.nextPauseSeconds}
-          onLeave={() => void client.leave().catch(() => closeWindow())}
+          onLeave={() => void client.leave().catch(() => closeOwnTab().catch(() => undefined))}
           onExtend={() => run(() => client.extend())}
         />
       </main>
@@ -155,6 +159,12 @@ export function GatePage({ client, clock, handoff, navigate, closeWindow }: Gate
       <Button variant="leave" autoFocus onClick={close}>
         {t('gate.close')}
       </Button>
+
+      {view?.kind === 'blocked' && view.continueAvailable ? (
+        <Button variant="secondary" onClick={() => run(() => client.continueThroughError())}>
+          {t('gate.continueFeedsHidden')}
+        </Button>
+      ) : null}
 
       {view?.kind === 'waiting' ? (
         <Button variant="quiet" tone="muted" onClick={() => run(() => client.emergencyCancel())}>
