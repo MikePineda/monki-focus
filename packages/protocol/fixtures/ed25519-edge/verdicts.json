@@ -1,0 +1,19 @@
+{
+  "$comment": "Expected verdicts of the strict Ed25519 policy (docs/protocol/unlock-tokens.md section 1.1) on the vendored edge-case suites. Reasons: A = public key non-canonical, small-order or mixed-order; R = signature R non-canonical, small-order or mixed-order; S = scalar S >= L. Any one reason rejects.",
+  "policy": "strict",
+  "wycheproof": { "valid": "accept", "invalid": "reject", "acceptable": "reject" },
+  "speccheck": [
+    { "index": 0, "verdict": "reject", "reasons": ["A", "R"] },
+    { "index": 1, "verdict": "reject", "reasons": ["A", "R"] },
+    { "index": 2, "verdict": "reject", "reasons": ["A", "R"] },
+    { "index": 3, "verdict": "reject", "reasons": ["A", "R"] },
+    { "index": 4, "verdict": "reject", "reasons": ["A", "R"] },
+    { "index": 5, "verdict": "reject", "reasons": ["A"] },
+    { "index": 6, "verdict": "reject", "reasons": ["S"] },
+    { "index": 7, "verdict": "reject", "reasons": ["S"] },
+    { "index": 8, "verdict": "reject", "reasons": ["A", "R"] },
+    { "index": 9, "verdict": "reject", "reasons": ["A", "R"] },
+    { "index": 10, "verdict": "reject", "reasons": ["A", "R"] },
+    { "index": 11, "verdict": "reject", "reasons": ["A", "R"] }
+  ]
+}

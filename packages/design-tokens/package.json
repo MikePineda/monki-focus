@@ -1,0 +1,31 @@
+{
+  "name": "@monki-focus/design-tokens",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "monki-focus semantic design tokens (light and dark) generated from one OKLCH source for CSS, Compose and SwiftUI.",
+  "license": "AGPL-3.0-or-later",
+  "exports": {
+    "./tokens.json": "./dist/tokens.json",
+    "./tokens.css": "./dist/tokens.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node src/build.ts",
+    "docs": "node src/docs.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.6.5",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "prettier": "3.9.10",
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5"
+  }
+}

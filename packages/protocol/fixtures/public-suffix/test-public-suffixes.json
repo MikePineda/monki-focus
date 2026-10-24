@@ -1,0 +1,15 @@
+{
+  "$comment": "TEST-ONLY excerpt of public suffixes for the registrable-domain hook (exact rules only). Issuers MUST use the full Public Suffix List (https://publicsuffix.org/list/); this file is not that list.",
+  "suffixes": ["com", "org", "net", "io", "uk", "co.uk", "github.io", "blogspot.com"],
+  "cases": [
+    { "domain": "example.com", "registrable": true },
+    { "domain": "video.example.com", "registrable": true },
+    { "domain": "example.co.uk", "registrable": true },
+    { "domain": "project.github.io", "registrable": true },
+    { "domain": "notes.blogspot.com", "registrable": true },
+    { "domain": "co.uk", "registrable": false },
+    { "domain": "github.io", "registrable": false },
+    { "domain": "blogspot.com", "registrable": false },
+    { "domain": "com", "registrable": false }
+  ]
+}
