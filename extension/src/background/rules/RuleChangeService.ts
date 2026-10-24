@@ -121,12 +121,16 @@ export class RuleChangeService {
         }
       }
 
-      const { effectiveToday, effectiveFrom } = effectiveRuleSet(
-        current.effective,
-        next,
+      const { effectiveToday, effectiveFrom } = this.keepWaitingZone(
+        current,
         now,
-        current.pending?.effectiveFrom ?? null,
-        this.options.catalog
+        effectiveRuleSet(
+          current.effective,
+          next,
+          now,
+          current.pending?.effectiveFrom ?? null,
+          this.options.catalog
+        )
       )
       // What applies today must itself be a valid set, or it would be stored
       // and later read as unreadable: refuse the change, save nothing.
@@ -184,6 +188,48 @@ export class RuleChangeService {
   /** Applies the pending change in full once `effectiveFrom` has passed. */
   promoteIfDue(): Promise<boolean> {
     return this.exclusive(() => this.promoteWhenDue())
+  }
+
+  /**
+   * While a time-zone change waits, the stored set carries `pendingTimeZone`
+   * (both zones apply, the stricter wins). A proposal in the stored zone
+   * (after a cancel, or reverting the zone) would let the engine drop the
+   * second zone at once: that is a loosening, so the second zone stays in
+   * what applies today and its removal waits, never earlier than the
+   * pending change it replaces.
+   */
+  private keepWaitingZone(
+    current: RulesState,
+    now: string,
+    judged: { effectiveToday: Ruleset; effectiveFrom: UtcInstant | null }
+  ): { effectiveToday: Ruleset; effectiveFrom: UtcInstant | null } {
+    const waitingZone = current.effective.pendingTimeZone
+    const { effectiveToday } = judged
+    if (
+      waitingZone === undefined ||
+      effectiveToday.pendingTimeZone !== undefined ||
+      effectiveToday.timeZone !== current.effective.timeZone
+    ) {
+      return judged
+    }
+    const candidates: number[] = []
+    if (judged.effectiveFrom !== null) candidates.push(epochSecondsOf(judged.effectiveFrom))
+    if (current.pending) candidates.push(epochSecondsOf(current.pending.effectiveFrom))
+    if (candidates.length === 0) {
+      // No record of when the zone change ends: wait for both zones' midnight.
+      const nowSeconds = epochSecondsOf(now)
+      for (const zone of [effectiveToday.timeZone, waitingZone]) {
+        try {
+          candidates.push(nextLocalMidnight(nowSeconds, zone))
+        } catch {
+          candidates.push(nowSeconds + DAY_SECONDS)
+        }
+      }
+    }
+    return {
+      effectiveToday: { ...effectiveToday, pendingTimeZone: waitingZone },
+      effectiveFrom: utcInstantOf(Math.max(...candidates)),
+    }
   }
 
   /**
