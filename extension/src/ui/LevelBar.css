@@ -1,0 +1,99 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+.mf-level-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-md);
+}
+
+.mf-level-bar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mf-space-md);
+}
+
+.mf-level-bar__title {
+  margin: 0;
+  color: var(--mf-ink-1);
+  font-size: var(--mf-type-heading-size);
+  line-height: var(--mf-type-heading-line-height);
+  font-weight: var(--mf-type-heading-weight);
+  letter-spacing: var(--mf-type-heading-letter-spacing);
+  text-wrap: balance;
+}
+
+.mf-level-bar--compact .mf-level-bar__title {
+  font-size: var(--mf-type-body-strong-size);
+  line-height: var(--mf-type-body-strong-line-height);
+}
+
+/* Segments are separated by 2px gaps, never by outlines; only the outer ends round. */
+.mf-level-bar__track {
+  display: flex;
+  gap: calc(var(--mf-space-xs) / 2);
+  height: var(--mf-space-lg);
+  overflow: hidden;
+  border-radius: var(--mf-radius-sm);
+}
+
+.mf-level-bar--compact .mf-level-bar__track {
+  height: calc(var(--mf-space-md) - var(--mf-space-xs));
+}
+
+.mf-level-bar__segment {
+  flex-basis: 0;
+  min-width: calc(var(--mf-space-xs) / 2);
+  background: var(--mf-mark-muted);
+}
+
+.mf-level-bar__segment[data-level='0'] {
+  background: var(--mf-level-0);
+}
+
+.mf-level-bar__segment[data-level='1'] {
+  background: var(--mf-level-1);
+}
+
+.mf-level-bar__segment[data-level='2'] {
+  background: var(--mf-level-2);
+}
+
+.mf-level-bar__segment[data-level='3'] {
+  background: var(--mf-level-3);
+}
+
+.mf-level-bar__segment[data-level='4'] {
+  background: var(--mf-level-4);
+}
+
+.mf-level-bar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mf-space-sm) var(--mf-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  letter-spacing: var(--mf-type-label-letter-spacing);
+}
+
+.mf-level-bar__legend-item,
+.mf-level-bar__table-level {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mf-space-xs);
+}
+
+.mf-level-bar__legend-name {
+  color: var(--mf-ink-1);
+}
+
+.mf-level-bar__table-level {
+  color: var(--mf-ink-2);
+}
+
+.mf-level-bar__legend-minutes {
+  color: var(--mf-ink-2);
+  font-variant-numeric: tabular-nums;
+}

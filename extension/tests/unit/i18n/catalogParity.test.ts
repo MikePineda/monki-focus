@@ -8,6 +8,14 @@ import chromeEs from '../../../public/_locales/es/messages.json'
 const sortedKeys = (catalog: object) => Object.keys(catalog).sort()
 const placeholders = (message: string) =>
   [...message.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort()
+const PLURAL_SUFFIX = /_(one|other)$/
+const pluralBases = (catalog: object) => [
+  ...new Set(
+    Object.keys(catalog)
+      .filter((key) => PLURAL_SUFFIX.test(key))
+      .map((key) => key.replace(PLURAL_SUFFIX, ''))
+  ),
+]
 
 describe('i18n catalogs', () => {
   it('i18n_catalogs_have_identical_keys', () => {
@@ -29,6 +37,22 @@ describe('i18n catalogs', () => {
   it('chrome_locales_have_identical_keys', () => {
     expect(sortedKeys(chromeEs)).toEqual(sortedKeys(chromeEn))
     expect(sortedKeys(chromeEn)).toEqual(['extDescription', 'extName'])
+  })
+
+  it('every_plural_key_has_one_and_other_forms', () => {
+    for (const catalog of [en, es]) {
+      const keys = Object.keys(catalog)
+      for (const base of pluralBases(catalog)) {
+        expect(keys, base).toContain(`${base}_one`)
+        expect(keys, base).toContain(`${base}_other`)
+      }
+    }
+  })
+
+  it('plural_bases_never_collide_with_a_plain_key', () => {
+    for (const base of pluralBases(en)) {
+      expect(Object.keys(en)).not.toContain(base)
+    }
   })
 
   it('chrome_locale_descriptions_fit_the_store_limit', () => {

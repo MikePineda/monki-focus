@@ -1,27 +1,65 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { render } from 'preact'
-import { resolveLocale } from '../i18n/locale'
-import { createTranslator, type MessageKey } from '../i18n/t'
+import { render, type ComponentChildren } from 'preact'
+import { browser } from 'wxt/browser'
+import { I18nProvider } from '../i18n/I18nContext'
+import { preferredLocale } from '../i18n/LanguagePreference'
+import { createTranslator, type SimpleKey } from '../i18n/t'
+import { readUiPreferences, watchUiPreferences, type UiPreferences } from '../shared/UiPreferences'
+import { applyTheme } from '../theme/applyTheme'
+import { cacheTheme, readCachedTheme } from '../theme/ThemeCache'
 import '../theme/tokens.css'
 import { PageShell } from './PageShell'
 
+type ThemeCacheStorage = Parameters<typeof readCachedTheme>[0]
+
 export interface StartPageOptions {
-  titleKey: MessageKey
+  titleKey: SimpleKey
+  /** Page body under the heading; receives the page's I18nProvider. */
+  content?: ComponentChildren
   root?: HTMLElement | null
+  /** Seams for tests; production uses the extension's storage and browser. */
+  storage?: Parameters<typeof readUiPreferences>[0]
+  storageChanged?: Parameters<typeof watchUiPreferences>[0]
+  navigatorLanguages?: readonly string[]
+  themeCache?: ThemeCacheStorage
 }
 
+const SYSTEM_PREFERENCES: UiPreferences = { theme: 'system', language: 'system' }
+
 /**
- * Boots an extension page: resolves the locale, sets `<html lang>` and the
- * document title, and renders the page shell into `#app`.
- *
- * TODO(E8): read the user's language choice from storage before falling back
- * to `navigator.languages`.
+ * Boots an extension page: paints the cached theme at once (no flash), reads
+ * the stored theme and language (an explicit language wins over
+ * `navigator.languages`), sets `<html lang>`, `data-theme` and the document
+ * title, follows later theme changes and renders the page into `#app`.
  */
-export function startPage({ titleKey, root = document.getElementById('app') }: StartPageOptions) {
+export async function startPage({
+  titleKey,
+  content,
+  root = document.getElementById('app'),
+  storage = browser.storage.local,
+  storageChanged = browser.storage.onChanged,
+  navigatorLanguages = navigator.languages,
+  themeCache = localStorage,
+}: StartPageOptions): Promise<void> {
   if (!root) throw new Error('startPage: missing #app root element')
-  const locale = resolveLocale(navigator.languages)
+  applyTheme(readCachedTheme(themeCache))
+
+  const preferences = await readUiPreferences(storage).catch(() => SYSTEM_PREFERENCES)
+  const followTheme = (theme: UiPreferences['theme']) => {
+    applyTheme(theme)
+    cacheTheme(theme, themeCache)
+  }
+  followTheme(preferences.theme)
+  watchUiPreferences(storageChanged, { onTheme: followTheme })
+
+  const locale = preferredLocale(preferences.language, navigatorLanguages)
   const t = createTranslator(locale)
   document.documentElement.lang = locale
   document.title = t(titleKey)
-  render(<PageShell title={t(titleKey)} />, root)
+  render(
+    <I18nProvider locale={locale}>
+      <PageShell title={t(titleKey)}>{content}</PageShell>
+    </I18nProvider>,
+    root
+  )
 }

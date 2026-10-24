@@ -1,0 +1,24 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+.mf-countdown__display {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mf-space-sm);
+  margin: 0;
+  color: var(--mf-ink-1);
+}
+
+/* Countdown digits never animate. */
+.mf-countdown__value {
+  font-size: var(--mf-type-countdown-size);
+  line-height: var(--mf-type-countdown-line-height);
+  font-weight: var(--mf-type-countdown-weight);
+  letter-spacing: var(--mf-type-countdown-letter-spacing);
+  font-variant-numeric: var(--mf-type-countdown-numeric);
+}
+
+.mf-countdown__unit {
+  color: var(--mf-ink-3);
+  font-size: var(--mf-type-title-size);
+  line-height: var(--mf-type-title-line-height);
+  font-weight: var(--mf-type-body-weight);
+}

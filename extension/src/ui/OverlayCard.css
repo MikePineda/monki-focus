@@ -1,0 +1,96 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* A solid scrim with alpha; never blur, never glass. */
+.mf-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mf-space-md);
+  background: var(--mf-scrim);
+}
+
+.mf-overlay--preview {
+  position: relative;
+  inset: auto;
+  border-radius: var(--mf-radius-lg);
+}
+
+.mf-overlay__card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-md);
+  width: 100%;
+  max-width: 480px;
+  padding: var(--mf-space-xl);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius-lg);
+  background: var(--mf-surface-1);
+  box-shadow: var(--mf-elevation-2);
+  color: var(--mf-ink-1);
+}
+
+.mf-overlay__context {
+  margin: 0;
+  color: var(--mf-ink-3);
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  letter-spacing: var(--mf-type-label-letter-spacing);
+  font-variant-numeric: tabular-nums;
+}
+
+.mf-overlay__title {
+  margin: 0;
+  font-size: var(--mf-type-title-size);
+  line-height: var(--mf-type-title-line-height);
+  font-weight: var(--mf-type-title-weight);
+  letter-spacing: var(--mf-type-title-letter-spacing);
+  text-wrap: balance;
+}
+
+.mf-overlay__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-sm);
+}
+
+.mf-overlay__note {
+  margin: 0;
+  color: var(--mf-ink-3);
+  font-size: var(--mf-type-caption-size);
+  line-height: var(--mf-type-caption-line-height);
+  letter-spacing: var(--mf-type-caption-letter-spacing);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes mf-overlay-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--mf-space-sm));
+  }
+}
+
+@keyframes mf-overlay-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mf-overlay {
+    animation: mf-overlay-fade var(--mf-duration-base) var(--mf-easing-standard);
+  }
+
+  .mf-overlay__card {
+    animation: mf-overlay-enter var(--mf-duration-base) var(--mf-easing-standard);
+  }
+}
+
+/* Reduced motion: opacity only, 100ms. */
+@media (prefers-reduced-motion: reduce) {
+  .mf-overlay,
+  .mf-overlay__card {
+    animation: mf-overlay-fade 100ms linear;
+  }
+}

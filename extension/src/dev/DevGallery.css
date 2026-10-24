@@ -1,0 +1,74 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+.dev-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--mf-column-max)), 1fr));
+  gap: var(--mf-space-lg);
+}
+
+/* Each panel pins its own theme with data-theme, so it repaints its surface. */
+.dev-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-xl);
+  min-width: 0;
+  padding: var(--mf-space-lg);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius-lg);
+  background: var(--mf-surface-0);
+  color: var(--mf-ink-1);
+}
+
+.dev-panel__title {
+  margin: 0;
+  font-size: var(--mf-type-title-size);
+  line-height: var(--mf-type-title-line-height);
+  font-weight: var(--mf-type-title-weight);
+}
+
+.dev-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-md);
+  padding-top: var(--mf-space-md);
+  border-top: 1px solid var(--mf-line);
+}
+
+.dev-section__title {
+  margin: 0;
+  color: var(--mf-ink-2);
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  font-weight: var(--mf-type-label-weight);
+  letter-spacing: var(--mf-type-label-letter-spacing);
+}
+
+.dev-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-md);
+}
+
+.dev-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mf-space-lg);
+}
+
+.dev-why {
+  margin: 0;
+  color: var(--mf-ink-2);
+}
+
+.dev-level {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mf-space-xs);
+  color: var(--mf-ink-2);
+}
+
+.dev-list {
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--mf-line);
+}
