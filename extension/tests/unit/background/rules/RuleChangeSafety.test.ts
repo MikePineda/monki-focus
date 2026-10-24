@@ -161,3 +161,55 @@ describe('cancelling a pending change', () => {
     expect(state).toEqual({ effective: makeRuleset(), pending: null })
   })
 })
+
+describe('a waiting second time zone is never dropped early', () => {
+  beforeEach(() => {
+    fakeBrowser.reset()
+  })
+
+  async function waitingZoneChange() {
+    const service = await makeService(makeRuleset())
+    const proposed = await service.propose({
+      ruleset: makeRuleset({ timeZone: 'Etc/GMT-5' }),
+      baseRevision: 1,
+    })
+    if (proposed.status !== 'pending') throw new Error('a zone change waits')
+    return { service, zoneFrom: proposed.effectiveFrom }
+  }
+
+  const tighter = (revision: number) =>
+    makeRuleset({ revision, rules: [makeRule({ dailyBudgetMinutes: 10 })] })
+
+  it('a_tightening_saved_after_a_cancel_keeps_both_zones_until_the_removal_is_due', async () => {
+    const { service, zoneFrom } = await waitingZoneChange()
+    const cancelled = await service.cancelPending()
+
+    const outcome = await service.propose({
+      ruleset: { ...tighter(0), timeZone: 'Etc/GMT-2' },
+      baseRevision: cancelled.effective.revision,
+    })
+
+    expect(outcome).toMatchObject({ status: 'pending', effectiveFrom: zoneFrom })
+    if (outcome.status !== 'pending') return
+    expect(outcome.state.effective).toMatchObject({
+      timeZone: 'Etc/GMT-2',
+      pendingTimeZone: 'Etc/GMT-5',
+      rules: [{ dailyBudgetMinutes: 10 }],
+    })
+    expect(outcome.state.pending?.ruleset).not.toHaveProperty('pendingTimeZone')
+  })
+
+  it('reverting_to_the_old_zone_while_the_change_waits_keeps_both_zones_until_it_was_due', async () => {
+    const { service, zoneFrom } = await waitingZoneChange()
+
+    const outcome = await service.propose({ ruleset: tighter(0), baseRevision: 2 })
+
+    expect(outcome).toMatchObject({ status: 'pending', effectiveFrom: zoneFrom })
+    if (outcome.status !== 'pending') return
+    expect(outcome.state.effective).toMatchObject({
+      timeZone: 'Etc/GMT-2',
+      pendingTimeZone: 'Etc/GMT-5',
+    })
+    expect(await stored(PENDING_RULESET_KEY)).toMatchObject({ effectiveFrom: zoneFrom })
+  })
+})
