@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { randomLetters, webCryptoBytes, type RandomBytes } from './RandomLetters'
 
 /**
  * Names of the two `<html>` attributes the feed stylesheet keys on: `hide`
@@ -14,7 +15,6 @@ export interface GuardAttributes {
 
 const NAME_LETTERS = 12
 const GUARD_ATTRIBUTE_NAME = new RegExp(`^data-[a-z]{${NAME_LETTERS}}$`)
-const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
 /** A name this extension could have generated (also what the worker accepts). */
 export function isGuardAttributeName(name: unknown): name is string {
@@ -27,17 +27,12 @@ export function isGuardAttributes(value: unknown): value is GuardAttributes {
   return isGuardAttributeName(hide) && isGuardAttributeName(restrict) && hide !== restrict
 }
 
-function randomName(randomBytes: (size: number) => Uint8Array): string {
-  const bytes = randomBytes(NAME_LETTERS)
-  let letters = ''
-  for (const byte of bytes) letters += ALPHABET[byte % ALPHABET.length]
-  return `data-${letters}`
+function randomName(randomBytes: RandomBytes): string {
+  return `data-${randomLetters(NAME_LETTERS, randomBytes)}`
 }
 
 /** Fresh random names (WebCrypto); the two never collide. */
-export function randomGuardAttributes(
-  randomBytes: (size: number) => Uint8Array = (size) => crypto.getRandomValues(new Uint8Array(size))
-): GuardAttributes {
+export function randomGuardAttributes(randomBytes: RandomBytes = webCryptoBytes): GuardAttributes {
   const hide = randomName(randomBytes)
   let restrict = randomName(randomBytes)
   while (restrict === hide) restrict = randomName(randomBytes)

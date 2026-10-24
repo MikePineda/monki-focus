@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { randomLetters, webCryptoBytes, type RandomBytes } from '../shared/RandomLetters'
 import type { SiteFeedProfile } from '../sites/SiteFeedProfile'
 
 /** A custom-element-shaped tag, random per page, for the shadow host. */
-export function randomPlaceholderTag(
-  randomBytes: (size: number) => Uint8Array = (size) => crypto.getRandomValues(new Uint8Array(size))
-): string {
-  const letters = [...randomBytes(10)].map((byte) => String.fromCharCode(97 + (byte % 26))).join('')
+export function randomPlaceholderTag(randomBytes: RandomBytes = webCryptoBytes): string {
+  const letters = randomLetters(10, randomBytes)
   return `${letters.slice(0, 4)}-${letters.slice(4)}`
 }
 /** Coalesces DOM mutations before re-checking where the feed is. */
