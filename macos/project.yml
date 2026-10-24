@@ -1,0 +1,125 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# XcodeGen spec for the macOS menu-bar app. The generated MonkiFocus.xcodeproj
+# is gitignored: run `xcodegen generate` in this directory after every change
+# here or to the file layout. See README.md.
+name: MonkiFocus
+
+options:
+  bundleIdPrefix: dev.monkifocus
+  deploymentTarget:
+    macOS: '14.0'
+  developmentLanguage: en
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+
+packages:
+  MonkiCore:
+    path: Packages/MonkiCore
+  MonkiPlatform:
+    path: Packages/MonkiPlatform
+
+targets:
+  MonkiFocus:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+      # Generated design tokens, compiled straight from the shared package
+      # (never copied, never edited here): regenerate them with
+      # `npm run build -w @monki-focus/design-tokens`.
+      - path: ../packages/design-tokens/dist/macos
+        name: DesignTokens
+    dependencies:
+      - package: MonkiCore
+        product: MonkiCore
+      - package: MonkiPlatform
+        product: MonkiPlatform
+      # The native messaging host: the browser launches
+      # MonkiFocus.app/Contents/Helpers/monki-bridge.
+      - target: monki-bridge
+        embed: true
+        codeSign: true
+        copy:
+          destination: wrapper
+          subpath: Contents/Helpers
+    settings:
+      base:
+        PRODUCT_NAME: MonkiFocus
+        PRODUCT_BUNDLE_IDENTIFIER: dev.monkifocus.mac
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Monki Focus
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        # Menu-bar only: no Dock icon, but the status item is always visible.
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright monki-focus contributors. AGPL-3.0-or-later.
+        ENABLE_PREVIEWS: YES
+
+  monki-bridge:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Bridge
+    dependencies:
+      - package: MonkiCore
+        product: MonkiCore
+    settings:
+      base:
+        PRODUCT_NAME: monki-bridge
+        PRODUCT_BUNDLE_IDENTIFIER: dev.monkifocus.mac.bridge
+        # An embedded Info.plist gives the binary a stable code-signing
+        # identifier (otherwise codesign derives one from its hash).
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        SKIP_INSTALL: YES
+
+  MonkiFocusTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: AppTests
+      # Verbatim copies the tests read from their own bundle (see
+      # AppTests/TestResources.swift). A folder reference is copied as-is,
+      # so the catalog arrives as JSON instead of compiled .strings.
+      - path: App/Resources
+        name: CatalogSource
+        type: folder
+        buildPhase: resources
+      - path: ../packages/design-tokens/dist/tokens.json
+        buildPhase: resources
+    dependencies:
+      - target: MonkiFocus
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.monkifocus.mac.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  MonkiFocus:
+    build:
+      targets:
+        MonkiFocus: all
+        MonkiFocusTests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: true
+      # MonkiCoreTests run with `swift test` (CI step "MonkiCore tests"): they
+      # read packages/rules/fixtures from the checkout, and a test process
+      # launched by xcodebuild hangs on the privacy prompt when the checkout
+      # sits under ~/Documents or ~/Desktop. MonkiPlatformTests read nothing
+      # from disk, so CI covers them here.
+      targets:
+        - MonkiFocusTests
+        - package: MonkiPlatform/MonkiPlatformTests
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
