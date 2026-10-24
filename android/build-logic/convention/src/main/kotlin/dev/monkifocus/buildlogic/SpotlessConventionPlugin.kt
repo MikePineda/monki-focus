@@ -36,6 +36,10 @@ class SpotlessConventionPlugin : Plugin<Project> {
 
     private companion object {
         const val SPDX_HEADER = "// SPDX-License-Identifier: AGPL-3.0-or-later"
-        val GENERATED = listOf("**/build/**", "**/.gradle/**", "**/.kotlin/**")
+
+        // The bare directory patterns make Gradle prune those trees instead of
+        // walking them, so spotless never races a task writing into build/.
+        val GENERATED =
+            listOf("**/build", "**/build/**", "**/.gradle", "**/.gradle/**", "**/.kotlin", "**/.kotlin/**")
     }
 }

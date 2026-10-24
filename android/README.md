@@ -70,7 +70,8 @@ plugin from `gradle/libs.versions.toml` so the compiler version is the catalog's
 - Tests are JUnit4 with spec names (`@Test fun most_specific_rule_wins()`);
   Robolectric only for wiring. `.editorconfig` lets ktlint accept snake_case
   names on `@Test` functions and PascalCase on `@Composable` ones.
-- `:core-domain` reads `packages/rules` in place as a test resources directory.
+- `:core-domain` adds `schema/`, `data/`, `fixtures/` and `detectors/` of
+  `packages/rules` to its test resources straight from the package (no copy).
 - UI copy only through `core-ui/src/main/res/values{,-es}/strings.xml`; the
   parity test and Lint (`MissingTranslation`, `ExtraTranslation`,
   `HardcodedText` as errors) fail on drift.

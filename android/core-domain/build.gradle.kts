@@ -4,16 +4,17 @@ plugins {
     alias(libs.plugins.monki.jvm.library)
 }
 
-// Shared fixtures: packages/rules is a test resources dir, read in place (no
-// copy), so Gradle tracks it as a test input and reruns the tests when a
-// fixture changes.
+// Shared fixtures: the data directories of packages/rules join the test
+// resources straight from the package (nothing is copied into this module),
+// so Gradle tracks them as test inputs and reruns the tests when a fixture
+// changes. The filter is scoped to this `from`: the module's own
+// src/test/resources are untouched, and TypeScript sources and tooling stay out.
 val rulesPackage = rootProject.layout.projectDirectory.dir("../packages/rules")
 val expectSchemaV1 = providers.gradleProperty("monki.rules.expectSchemaV1").orElse("false")
 
-sourceSets.test {
-    resources {
-        srcDir(rulesPackage)
-        exclude("**/node_modules/**")
+tasks.processTestResources {
+    from(rulesPackage) {
+        include("schema/**", "data/**", "fixtures/**", "detectors/**")
     }
 }
 

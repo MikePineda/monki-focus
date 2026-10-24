@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 package dev.monkifocus.android.core.domain
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -8,8 +9,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * `packages/rules` is wired as a test resources dir of this module, so the
- * Kotlin runners read the same fixtures as the TypeScript ones.
+ * The data directories of `packages/rules` are test resources of this
+ * module, so the Kotlin runners read the same fixtures as the TypeScript ones.
  */
 class SharedRulesFixturesTest {
     private val rulesDir = File(requireNotNull(System.getProperty("monki.rulesDir")) { "monki.rulesDir is not set" })
@@ -17,10 +18,16 @@ class SharedRulesFixturesTest {
     @Test
     fun shared_rules_package_is_on_the_test_classpath() {
         assertTrue("$rulesDir must exist", rulesDir.isDirectory)
-        assertNotNull(
-            "packages/rules/README.md must be readable as a test resource",
-            javaClass.getResource("/README.md"),
-        )
+        listOf("schema", "data", "fixtures", "detectors")
+            .filter { File(rulesDir, it).isDirectory }
+            .forEach { dir -> assertNotNull("packages/rules/$dir must be a test resource", javaClass.getResource("/$dir")) }
+    }
+
+    @Test
+    fun only_the_rules_data_directories_reach_the_test_classpath() {
+        val leaked = listOf("/package.json", "/README.md", "/src", "/tests", "/scripts").filter { javaClass.getResource(it) != null }
+
+        assertEquals("TypeScript sources and tooling stay out", emptyList<String>(), leaked)
     }
 
     @Test
