@@ -217,4 +217,55 @@ describe('CommandRouter', () => {
     expect(result).toEqual({ ok: false, error: 'sender.rejected' })
     expect(attach).not.toHaveBeenCalled()
   })
+
+  it('rule_changes_are_answered_only_for_the_extension_own_pages', async () => {
+    const cancel = vi.fn(() => ({ effective: {}, pending: null }))
+    const router = new CommandRouter(
+      OWN_ID,
+      handlers({ 'rules.cancelPending': cancel } as unknown as Partial<CommandHandlers>)
+    )
+    const message = commandMessage('rules.cancelPending', {})
+
+    const fromContentScript = await router.route(message, {
+      id: OWN_ID,
+      url: REDDIT_HOME,
+      tab: { id: 1, url: REDDIT_HOME },
+    })
+    const fromOtherExtensionPage = await router.route(message, {
+      id: OWN_ID,
+      url: 'chrome-extension://another-id/options.html',
+    })
+    const fromOptions = await router.route(message, {
+      id: OWN_ID,
+      url: `chrome-extension://${OWN_ID}/options.html#rules`,
+    })
+
+    expect(fromContentScript).toEqual({ ok: false, error: 'sender.rejected' })
+    expect(fromOtherExtensionPage).toEqual({ ok: false, error: 'sender.rejected' })
+    expect(fromOptions).toMatchObject({ ok: true })
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    { key: 'ui.theme', value: 'sepia' },
+    { key: 'ui.language', value: 'fr' },
+    { key: 'privacy.storeTitles', value: 'yes' },
+    { key: 'ui.chartView.unknown', value: 'table' },
+    { key: 'rules.ruleset', value: {} },
+    { key: 'ui.theme', value: 'dark', extra: true },
+  ])('preference_change_%o_is_malformed', async (payload) => {
+    const set = vi.fn()
+    const router = new CommandRouter(
+      OWN_ID,
+      handlers({ 'preferences.set': set } as unknown as Partial<CommandHandlers>)
+    )
+
+    const result = await router.route(
+      { v: 1, type: 'preferences.set', payload },
+      { id: OWN_ID, url: `chrome-extension://${OWN_ID}/options.html` }
+    )
+
+    expect(result).toEqual({ ok: false, error: 'message.malformed' })
+    expect(set).not.toHaveBeenCalled()
+  })
 })

@@ -10,6 +10,15 @@ import {
   type IntentionMinutes,
 } from './GateContract'
 import { isGuardAttributes, type GuardAttributes } from './GuardAttributes'
+import type { ActiveIntentionAnswer, IntentionLogAnswer } from './IntentionContract'
+import {
+  EXPORT_FORMATS,
+  type DeletedLocalData,
+  type ExportedFile,
+  type ExportFormat,
+} from './LocalDataContract'
+import { isPreferenceChange, type PreferenceChange, type Preferences } from './PreferenceContract'
+import type { RuleChangeOutcome, RuleChangeProposal, RulesState } from './RuleChangeContract'
 import type { IncognitoAccess, TodayStats, WeekStats } from './StatsContract'
 
 /**
@@ -111,6 +120,22 @@ export interface CommandMap {
   'intention.leave': { request: { url: string }; response: ClosedAnswer }
   /** Timeout overlay: 5 more minutes (the tab goes through the doubled pause). */
   'intention.extend': { request: { url: string }; response: { opened: boolean } }
+  /** The effective and the pending rule set (options page). */
+  'rules.state': { request: Record<string, never>; response: RulesState }
+  /** A whole edited rule set, judged by the engine's rule-change policy. */
+  'rules.propose': { request: RuleChangeProposal; response: RuleChangeOutcome }
+  /** Drops the pending (loosening) change; never loosens anything. */
+  'rules.cancelPending': { request: Record<string, never>; response: RulesState }
+  'preferences.get': { request: Record<string, never>; response: Preferences }
+  'preferences.set': { request: PreferenceChange; response: Preferences }
+  /** The user's own local data as a file (ActivityWatch JSON or CSV). */
+  'data.export': { request: { format: ExportFormat }; response: ExportedFile }
+  /** Erases tracked activity and history (the rule set and preferences stay). */
+  'data.deleteAll': { request: Record<string, never>; response: DeletedLocalData }
+  /** The running intention, when the intention gate (E6) provides one. */
+  'intention.active': { request: Record<string, never>; response: ActiveIntentionAnswer }
+  'intention.end': { request: { targetGroup: string }; response: { ended: boolean } }
+  'intention.log': { request: Record<string, never>; response: IntentionLogAnswer }
 }
 
 export type CommandType = keyof CommandMap
@@ -237,7 +262,36 @@ export const COMMAND_PAYLOAD_GUARDS: {
   'intention.expired': isUrlPayload,
   'intention.leave': isUrlPayload,
   'intention.extend': isUrlPayload,
+  'rules.state': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
+  'rules.propose': (payload): payload is RuleChangeProposal => {
+    const { ruleset, baseRevision } = payload as Partial<RuleChangeProposal>
+    return (
+      hasOnlyKeys(payload, ['ruleset', 'baseRevision']) &&
+      typeof ruleset === 'object' &&
+      ruleset !== null &&
+      Number.isInteger(baseRevision)
+    )
+  },
+  'rules.cancelPending': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
+  'preferences.get': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
+  'preferences.set': (payload): payload is PreferenceChange => isPreferenceChange(payload),
+  'data.export': (payload): payload is { format: ExportFormat } =>
+    hasOnlyKeys(payload, ['format']) &&
+    (EXPORT_FORMATS as readonly unknown[]).includes((payload as { format?: unknown }).format),
+  'data.deleteAll': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
+  'intention.active': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
+  'intention.end': (payload): payload is { targetGroup: string } => {
+    const { targetGroup } = payload as { targetGroup?: unknown }
+    return (
+      hasOnlyKeys(payload, ['targetGroup']) &&
+      typeof targetGroup === 'string' &&
+      targetGroup.length > 0 &&
+      targetGroup.length <= 128
+    )
+  },
+  'intention.log': (payload): payload is Record<string, never> => hasOnlyKeys(payload, []),
 }
+
 
 /**
  * Commands only the extension's own gate page may send: the sender must be
@@ -256,6 +310,25 @@ export const GATE_PAGE_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>
   'gate.extend',
   'gate.continue',
   'gate.search',
+])
+
+
+/**
+ * Commands that change the user's rules, preferences or data (and the
+ * intention reads that go with them): the router answers them only from the
+ * extension's own pages (popup, options), never from a content script.
+ */
+export const EXTENSION_PAGE_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
+  'rules.state',
+  'rules.propose',
+  'rules.cancelPending',
+  'preferences.get',
+  'preferences.set',
+  'data.export',
+  'data.deleteAll',
+  'intention.active',
+  'intention.end',
+  'intention.log',
 ])
 
 /**

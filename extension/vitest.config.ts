@@ -2,6 +2,7 @@
 import preact from '@preact/preset-vite'
 import { defineConfig } from 'vitest/config'
 import { WxtVitest } from 'wxt/testing/vitest-plugin'
+import { rulesetValidatorPlugin } from './config/rulesetValidatorPlugin.ts'
 
 // Component, theme and page specs need a DOM; everything else (service
 // worker, config, e2e support) runs in plain Node, where `node:https` and
@@ -15,7 +16,7 @@ export default defineConfig({
   // WxtVitest wires `fakeBrowser` as `browser`, the WXT aliases and the
   // `define*` globals so entrypoints run unchanged under Vitest. The Preact
   // preset compiles TSX exactly like the extension build.
-  plugins: [WxtVitest(), preact()],
+  plugins: [WxtVitest(), preact(), rulesetValidatorPlugin()],
   test: {
     restoreMocks: true,
     projects: [

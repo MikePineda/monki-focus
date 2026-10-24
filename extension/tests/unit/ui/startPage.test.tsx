@@ -92,4 +92,17 @@ describe('startPage', () => {
   it('missing_root_is_a_boot_error', async () => {
     await expect(startPage({ titleKey: 'popup.title', root: null })).rejects.toThrow(/#app/)
   })
+
+  it('page_switches_language_when_the_preference_changes', async () => {
+    await startPage({ titleKey: 'options.title', root: mountRoot(), navigatorLanguages: ['en'] })
+
+    await browser.storage.local.set({ [UI_PREFERENCE_KEYS.language]: 'es' })
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(es['options.title'])
+    )
+    expect(document.documentElement.lang).toBe('es')
+    expect(document.title).toBe(es['options.title'])
+    expect(en['options.title']).not.toBe(es['options.title'])
+  })
 })

@@ -1,0 +1,61 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Shared chart frame (header, axis, ticks) and the 7-day pulse bars. */
+.mf-pulse-columns,
+.mf-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-md);
+  min-width: 0;
+}
+
+.mf-chart__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mf-space-md);
+}
+
+.mf-chart__title {
+  margin: 0;
+  font-size: var(--mf-type-heading-size);
+  line-height: var(--mf-type-heading-line-height);
+  font-weight: var(--mf-type-heading-weight);
+  letter-spacing: var(--mf-type-heading-letter-spacing);
+}
+
+.mf-chart__gridline {
+  stroke: var(--mf-gridline);
+  stroke-width: 1;
+}
+
+.mf-chart__baseline {
+  stroke: var(--mf-baseline);
+  stroke-width: 1;
+}
+
+.mf-chart__tick,
+.mf-chart__value {
+  fill: var(--mf-ink-3);
+  font-family: var(--mf-font-family-sans);
+  font-size: var(--mf-type-caption-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.mf-chart__value {
+  fill: var(--mf-ink-1);
+  font-weight: var(--mf-type-numeric-weight);
+}
+
+.mf-pulse-columns__plot {
+  max-width: 100%;
+  height: auto;
+}
+
+.mf-pulse-columns__bar {
+  fill: var(--mf-mark-neutral);
+}
+
+.mf-chart__scroll {
+  overflow-x: auto;
+}

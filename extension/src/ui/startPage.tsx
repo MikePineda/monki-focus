@@ -7,6 +7,7 @@ import { createTranslator, type SimpleKey } from '../i18n/t'
 import { readUiPreferences, watchUiPreferences, type UiPreferences } from '../shared/UiPreferences'
 import { applyTheme } from '../theme/applyTheme'
 import { cacheTheme, readCachedTheme } from '../theme/ThemeCache'
+import '../theme/inter.css'
 import '../theme/tokens.css'
 import { PageShell } from './PageShell'
 
@@ -35,7 +36,8 @@ const SYSTEM_PREFERENCES: UiPreferences = { theme: 'system', language: 'system' 
  * Boots an extension page: paints the cached theme at once (no flash), reads
  * the stored theme and language (an explicit language wins over
  * `navigator.languages`), sets `<html lang>`, `data-theme` and the document
- * title, follows later theme changes and renders the page into `#app`.
+ * title, follows later theme and language changes (the page re-renders in
+ * the new language, keeping its state) and renders the page into `#app`.
  */
 export async function startPage({
   titleKey,
@@ -56,16 +58,18 @@ export async function startPage({
     cacheTheme(theme, themeCache)
   }
   followTheme(preferences.theme)
-  watchUiPreferences(storageChanged, { onTheme: followTheme })
-
-  const locale = preferredLocale(preferences.language, navigatorLanguages)
-  const t = createTranslator(locale)
-  document.documentElement.lang = locale
-  document.title = t(titleKey)
-  render(
-    <I18nProvider locale={locale}>
-      {shell ? <PageShell title={t(titleKey)}>{content}</PageShell> : content}
-    </I18nProvider>,
-    root
-  )
+  const renderIn = (language: UiPreferences['language']) => {
+    const locale = preferredLocale(language, navigatorLanguages)
+    const t = createTranslator(locale)
+    document.documentElement.lang = locale
+    document.title = t(titleKey)
+    render(
+      <I18nProvider locale={locale}>
+        {shell ? <PageShell title={t(titleKey)}>{content}</PageShell> : content}
+      </I18nProvider>,
+      root
+    )
+  }
+  watchUiPreferences(storageChanged, { onTheme: followTheme, onLanguage: renderIn })
+  renderIn(preferences.language)
 }

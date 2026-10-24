@@ -1,0 +1,72 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+.mf-heatmap__grid {
+  display: grid;
+  grid-template-columns: max-content repeat(24, var(--mf-space-md));
+  gap: calc(var(--mf-space-xs) / 2);
+  align-items: center;
+  width: max-content;
+}
+
+.mf-heatmap__hour,
+.mf-heatmap__day {
+  color: var(--mf-ink-3);
+  font-size: var(--mf-type-caption-size);
+  line-height: var(--mf-type-caption-line-height);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mf-heatmap__day {
+  padding-inline-end: var(--mf-space-sm);
+}
+
+.mf-heatmap__cell {
+  width: var(--mf-space-md);
+  height: var(--mf-space-md);
+  border-radius: var(--mf-radius-sm);
+  background: var(--mf-surface-2);
+}
+
+.mf-heatmap__cell[data-band='0'] {
+  background: var(--mf-level-0);
+}
+
+.mf-heatmap__cell[data-band='1'] {
+  background: var(--mf-level-1);
+}
+
+.mf-heatmap__cell[data-band='2'] {
+  background: var(--mf-level-2);
+}
+
+.mf-heatmap__cell[data-band='3'] {
+  background: var(--mf-level-3);
+}
+
+.mf-heatmap__cell[data-band='4'] {
+  background: var(--mf-level-4);
+}
+
+.mf-heatmap__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mf-space-xs) var(--mf-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--mf-ink-1);
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  font-variant-numeric: tabular-nums;
+}
+
+.mf-heatmap__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mf-space-xs);
+}
+
+.mf-heatmap__table th,
+.mf-heatmap__table td {
+  white-space: nowrap;
+}

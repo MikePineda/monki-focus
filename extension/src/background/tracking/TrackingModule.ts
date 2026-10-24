@@ -4,6 +4,8 @@ import type { RulesCatalog } from '@monki-focus/engine'
 import type { Browser } from 'wxt/browser'
 import type { Clock } from '../../shared/clock'
 import type { IncognitoAccess, TodayStats, WeekStats } from '../../shared/StatsContract'
+import type { LocalDataCommands } from '../commands/commands'
+import { LocalDataService } from '../data/LocalDataService'
 import { IncognitoAccessCheck, type IncognitoExtensionApi } from '../privacy/IncognitoAccessCheck'
 import { deviceTimeZone } from '../rules/DeviceTimeZone'
 import type { RulesetStore } from '../rules/RulesetStore'
@@ -62,6 +64,8 @@ export interface TrackingModule {
   /** Resolves once the stores are open (tests and the first pulse wait on it). */
   ready(): Promise<unknown>
   commands: TrackingCommands
+  /** Export and erasure of the tracked data (`data.*`). */
+  localData: LocalDataCommands
   /** Runs one aggregation now (the alarm does it every 5 minutes). */
   aggregate(): Promise<void>
   /** One immediate pulse, outside the scheduler. */
@@ -114,8 +118,23 @@ export function createTrackingModule(deps: TrackingModuleDependencies): Tracking
       deviceId: device,
       bucketId,
     })
+    const tracker = new ActivityTracker(clock, probe, recorder)
+    const localData = new LocalDataService({
+      db,
+      clock,
+      deviceId: device,
+      bucketId,
+      session: browser.storage.session,
+      local,
+      // Waits for pulses and aggregation runs in flight (the job queues runs).
+      quiesce: async () => {
+        await tracker.settled()
+        await job.run(clock.now())
+      },
+    })
     return {
-      tracker: new ActivityTracker(clock, probe, recorder),
+      tracker,
+      localData,
       job,
       today: new TodayStatsQuery(blocks, new IntentionStatsQuery(new IntentionLog(db))),
       week: new WeekStatsQuery(blocks),
@@ -153,6 +172,10 @@ export function createTrackingModule(deps: TrackingModuleDependencies): Tracking
     settled: async () => (await wired).tracker.settled(),
     aggregate,
     pulse,
+    localData: {
+      export: async (format) => (await wired).localData.export(format),
+      deleteAll: async () => (await wired).localData.deleteAll(),
+    },
     commands: {
       // Fresh numbers: fold the latest heartbeats into blocks before reading.
       async today() {
