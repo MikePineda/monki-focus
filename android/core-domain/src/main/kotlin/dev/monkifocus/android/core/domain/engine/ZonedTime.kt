@@ -130,3 +130,44 @@ internal fun nextLocalMidnight(
     val today = localTimeAt(epochSeconds, timeZone).dayNumber
     return firstInstantReachingWall(epochSeconds, wallSecondsOfDay(today + 1), timeZone)
 }
+
+/** Whole seconds a zone's wall clock is ahead of UTC at an instant. */
+private fun offsetSecondsAt(
+    epochSeconds: Long,
+    timeZone: String,
+): Long = wallSecondsAt(epochSeconds, timeZone) - epochSeconds
+
+/** Zones change their offset at most once an hour (in practice twice a year). */
+private const val TRANSITION_PROBE_SECONDS = 3600L
+
+/**
+ * Instants in `(from, to]` at which the zone's UTC offset changes (DST
+ * transitions): the first second with the new offset. The wall clock is
+ * monotonic between two of them, so a wall time is reached at most once per
+ * stretch (a fall-back repeats the hour after the transition). Probes hourly
+ * and bisects like the TypeScript engine, so both find the same instants.
+ */
+internal fun offsetTransitionsBetween(
+    from: Long,
+    to: Long,
+    timeZone: String,
+): List<Long> {
+    val transitions = mutableListOf<Long>()
+    var before = from
+    var offset = offsetSecondsAt(from, timeZone)
+    while (before < to) {
+        val probe = minOf(before + TRANSITION_PROBE_SECONDS, to)
+        if (offsetSecondsAt(probe, timeZone) != offset) {
+            var low = before
+            var high = probe
+            while (high - low > 1) {
+                val middle = Math.floorDiv(low + high, 2L)
+                if (offsetSecondsAt(middle, timeZone) == offset) low = middle else high = middle
+            }
+            transitions += high
+            offset = offsetSecondsAt(probe, timeZone)
+        }
+        before = probe
+    }
+    return transitions
+}

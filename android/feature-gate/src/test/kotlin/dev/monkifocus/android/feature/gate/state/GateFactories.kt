@@ -35,6 +35,7 @@ internal fun aGateDecision(gate: Gate? = aGate()) =
         reason = ReasonCode.INTENTION_REQUIRED,
         gate = gate,
         explanationKey = ExplanationKey.INTENTION_REQUIRED,
+        validUntil = nowPlus(60),
     )
 
 internal fun aBlockDecision(
@@ -47,6 +48,7 @@ internal fun aBlockDecision(
     reason = reason,
     gate = null,
     explanationKey = explanationKey,
+    validUntil = if (reason == ReasonCode.ENGINE_ERROR) null else nowPlus(60),
 )
 
 internal fun anAllowDecision() =
@@ -57,6 +59,7 @@ internal fun anAllowDecision() =
         reason = ReasonCode.INTENTION_ACTIVE,
         gate = null,
         explanationKey = ExplanationKey.INTENTION_ACTIVE,
+        validUntil = nowPlus(60),
     )
 
 internal fun anEscalation(

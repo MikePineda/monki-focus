@@ -46,6 +46,7 @@ private fun assertObservation(observation: Observation) {
 }
 
 private fun assertStateInstants(state: DecisionState) {
+    state.pendingEffectiveFrom?.let(::epochSecondsOf)
     for (unlock in state.unlocks) {
         epochSecondsOf(unlock.notBefore)
         epochSecondsOf(unlock.expiresAt)
@@ -62,6 +63,21 @@ private fun assertStateInstants(state: DecisionState) {
     }
 }
 
+/**
+ * The checks of the inputs every candidate computation reads (the clock, the
+ * pinned zones, the observation); returns the instant in epoch seconds.
+ */
+internal fun guardCandidateInputs(
+    ruleset: Ruleset,
+    observation: Observation,
+    at: String,
+): Long {
+    val seconds = epochSecondsOf(at)
+    zonesOf(ruleset).forEach(::assertResolvableTimeZone)
+    assertObservation(observation)
+    return seconds
+}
+
 /** Throws on the first invalid input; returns `now` in epoch seconds. */
 internal fun guardDecisionInputs(
     ruleset: Ruleset,
@@ -69,9 +85,7 @@ internal fun guardDecisionInputs(
     state: DecisionState,
     now: String,
 ): Long {
-    val nowSeconds = epochSecondsOf(now)
-    zonesOf(ruleset).forEach(::assertResolvableTimeZone)
-    assertObservation(observation)
+    val nowSeconds = guardCandidateInputs(ruleset, observation, now)
     assertStateInstants(state)
     return nowSeconds
 }
