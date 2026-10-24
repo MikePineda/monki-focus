@@ -104,14 +104,14 @@ and the settings name the external provider before you opt in.
 
 ## Retention
 
-| Data                            | Default retention                             |
-| ------------------------------- | --------------------------------------------- |
-| Raw activity events on a client | 30 days                                       |
-| Activity blocks on a client     | Until you delete them                         |
-| Server heartbeats               | 30 days                                       |
-| Server activity blocks          | 90 days (configurable by the server operator) |
-| Digest items on the server      | 14 days                                       |
-| Unlock and bypass audit trail   | Kept with the account until it is deleted     |
+| Data                            | Default retention                              |
+| ------------------------------- | ---------------------------------------------- |
+| Raw activity events on a client | 30 days                                        |
+| Activity blocks on a client     | Until you delete them                          |
+| Server heartbeats               | 30 days                                        |
+| Server activity blocks          | 400 days (configurable by the server operator) |
+| Digest items on the server      | 14 days                                        |
+| Unlock and bypass audit trail   | Kept with the account until it is deleted      |
 
 Deleting your account on the server removes all of its data and notifies your
 guardian that the link ended.
