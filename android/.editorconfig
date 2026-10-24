@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# ktlint settings for the Android tree; the repo-root .editorconfig still
+# applies (indent 4 for Kotlin, LF, final newline).
+
+[*.{kt,kts}]
+ktlint_code_style = ktlint_official
+max_line_length = 140
+# Spec-style test names (`hide_feed_never_blocks_a_permalink`) and
+# PascalCase composables are allowed by annotation.
+ktlint_function_naming_ignore_when_annotated_with = Test,Composable

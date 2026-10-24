@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Window theme only; everything on screen is Compose (MonkiTheme). -->
+<resources>
+    <style name="Theme.MonkiFocus" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
