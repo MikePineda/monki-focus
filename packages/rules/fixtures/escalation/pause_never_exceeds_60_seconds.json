@@ -8,6 +8,7 @@
       "phase": "idle",
       "attemptCount": 2,
       "lastAttemptAt": "2026-10-25T22:30:00Z",
+      "lastActivityAt": "2026-10-25T22:30:00Z",
       "brokenCount": 2,
       "lastFrictionType": "breath",
       "gate": null,
@@ -31,6 +32,7 @@
           "phase": "pausing",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:00Z",
           "brokenCount": 2,
           "lastFrictionType": "reflect",
           "gate": {
@@ -60,6 +62,7 @@
           "phase": "asking",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:01:00Z",
           "brokenCount": 2,
           "lastFrictionType": "reflect",
           "gate": {
@@ -92,6 +95,7 @@
           "phase": "active",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:01:10Z",
           "brokenCount": 2,
           "lastFrictionType": "reflect",
           "gate": null,
@@ -115,6 +119,7 @@
           "phase": "timed_out",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:06:10Z",
           "brokenCount": 2,
           "lastFrictionType": "reflect",
           "gate": null,
@@ -138,17 +143,18 @@
           "phase": "pausing",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:06:20Z",
           "brokenCount": 3,
           "lastFrictionType": "type-intention",
           "gate": {
             "level": 2,
             "pauseSeconds": 60,
             "frictionType": "type-intention",
-            "requiresTypedIntention": false,
+            "requiresTypedIntention": true,
             "requiresGuardianKey": false
           },
           "pauseEndsAt": "2026-10-25T23:07:20Z",
-          "pendingExtension": true,
+          "pendingExtension": false,
           "intentionExpiresAt": null,
           "overrideReadyAt": null,
           "overrideEndsAt": null
@@ -164,15 +170,22 @@
       "then": {
         "state": {
           "targetGroup": "r-reddit-friction",
-          "phase": "active",
+          "phase": "asking",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:07:20Z",
           "brokenCount": 3,
           "lastFrictionType": "type-intention",
-          "gate": null,
-          "pauseEndsAt": null,
+          "gate": {
+            "level": 2,
+            "pauseSeconds": 60,
+            "frictionType": "type-intention",
+            "requiresTypedIntention": true,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:07:20Z",
           "pendingExtension": false,
-          "intentionExpiresAt": "2026-10-25T23:12:20Z",
+          "intentionExpiresAt": null,
           "overrideReadyAt": null,
           "overrideEndsAt": null
         },

@@ -8,6 +8,7 @@
       "phase": "idle",
       "attemptCount": 0,
       "lastAttemptAt": null,
+      "lastActivityAt": null,
       "brokenCount": 0,
       "lastFrictionType": null,
       "gate": null,
@@ -31,6 +32,7 @@
           "phase": "pausing",
           "attemptCount": 1,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:00Z",
           "brokenCount": 0,
           "lastFrictionType": "countdown",
           "gate": {
@@ -60,6 +62,7 @@
           "phase": "asking",
           "attemptCount": 1,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:05Z",
           "brokenCount": 0,
           "lastFrictionType": "countdown",
           "gate": {
@@ -89,6 +92,7 @@
           "phase": "idle",
           "attemptCount": 1,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:06Z",
           "brokenCount": 0,
           "lastFrictionType": "countdown",
           "gate": null,
@@ -112,6 +116,7 @@
           "phase": "pausing",
           "attemptCount": 2,
           "lastAttemptAt": "2026-10-25T23:10:00Z",
+          "lastActivityAt": "2026-10-25T23:10:00Z",
           "brokenCount": 0,
           "lastFrictionType": "breath",
           "gate": {
@@ -141,6 +146,7 @@
           "phase": "asking",
           "attemptCount": 2,
           "lastAttemptAt": "2026-10-25T23:10:00Z",
+          "lastActivityAt": "2026-10-25T23:10:15Z",
           "brokenCount": 0,
           "lastFrictionType": "breath",
           "gate": {
@@ -170,6 +176,7 @@
           "phase": "idle",
           "attemptCount": 2,
           "lastAttemptAt": "2026-10-25T23:10:00Z",
+          "lastActivityAt": "2026-10-25T23:10:16Z",
           "brokenCount": 0,
           "lastFrictionType": "breath",
           "gate": null,
@@ -193,6 +200,7 @@
           "phase": "pausing",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:20:00Z",
+          "lastActivityAt": "2026-10-25T23:20:00Z",
           "brokenCount": 0,
           "lastFrictionType": "reflect",
           "gate": {
@@ -222,6 +230,7 @@
           "phase": "asking",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:20:00Z",
+          "lastActivityAt": "2026-10-25T23:20:15Z",
           "brokenCount": 0,
           "lastFrictionType": "reflect",
           "gate": {
@@ -254,6 +263,7 @@
           "phase": "asking",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:20:00Z",
+          "lastActivityAt": "2026-10-25T23:20:15Z",
           "brokenCount": 0,
           "lastFrictionType": "reflect",
           "gate": {
@@ -283,6 +293,7 @@
           "phase": "idle",
           "attemptCount": 3,
           "lastAttemptAt": "2026-10-25T23:20:00Z",
+          "lastActivityAt": "2026-10-25T23:20:30Z",
           "brokenCount": 0,
           "lastFrictionType": "reflect",
           "gate": null,
@@ -306,6 +317,7 @@
           "phase": "pausing",
           "attemptCount": 4,
           "lastAttemptAt": "2026-10-25T23:30:00Z",
+          "lastActivityAt": "2026-10-25T23:30:00Z",
           "brokenCount": 0,
           "lastFrictionType": "type-intention",
           "gate": {
@@ -335,6 +347,7 @@
           "phase": "asking",
           "attemptCount": 4,
           "lastAttemptAt": "2026-10-25T23:30:00Z",
+          "lastActivityAt": "2026-10-25T23:30:15Z",
           "brokenCount": 0,
           "lastFrictionType": "type-intention",
           "gate": {
@@ -367,6 +380,7 @@
           "phase": "asking",
           "attemptCount": 4,
           "lastAttemptAt": "2026-10-25T23:30:00Z",
+          "lastActivityAt": "2026-10-25T23:30:15Z",
           "brokenCount": 0,
           "lastFrictionType": "type-intention",
           "gate": {
@@ -399,6 +413,7 @@
           "phase": "active",
           "attemptCount": 4,
           "lastAttemptAt": "2026-10-25T23:30:00Z",
+          "lastActivityAt": "2026-10-25T23:30:40Z",
           "brokenCount": 0,
           "lastFrictionType": "type-intention",
           "gate": null,

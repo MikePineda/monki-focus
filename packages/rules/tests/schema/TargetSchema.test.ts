@@ -7,16 +7,19 @@ function isValidTarget(target: unknown): boolean {
 }
 
 describe('target schema', () => {
-  it.each([['reddit.com'], ['old.reddit.com'], ['xn--bcher-kva.example'], ['example.xn--p1ai']])(
-    'accepts_lower_case_punycode_domain %s',
-    (domain) => {
-      expect(isValidTarget({ kind: 'site', domain })).toBe(true)
-    }
-  )
+  it.each([
+    ['reddit.com'],
+    ['old.reddit.com'],
+    ['xn--bcher-kva.example'],
+    ['example.xn--p1ai'],
+    ['www.reddit.com'],
+    ['m.youtube.com'],
+    ['twitter.com'],
+  ])('accepts_lower_case_punycode_domain_normalised_later %s', (domain) => {
+    expect(isValidTarget({ kind: 'site', domain })).toBe(true)
+  })
 
   it.each([
-    ['www.reddit.com', 'www prefix'],
-    ['m.youtube.com', 'mobile prefix'],
     ['Reddit.com', 'upper case'],
     ['https://reddit.com', 'scheme'],
     ['reddit.com:443', 'port'],

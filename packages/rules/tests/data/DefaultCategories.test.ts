@@ -42,6 +42,12 @@ describe('default categories', () => {
     expect(levelOf('surface:youtube.watch')).toBe(50)
   })
 
+  it('youtube_feed_surfaces_are_categorised', () => {
+    expect(levelOf('surface:youtube.explore')).toBe(25)
+    expect(levelOf('surface:youtube.subscriptions')).toBe(50)
+    expect(levelOf('surface:reddit.user_feed')).toBe(0)
+  })
+
   it('default_targets_are_unique', () => {
     const keys = assignments.map(keyOf)
     expect(new Set(keys).size).toBe(keys.length)

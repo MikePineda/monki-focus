@@ -65,6 +65,10 @@ describe('data files', () => {
       'reddit.permalink',
       'x.home',
       'x.status',
+      'reddit.user_feed',
+      'youtube.subscriptions',
+      'youtube.explore',
+      'instagram.search',
     ]) {
       expect(ids.has(id), id).toBe(true)
     }
@@ -113,6 +117,50 @@ describe('data files', () => {
       const globs = Object.values(profile.surfaces).flat()
       expect(new Set(globs).size, profile.domain).toBe(globs.length)
     }
+  })
+
+  it('new_feed_surfaces_are_feeds', () => {
+    const kinds = new Map(loadSurfaceRegistry().surfaces.map((s) => [s.id, s.kind]))
+    for (const id of ['reddit.user_feed', 'youtube.subscriptions', 'youtube.explore']) {
+      expect(kinds.get(id), id).toBe('feed')
+    }
+  })
+
+  it('reddit_sort_orders_and_multireddits_are_feeds', () => {
+    const reddit = loadSiteProfiles().find(({ profile }) => profile.domain === 'reddit.com')
+    const feed = reddit?.profile.surfaces['reddit.feed'] ?? []
+    for (const glob of [
+      '/controversial',
+      '/rising',
+      '/r/*/controversial',
+      '/r/*/gilded',
+      '/r/*/rising',
+      '/user/*/m/*',
+    ]) {
+      expect(feed, glob).toContain(glob)
+    }
+    expect(reddit?.profile.surfaces['reddit.user_feed']).toEqual(
+      expect.arrayContaining(['/user/*', '/u/*'])
+    )
+    expect(reddit?.profile.surfaces['reddit.permalink']).toContain('/user/*/comments/**')
+  })
+
+  it('youtube_feeds_and_hashtags_are_mapped', () => {
+    const youtube = loadSiteProfiles().find(({ profile }) => profile.domain === 'youtube.com')
+    expect(youtube?.profile.surfaces['youtube.subscriptions']).toContain('/feed/subscriptions')
+    expect(youtube?.profile.surfaces['youtube.explore']).toEqual(
+      expect.arrayContaining(['/feed/explore', '/feed/trending', '/hashtag/*'])
+    )
+  })
+
+  it('instagram_explore_search_is_utility_and_tags_are_feed', () => {
+    const instagram = loadSiteProfiles().find(({ profile }) => profile.domain === 'instagram.com')
+    expect(instagram?.profile.surfaces['instagram.search']).toEqual(
+      expect.arrayContaining(['/explore/search', '/explore/search/**'])
+    )
+    expect(instagram?.profile.surfaces['instagram.explore']).toEqual(
+      expect.arrayContaining(['/explore', '/explore/tags/*'])
+    )
   })
 
   it('x_profile_rewrites_twitter_com', () => {

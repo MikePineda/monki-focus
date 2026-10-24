@@ -1,12 +1,13 @@
 {
   "id": "specificity.path_rule_never_matches_an_unknown_path",
   "kind": "specificity",
-  "description": "When only the domain is visible, rules with a path cannot match and the domain rule applies.",
+  "description": "When only the domain is visible a path allow rule cannot loosen anything: the strictest rule of the domain applies.",
   "given": {
     "ruleset": {
       "schemaVersion": 1,
       "revision": 1,
       "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [
         {
           "id": "r-ml-allow",
@@ -45,7 +46,6 @@
       }
     },
     "now": "2026-10-26T10:00:00+11:00",
-    "timeZone": "Australia/Sydney",
     "state": {
       "escalation": [],
       "usage": null,

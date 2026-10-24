@@ -7,6 +7,7 @@
       "schemaVersion": 1,
       "revision": 1,
       "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [
         {
           "id": "r-x-friction",
@@ -34,7 +35,6 @@
       }
     },
     "now": "2026-10-26T10:00:00+11:00",
-    "timeZone": "Australia/Sydney",
     "state": {
       "escalation": [
         {
@@ -42,6 +42,7 @@
           "phase": "active",
           "attemptCount": 1,
           "lastAttemptAt": "2026-10-25T22:50:00Z",
+          "lastActivityAt": "2026-10-25T22:54:10Z",
           "brokenCount": 0,
           "lastFrictionType": "countdown",
           "gate": null,

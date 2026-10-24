@@ -11,14 +11,19 @@
       "/top",
       "/best",
       "/rising",
+      "/controversial",
       "/r/all/**",
       "/r/popular/**",
       "/r/*",
       "/r/*/hot",
       "/r/*/new",
       "/r/*/top",
-      "/r/*/rising"
+      "/r/*/rising",
+      "/r/*/controversial",
+      "/r/*/gilded",
+      "/user/*/m/*"
     ],
+    "reddit.user_feed": ["/user/*", "/user/*/overview", "/user/*/submitted", "/u/*"],
     "reddit.permalink": ["/r/*/comments/**", "/user/*/comments/**", "/comments/**"],
     "reddit.search": ["/search/**", "/r/*/search/**"],
     "reddit.messages": ["/message/**", "/chat/**"]

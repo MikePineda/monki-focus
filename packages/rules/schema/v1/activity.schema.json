@@ -16,8 +16,15 @@
       "additionalProperties": false,
       "required": ["app"],
       "properties": {
-        "app": { "type": "string", "minLength": 1, "maxLength": 255 },
-        "title": { "type": "string", "maxLength": 1024 }
+        "app": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 1024
+        }
       }
     },
     "afkData": {
@@ -26,7 +33,10 @@
       "additionalProperties": false,
       "required": ["status"],
       "properties": {
-        "status": { "type": "string", "enum": ["afk", "not-afk"] }
+        "status": {
+          "type": "string",
+          "enum": ["afk", "not-afk"]
+        }
       }
     },
     "webTabData": {
@@ -36,14 +46,34 @@
       "additionalProperties": false,
       "required": ["domain", "path", "surface", "audible", "incognito"],
       "properties": {
-        "domain": { "$ref": "target.schema.json#/$defs/domain" },
-        "path": { "type": "string", "maxLength": 2048, "pattern": "^/" },
-        "surface": {
-          "oneOf": [{ "$ref": "target.schema.json#/$defs/surfaceId" }, { "type": "null" }]
+        "domain": {
+          "$ref": "target.schema.json#/$defs/domain"
         },
-        "audible": { "type": "boolean" },
-        "incognito": { "type": "boolean" },
-        "title": { "type": "string", "maxLength": 1024 }
+        "path": {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^/"
+        },
+        "surface": {
+          "oneOf": [
+            {
+              "$ref": "target.schema.json#/$defs/surfaceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "audible": {
+          "type": "boolean"
+        },
+        "incognito": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 1024
+        }
       }
     },
     "event": {
@@ -52,13 +82,23 @@
       "additionalProperties": false,
       "required": ["timestamp", "duration", "data"],
       "properties": {
-        "timestamp": { "$ref": "time.schema.json#/$defs/utcInstant" },
-        "duration": { "$ref": "#/$defs/seconds" },
+        "timestamp": {
+          "$ref": "time.schema.json#/$defs/utcInstant"
+        },
+        "duration": {
+          "$ref": "#/$defs/seconds"
+        },
         "data": {
           "oneOf": [
-            { "$ref": "#/$defs/windowData" },
-            { "$ref": "#/$defs/afkData" },
-            { "$ref": "#/$defs/webTabData" }
+            {
+              "$ref": "#/$defs/windowData"
+            },
+            {
+              "$ref": "#/$defs/afkData"
+            },
+            {
+              "$ref": "#/$defs/webTabData"
+            }
           ]
         }
       }
@@ -75,11 +115,35 @@
       "additionalProperties": false,
       "required": ["source", "activityKey", "path", "surface"],
       "properties": {
-        "source": { "$ref": "#/$defs/source" },
-        "activityKey": { "type": "string", "minLength": 1, "maxLength": 255 },
-        "path": { "oneOf": [{ "type": "string", "pattern": "^/" }, { "type": "null" }] },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "activityKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^/"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "surface": {
-          "oneOf": [{ "$ref": "target.schema.json#/$defs/surfaceId" }, { "type": "null" }]
+          "oneOf": [
+            {
+              "$ref": "target.schema.json#/$defs/surfaceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -89,8 +153,12 @@
       "additionalProperties": false,
       "required": ["level", "categoryPath"],
       "properties": {
-        "level": { "$ref": "category-assignment.schema.json#/$defs/level" },
-        "categoryPath": { "$ref": "category-assignment.schema.json#/$defs/categoryPath" }
+        "level": {
+          "$ref": "category-assignment.schema.json#/$defs/level"
+        },
+        "categoryPath": {
+          "$ref": "category-assignment.schema.json#/$defs/categoryPath"
+        }
       }
     },
     "attributedEvent": {
@@ -100,14 +168,34 @@
       "additionalProperties": false,
       "required": ["timestamp", "duration", "source", "activityKey", "categoryPath", "level"],
       "properties": {
-        "timestamp": { "$ref": "time.schema.json#/$defs/utcInstant" },
-        "duration": { "$ref": "#/$defs/seconds" },
-        "source": { "$ref": "#/$defs/source" },
-        "activityKey": { "type": "string", "minLength": 1, "maxLength": 255 },
-        "categoryPath": { "$ref": "category-assignment.schema.json#/$defs/categoryPath" },
-        "level": { "$ref": "category-assignment.schema.json#/$defs/level" },
-        "title": { "type": "string", "maxLength": 1024 },
-        "url": { "type": "string", "maxLength": 2048 }
+        "timestamp": {
+          "$ref": "time.schema.json#/$defs/utcInstant"
+        },
+        "duration": {
+          "$ref": "#/$defs/seconds"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "activityKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "categoryPath": {
+          "$ref": "category-assignment.schema.json#/$defs/categoryPath"
+        },
+        "level": {
+          "$ref": "category-assignment.schema.json#/$defs/level"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 2048
+        }
       }
     },
     "block": {
@@ -145,13 +233,25 @@
               "maxLength": 255,
               "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
             },
-            { "type": "null" }
+            {
+              "type": "null"
+            }
           ]
         },
-        "categoryPath": { "$ref": "category-assignment.schema.json#/$defs/categoryPath" },
-        "level": { "$ref": "category-assignment.schema.json#/$defs/level" },
-        "source": { "$ref": "#/$defs/source" },
-        "seconds": { "type": "integer", "minimum": 1, "maximum": 300 }
+        "categoryPath": {
+          "$ref": "category-assignment.schema.json#/$defs/categoryPath"
+        },
+        "level": {
+          "$ref": "category-assignment.schema.json#/$defs/level"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        }
       }
     },
     "secondsByLevel": {
@@ -160,17 +260,36 @@
       "additionalProperties": false,
       "required": ["0", "25", "50", "75", "100"],
       "properties": {
-        "0": { "$ref": "#/$defs/seconds" },
-        "25": { "$ref": "#/$defs/seconds" },
-        "50": { "$ref": "#/$defs/seconds" },
-        "75": { "$ref": "#/$defs/seconds" },
-        "100": { "$ref": "#/$defs/seconds" }
+        "0": {
+          "$ref": "#/$defs/seconds"
+        },
+        "25": {
+          "$ref": "#/$defs/seconds"
+        },
+        "50": {
+          "$ref": "#/$defs/seconds"
+        },
+        "75": {
+          "$ref": "#/$defs/seconds"
+        },
+        "100": {
+          "$ref": "#/$defs/seconds"
+        }
       }
     },
     "pulse": {
       "title": "Pulse",
       "description": "round(sum(seconds * level) / sum(seconds)), half up; null without tracked time.",
-      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "dailyTotal": {
       "title": "DailyTotal",
@@ -178,10 +297,18 @@
       "additionalProperties": false,
       "required": ["date", "seconds", "secondsByLevel", "pulse"],
       "properties": {
-        "date": { "$ref": "time.schema.json#/$defs/localDate" },
-        "seconds": { "$ref": "#/$defs/seconds" },
-        "secondsByLevel": { "$ref": "#/$defs/secondsByLevel" },
-        "pulse": { "$ref": "#/$defs/pulse" }
+        "date": {
+          "$ref": "time.schema.json#/$defs/localDate"
+        },
+        "seconds": {
+          "$ref": "#/$defs/seconds"
+        },
+        "secondsByLevel": {
+          "$ref": "#/$defs/secondsByLevel"
+        },
+        "pulse": {
+          "$ref": "#/$defs/pulse"
+        }
       }
     },
     "segment": {
@@ -191,10 +318,20 @@
       "additionalProperties": false,
       "required": ["start", "end", "source", "activityKey"],
       "properties": {
-        "start": { "$ref": "time.schema.json#/$defs/utcInstant" },
-        "end": { "$ref": "time.schema.json#/$defs/utcInstant" },
-        "source": { "$ref": "#/$defs/source" },
-        "activityKey": { "type": "string", "minLength": 1, "maxLength": 255 }
+        "start": {
+          "$ref": "time.schema.json#/$defs/utcInstant"
+        },
+        "end": {
+          "$ref": "time.schema.json#/$defs/utcInstant"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "activityKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        }
       }
     }
   }

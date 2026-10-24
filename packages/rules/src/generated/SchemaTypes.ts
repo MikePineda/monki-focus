@@ -24,7 +24,7 @@ export type ActivityFixture =
 export type UtcInstant = string
 export type Seconds = number
 /**
- * Lower-case ASCII (punycode) host without scheme, port, `www.` or `m.` prefix. Matches itself and its subdomains.
+ * Lower-case ASCII (punycode) host without scheme or port. Matches itself and its subdomains. Rule domains are normalised like URL hosts before matching (`www.`/`m.` dropped, aliases rewritten), so `twitter.com` or `m.youtube.com` are accepted.
  */
 export type Domain = string
 /**
@@ -143,7 +143,7 @@ export type ExplanationKey =
  */
 export type ViewId = string
 /**
- * The surface applies when every `all` predicate, at least one `any` predicate (if present) and no `none` predicate match. Detectors are evaluated by descending `priority`.
+ * The surface applies when every `all` predicate, at least one `any` predicate (if present) and no `none` predicate match. Detectors are evaluated by descending `priority`, ties by surface id.
  */
 export type SurfaceDetector = {
   [k: string]: unknown | undefined
@@ -155,6 +155,22 @@ export type SurfaceDetector = {
   none?: NodePredicateList
 }
 /**
+ * Matches one node. Needs a view id, text or content description; text fields are literal comparisons, never regex.
+ */
+export type NodePredicate = {
+  [k: string]: unknown | undefined
+} & {
+  viewId?: ViewId
+  contentDesc?: string
+  contentDescPrefix?: string
+  text?: string
+  className?: string
+  onScreen?: boolean
+  selected?: boolean
+  minHeightRatio?: number
+}
+/**
+ * @minItems 1
  * @maxItems 32
  */
 export type NodePredicateList = NodePredicate[]
@@ -620,8 +636,9 @@ export interface EscalationState {
    */
   attemptCount: number
   lastAttemptAt: UtcInstant | null
+  lastActivityAt: UtcInstant | null
   /**
-   * Intentions extended (broken) in the current session.
+   * Intentions extended (broken) in the current session; the third extension needs a full gate.
    */
   brokenCount: number
   lastFrictionType: FrictionType | null
@@ -651,7 +668,7 @@ export interface VerifiedUnlock {
   expiresAt: Instant
 }
 /**
- * One `decide(ruleset, observation, state, now, timeZone)` case. Kinds `decision` and `specificity` share this shape.
+ * One `decide(ruleset, observation, state, now)` case. The time zone is the rule set's pinned `timeZone`. Kinds `decision` and `specificity` share this shape.
  */
 export interface DecisionFixture {
   id: string
@@ -664,11 +681,10 @@ export interface DecisionFixture {
 export interface DecisionGiven {
   ruleset: Ruleset
   now: Instant
-  timeZone: TimeZone
   state: DecisionState
 }
 /**
- * A user's rule set: the document that is imported, exported, synced and enforced. `workHours` is the user's working hours, which rules opt into with `{ "ref": "workHours" }`. Strict: unknown fields are rejected and the serialised document must not exceed 256 KB.
+ * A user's rule set: the document that is imported, exported, synced and enforced. `timeZone` pins the zone every schedule, bedtime and budget day is evaluated in (the device zone is never an input). `pendingTimeZone` is set only while a time-zone change waits (both zones apply, the stricter wins). `workHours` is the user's working hours, which rules opt into with `{ "ref": "workHours" }`. Strict: unknown fields are rejected, keys are unique (`x-uniqueBy`) and the serialised document must not exceed 256 KB.
  */
 export interface Ruleset {
   schemaVersion: 1
@@ -677,6 +693,8 @@ export interface Ruleset {
    */
   revision: number
   updatedAt: UtcInstant
+  timeZone: TimeZone
+  pendingTimeZone?: TimeZone
   /**
    * @maxItems 500
    */
@@ -703,6 +721,9 @@ export interface Rule {
    * @maxItems 14
    */
   schedules: RuleSchedule[]
+  /**
+   * Daily budget of active time; usage accrues to the winning access rule only, so hide-feed rules take no budget.
+   */
   dailyBudgetMinutes?: number
   enabled: boolean
   note?: string
@@ -779,19 +800,6 @@ export interface DetectorPack {
   surfaces: SurfaceDetector[]
 }
 /**
- * Matches one node. Text fields are literal comparisons, never regex.
- */
-export interface NodePredicate {
-  viewId?: ViewId
-  contentDesc?: string
-  contentDescPrefix?: string
-  text?: string
-  className?: string
-  onScreen?: boolean
-  selected?: boolean
-  minHeightRatio?: number
-}
-/**
  * A multi-step run of `nextEscalation(state, event, now, guardianLinked)`; each step feeds the previous step's state (SEMANTICS.md §7).
  */
 export interface EscalationFixture {
@@ -843,7 +851,7 @@ export interface EscalationStepThen {
   effects: EscalationEffect[]
 }
 /**
- * One `effectiveRuleSet(old, new, now, timeZone)` case: tightening applies at once, anything else waits for the next local midnight (SEMANTICS.md §8).
+ * One `effectiveRuleSet(old, new, now, pendingEffectiveFrom)` case: `old` is the currently effective set; tightening applies at once, anything else waits for the next local midnight (or the end of a bedtime or schedule window active then) and never earlier than a pending change (SEMANTICS.md §8).
  */
 export interface RuleChangeFixture {
   id: string
@@ -856,7 +864,10 @@ export interface RuleChangeGiven {
   old: Ruleset
   new: Ruleset
   now: Instant
-  timeZone: TimeZone
+  /**
+   * effectiveFrom of the pending change this one replaces, or null.
+   */
+  pendingEffectiveFrom: UtcInstant | null
 }
 export interface RuleChangeThen {
   effectiveToday: Ruleset

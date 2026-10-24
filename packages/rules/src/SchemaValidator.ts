@@ -20,6 +20,36 @@ export interface SchemaValidator {
 const addFormats = formatsModule.default
 
 /**
+ * Extension keyword: the array's items must differ in the value at this JSON
+ * pointer (`/id`, `/target`). Kotlin and Swift validators enforce it too
+ * (SEMANTICS.md §1); generic validators ignore an `x-` keyword.
+ */
+export const UNIQUE_BY_KEYWORD = 'x-uniqueBy'
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return `{${entries.map(([key, child]) => `${JSON.stringify(key)}:${canonicalJson(child)}`).join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+function valueAt(item: unknown, pointer: string): unknown {
+  let current = item
+  for (const segment of pointer.split('/').slice(1)) {
+    if (current === null || typeof current !== 'object') return undefined
+    current = (current as Record<string, unknown>)[segment]
+  }
+  return current
+}
+
+function hasUniqueKeys(items: unknown[], pointer: string): boolean {
+  const keys = items.map((item) => canonicalJson(valueAt(item, pointer)))
+  return new Set(keys).size === keys.length
+}
+
+/**
  * Builds a validator from schema documents. Pure: pass the JSON objects
  * (for example imported by a bundler) so it also runs in a browser.
  */
@@ -33,6 +63,13 @@ export function createSchemaValidator(schemas: readonly JsonSchemaDocument[]): S
     allowUnionTypes: true,
   })
   addFormats(ajv, ['date-time', 'date'])
+  ajv.addKeyword({
+    keyword: UNIQUE_BY_KEYWORD,
+    type: 'array',
+    schemaType: 'string',
+    errors: false,
+    validate: (pointer: string, items: unknown[]) => hasUniqueKeys(items, pointer),
+  })
   for (const schema of schemas) ajv.addSchema(schema)
   for (const schema of schemas) ajv.getSchema(schema.$id)
 

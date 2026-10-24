@@ -7,18 +7,36 @@
   "additionalProperties": false,
   "required": ["id", "target", "mode", "schedules", "enabled"],
   "properties": {
-    "id": { "$ref": "#/$defs/ruleId" },
-    "target": { "$ref": "target.schema.json" },
-    "mode": { "$ref": "#/$defs/mode" },
+    "id": {
+      "$ref": "#/$defs/ruleId"
+    },
+    "target": {
+      "$ref": "target.schema.json"
+    },
+    "mode": {
+      "$ref": "#/$defs/mode"
+    },
     "schedules": {
       "description": "Empty means always active.",
       "type": "array",
       "maxItems": 14,
-      "items": { "$ref": "schedule.schema.json#/$defs/ruleSchedule" }
+      "items": {
+        "$ref": "schedule.schema.json#/$defs/ruleSchedule"
+      }
     },
-    "dailyBudgetMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
-    "enabled": { "type": "boolean" },
-    "note": { "type": "string", "maxLength": 140 }
+    "dailyBudgetMinutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1440,
+      "description": "Daily budget of active time; usage accrues to the winning access rule only, so hide-feed rules take no budget."
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "note": {
+      "type": "string",
+      "maxLength": 140
+    }
   },
   "$defs": {
     "ruleId": {
@@ -31,6 +49,22 @@
       "title": "RuleMode",
       "type": "string",
       "enum": ["allow", "hide-feed", "friction", "block"]
+    }
+  },
+  "if": {
+    "type": "object",
+    "properties": {
+      "mode": {
+        "const": "hide-feed"
+      }
+    },
+    "required": ["mode"]
+  },
+  "then": {
+    "type": "object",
+    "not": {
+      "type": "object",
+      "required": ["dailyBudgetMinutes"]
     }
   }
 }

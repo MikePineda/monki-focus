@@ -1,20 +1,21 @@
 {
-  "id": "decision.hide_feed_with_unknown_path_allows",
+  "id": "decision.unlock_for_another_target_does_not_lift_a_block",
   "kind": "decision",
-  "description": "When the URL bar shows only the domain, hide-feed never risks hiding a permalink.",
+  "description": "An unlock only lifts what its target matches.",
   "given": {
     "ruleset": {
       "schemaVersion": 1,
       "revision": 1,
       "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [
         {
-          "id": "r-reddit-hide",
+          "id": "r-reddit-block",
           "target": {
             "kind": "site",
             "domain": "reddit.com"
           },
-          "mode": "hide-feed",
+          "mode": "block",
           "schedules": [],
           "enabled": true
         }
@@ -34,25 +35,33 @@
       }
     },
     "now": "2026-10-26T10:00:00+11:00",
-    "timeZone": "Australia/Sydney",
     "state": {
       "escalation": [],
       "usage": null,
-      "unlocks": [],
+      "unlocks": [
+        {
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "notBefore": "2026-10-25T22:55:00Z",
+          "expiresAt": "2026-10-25T23:25:00Z"
+        }
+      ],
       "guardianLinked": false
     }
   },
   "when": {
     "target": {
       "kind": "site",
-      "urlText": "reddit.com"
+      "urlText": "reddit.com/r/AskHistorians"
     }
   },
   "then": {
-    "access": "allow",
+    "access": "block",
     "content": "show",
-    "ruleId": "r-reddit-hide",
-    "reason": "path_unknown_allow",
-    "explanationKey": "decision.path_unknown_allow"
+    "ruleId": "r-reddit-block",
+    "reason": "rule_match",
+    "explanationKey": "decision.blocked_by_rule"
   }
 }

@@ -1,12 +1,13 @@
 {
   "id": "rule-change.adding_a_restrictive_rule_applies_immediately",
   "kind": "rule-change",
-  "description": "A new block rule applies at once.",
+  "description": "A new block rule outranks nothing stricter, so it applies at once.",
   "given": {
     "old": {
       "schemaVersion": 1,
       "revision": 1,
       "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [
         {
           "id": "r-reddit",
@@ -37,6 +38,7 @@
       "schemaVersion": 1,
       "revision": 2,
       "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [
         {
           "id": "r-reddit",
@@ -74,13 +76,14 @@
       }
     },
     "now": "2026-10-26T15:00:00+11:00",
-    "timeZone": "Australia/Sydney"
+    "pendingEffectiveFrom": null
   },
   "then": {
     "effectiveToday": {
       "schemaVersion": 1,
       "revision": 2,
       "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [
         {
           "id": "r-reddit",

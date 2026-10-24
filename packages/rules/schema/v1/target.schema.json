@@ -4,9 +4,15 @@
   "title": "Target",
   "description": "What a rule, category assignment or unlock applies to: an app, a site (domain plus optional path glob) or a surface.",
   "oneOf": [
-    { "$ref": "#/$defs/appTarget" },
-    { "$ref": "#/$defs/siteTarget" },
-    { "$ref": "#/$defs/surfaceTarget" }
+    {
+      "$ref": "#/$defs/appTarget"
+    },
+    {
+      "$ref": "#/$defs/siteTarget"
+    },
+    {
+      "$ref": "#/$defs/surfaceTarget"
+    }
   ],
   "$defs": {
     "appPackage": {
@@ -18,10 +24,10 @@
     },
     "domain": {
       "title": "Domain",
-      "description": "Lower-case ASCII (punycode) host without scheme, port, `www.` or `m.` prefix. Matches itself and its subdomains.",
+      "description": "Lower-case ASCII (punycode) host without scheme or port. Matches itself and its subdomains. Rule domains are normalised like URL hosts before matching (`www.`/`m.` dropped, aliases rewritten), so `twitter.com` or `m.youtube.com` are accepted.",
       "type": "string",
       "maxLength": 253,
-      "pattern": "^(?!www\\.)(?!m\\.)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+([a-z]{2,63}|xn--[a-z0-9-]{1,59})$"
+      "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+([a-z]{2,63}|xn--[a-z0-9-]{1,59})$"
     },
     "pathGlob": {
       "title": "PathGlob",
@@ -43,8 +49,12 @@
       "additionalProperties": false,
       "required": ["kind", "package"],
       "properties": {
-        "kind": { "const": "app" },
-        "package": { "$ref": "#/$defs/appPackage" }
+        "kind": {
+          "const": "app"
+        },
+        "package": {
+          "$ref": "#/$defs/appPackage"
+        }
       }
     },
     "siteTarget": {
@@ -53,9 +63,15 @@
       "additionalProperties": false,
       "required": ["kind", "domain"],
       "properties": {
-        "kind": { "const": "site" },
-        "domain": { "$ref": "#/$defs/domain" },
-        "path": { "$ref": "#/$defs/pathGlob" }
+        "kind": {
+          "const": "site"
+        },
+        "domain": {
+          "$ref": "#/$defs/domain"
+        },
+        "path": {
+          "$ref": "#/$defs/pathGlob"
+        }
       }
     },
     "surfaceTarget": {
@@ -64,8 +80,12 @@
       "additionalProperties": false,
       "required": ["kind", "surface"],
       "properties": {
-        "kind": { "const": "surface" },
-        "surface": { "$ref": "#/$defs/surfaceId" }
+        "kind": {
+          "const": "surface"
+        },
+        "surface": {
+          "$ref": "#/$defs/surfaceId"
+        }
       }
     }
   }

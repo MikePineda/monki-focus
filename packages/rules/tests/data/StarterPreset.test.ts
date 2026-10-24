@@ -20,8 +20,24 @@ function rulesFor(mode: Rule['mode']): string[] {
 describe('starter preset', () => {
   it('starter_hides_the_feed_surfaces_of_reddit_x_and_youtube', () => {
     expect(rulesFor('hide-feed')).toEqual(
-      expect.arrayContaining(['reddit.feed', 'x.home', 'youtube.home'])
+      expect.arrayContaining([
+        'reddit.feed',
+        'x.home',
+        'x.explore',
+        'youtube.home',
+        'youtube.explore',
+      ])
     )
+  })
+
+  it('starter_keeps_subscriptions_and_user_pages_visible', () => {
+    const hidden = rulesFor('hide-feed')
+    expect(hidden).not.toContain('youtube.subscriptions')
+    expect(hidden).not.toContain('reddit.user_feed')
+  })
+
+  it('starter_pins_utc_until_the_client_sets_the_device_zone_at_install', () => {
+    expect(preset.timeZone).toBe('UTC')
   })
 
   it('starter_hides_instagram_reels_and_explore_but_not_home', () => {

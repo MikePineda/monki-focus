@@ -13,7 +13,6 @@ import type {
   EscalationState,
   Gate,
   RuleChangeFixture,
-  Ruleset,
 } from './generated/SchemaTypes.ts'
 import { isFixtureKind } from './FixtureKind.ts'
 
@@ -78,18 +77,8 @@ function checkGate(gate: Gate, guardianLinked: boolean, where: string, problems:
   }
 }
 
-function checkRuleset(ruleset: Ruleset, where: string, problems: string[]): void {
-  const ids = ruleset.rules.map((rule) => rule.id)
-  if (new Set(ids).size !== ids.length) problems.push(`${where}: rule ids must be unique`)
-}
-
 function checkDecision(fixture: DecisionFixture, problems: string[]): void {
   const { then, given } = fixture
-  checkRuleset(given.ruleset, 'given.ruleset', problems)
-  const groups = given.state.escalation.map((state) => state.targetGroup)
-  if (new Set(groups).size !== groups.length)
-    problems.push('given.state.escalation: one state per targetGroup')
-
   if (!ACCESS_REASONS[then.access].includes(then.reason)) {
     problems.push(`then.reason ${then.reason} cannot produce access ${then.access}`)
   }
@@ -128,7 +117,11 @@ function checkDecision(fixture: DecisionFixture, problems: string[]): void {
           then.access === 'block' ? 'block' : then.content === 'hide-feed' ? 'hide-feed' : 'allow'
       }
       const expected = expectedModes[then.reason]
-      if (expected !== undefined && rule.mode !== expected) {
+      // With an unknown path a hide-feed rule of a profiled domain gates (SEMANTICS.md §5.5).
+      const promoted =
+        rule.mode === 'hide-feed' &&
+        (then.reason === 'intention_required' || then.reason === 'intention_active')
+      if (expected !== undefined && rule.mode !== expected && !promoted) {
         problems.push(
           `then.ruleId ${rule.id} has mode ${rule.mode}, reason ${then.reason} needs ${expected}`
         )
@@ -182,7 +175,8 @@ function checkEscalation(fixture: EscalationFixture, problems: string[]): void {
         problems.push(`${where}: frictionType ${state.gate.frictionType} repeats the previous gate`)
       }
       previousFriction = state.gate.frictionType
-      if (step.event.type === 'visit')
+      // Visits and full-gate extensions (the third one) show a complete gate.
+      if (step.event.type === 'visit' || !state.pendingExtension)
         checkGate(state.gate, given.guardianLinked, `${where}.then.state.gate`, problems)
     }
     if (
@@ -197,9 +191,6 @@ function checkEscalation(fixture: EscalationFixture, problems: string[]): void {
 
 function checkRuleChange(fixture: RuleChangeFixture, problems: string[]): void {
   const { given, then } = fixture
-  checkRuleset(given.old, 'given.old', problems)
-  checkRuleset(given.new, 'given.new', problems)
-  checkRuleset(then.effectiveToday, 'then.effectiveToday', problems)
   if (then.effectiveFrom === null && canonical(then.effectiveToday) !== canonical(given.new)) {
     problems.push('then.effectiveToday must equal given.new when nothing is deferred')
   }
@@ -208,6 +199,23 @@ function checkRuleChange(fixture: RuleChangeFixture, problems: string[]): void {
   }
   if (then.effectiveToday.revision !== given.new.revision) {
     problems.push('then.effectiveToday carries the revision of given.new')
+  }
+  const pending = given.pendingEffectiveFrom
+  if (
+    then.effectiveFrom !== null &&
+    pending !== null &&
+    epochSeconds(then.effectiveFrom) < epochSeconds(pending)
+  ) {
+    problems.push('then.effectiveFrom must not move a pending effectiveFrom earlier')
+  }
+  if (given.old.timeZone !== given.new.timeZone) {
+    if (then.effectiveFrom === null) problems.push('a time-zone change always waits')
+    if (then.effectiveToday.timeZone !== given.old.timeZone) {
+      problems.push('then.effectiveToday keeps the old timeZone while the change waits')
+    }
+    if (then.effectiveToday.pendingTimeZone !== given.new.timeZone) {
+      problems.push('then.effectiveToday.pendingTimeZone must be the new timeZone')
+    }
   }
 }
 

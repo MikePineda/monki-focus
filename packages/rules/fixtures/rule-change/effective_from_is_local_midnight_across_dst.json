@@ -1,0 +1,105 @@
+{
+  "id": "rule-change.effective_from_is_local_midnight_across_dst",
+  "kind": "rule-change",
+  "description": "The night Sydney springs forward, local midnight is still 00:00 AEST (14:00 UTC).",
+  "given": {
+    "old": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "new": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-03T15:00:00+10:00",
+    "pendingEffectiveFrom": null
+  },
+  "then": {
+    "effectiveToday": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "effectiveFrom": "2026-10-03T14:00:00Z"
+  }
+}

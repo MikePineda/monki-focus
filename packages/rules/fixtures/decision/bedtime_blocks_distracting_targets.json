@@ -7,6 +7,7 @@
       "schemaVersion": 1,
       "revision": 1,
       "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [
         {
           "id": "starter-instagram-explore-hide",
@@ -89,6 +90,16 @@
           "enabled": true
         },
         {
+          "id": "starter-youtube-explore-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.explore"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
           "id": "starter-youtube-shorts-block",
           "target": {
             "kind": "surface",
@@ -114,7 +125,6 @@
       }
     },
     "now": "2026-10-26T23:00:00+11:00",
-    "timeZone": "Australia/Sydney",
     "state": {
       "escalation": [],
       "usage": null,

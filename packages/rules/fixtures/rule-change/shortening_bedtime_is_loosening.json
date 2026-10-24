@@ -1,12 +1,13 @@
 {
   "id": "rule-change.shortening_bedtime_is_loosening",
   "kind": "rule-change",
-  "description": "Starting bedtime later and ending it earlier waits for local midnight.",
+  "description": "Starting bedtime later and ending it earlier waits for local midnight, and then for the end of the bedtime window running at midnight (07:00).",
   "given": {
     "old": {
       "schemaVersion": 1,
       "revision": 1,
       "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [],
       "categories": [],
       "bedtime": {
@@ -26,6 +27,7 @@
       "schemaVersion": 1,
       "revision": 2,
       "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [],
       "categories": [],
       "bedtime": {
@@ -42,13 +44,14 @@
       }
     },
     "now": "2026-10-26T15:00:00+11:00",
-    "timeZone": "Australia/Sydney"
+    "pendingEffectiveFrom": null
   },
   "then": {
     "effectiveToday": {
       "schemaVersion": 1,
       "revision": 2,
       "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
       "rules": [],
       "categories": [],
       "bedtime": {
@@ -64,6 +67,6 @@
         "end": "17:30"
       }
     },
-    "effectiveFrom": "2026-10-26T13:00:00Z"
+    "effectiveFrom": "2026-10-26T20:00:00Z"
   }
 }

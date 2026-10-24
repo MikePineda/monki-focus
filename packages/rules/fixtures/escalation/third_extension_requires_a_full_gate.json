@@ -1,0 +1,145 @@
+{
+  "id": "escalation.third_extension_requires_a_full_gate",
+  "kind": "escalation",
+  "description": "At most two extensions per session: the third asks for a full gate at the current level instead of 5 more minutes.",
+  "given": {
+    "state": {
+      "targetGroup": "r-x-friction",
+      "phase": "timed_out",
+      "attemptCount": 3,
+      "lastAttemptAt": "2026-10-25T22:45:00Z",
+      "lastActivityAt": "2026-10-25T23:00:00Z",
+      "brokenCount": 2,
+      "lastFrictionType": "breath",
+      "gate": null,
+      "pauseEndsAt": null,
+      "pendingExtension": false,
+      "intentionExpiresAt": "2026-10-25T23:00:00Z",
+      "overrideReadyAt": null,
+      "overrideEndsAt": null
+    },
+    "guardianLinked": false
+  },
+  "steps": [
+    {
+      "at": "2026-10-26T10:00:05+11:00",
+      "event": {
+        "type": "extend"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "pausing",
+          "attemptCount": 3,
+          "lastAttemptAt": "2026-10-25T22:45:00Z",
+          "lastActivityAt": "2026-10-25T23:00:05Z",
+          "brokenCount": 3,
+          "lastFrictionType": "reflect",
+          "gate": {
+            "level": 2,
+            "pauseSeconds": 60,
+            "frictionType": "reflect",
+            "requiresTypedIntention": true,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:01:05Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:01:05+11:00",
+      "event": {
+        "type": "pause_elapsed"
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "asking",
+          "attemptCount": 3,
+          "lastAttemptAt": "2026-10-25T22:45:00Z",
+          "lastActivityAt": "2026-10-25T23:01:05Z",
+          "brokenCount": 3,
+          "lastFrictionType": "reflect",
+          "gate": {
+            "level": 2,
+            "pauseSeconds": 60,
+            "frictionType": "reflect",
+            "requiresTypedIntention": true,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:01:05Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:01:10+11:00",
+      "event": {
+        "type": "commit",
+        "minutes": 5,
+        "typedWords": 2,
+        "guardianKeyVerified": false
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "asking",
+          "attemptCount": 3,
+          "lastAttemptAt": "2026-10-25T22:45:00Z",
+          "lastActivityAt": "2026-10-25T23:01:05Z",
+          "brokenCount": 3,
+          "lastFrictionType": "reflect",
+          "gate": {
+            "level": 2,
+            "pauseSeconds": 60,
+            "frictionType": "reflect",
+            "requiresTypedIntention": true,
+            "requiresGuardianKey": false
+          },
+          "pauseEndsAt": "2026-10-25T23:01:05Z",
+          "pendingExtension": false,
+          "intentionExpiresAt": null,
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    },
+    {
+      "at": "2026-10-26T10:01:15+11:00",
+      "event": {
+        "type": "commit",
+        "minutes": 5,
+        "typedWords": 3,
+        "guardianKeyVerified": false
+      },
+      "then": {
+        "state": {
+          "targetGroup": "r-x-friction",
+          "phase": "active",
+          "attemptCount": 3,
+          "lastAttemptAt": "2026-10-25T22:45:00Z",
+          "lastActivityAt": "2026-10-25T23:01:15Z",
+          "brokenCount": 3,
+          "lastFrictionType": "reflect",
+          "gate": null,
+          "pauseEndsAt": null,
+          "pendingExtension": false,
+          "intentionExpiresAt": "2026-10-25T23:06:15Z",
+          "overrideReadyAt": null,
+          "overrideEndsAt": null
+        },
+        "effects": []
+      }
+    }
+  ]
+}

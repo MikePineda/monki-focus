@@ -26,7 +26,57 @@ const REQUIRED_FIXTURE_IDS = [
   'decision.hide_feed_never_blocks_a_permalink',
   'decision.hide_feed_allows_search',
   'decision.hide_feed_allows_messages',
-  'decision.hide_feed_with_unknown_path_allows',
+  'decision.hide_feed_with_unknown_path_gates_instead_of_hiding',
+  'decision.hide_feed_with_unknown_path_on_an_unprofiled_site_shows',
+  'decision.domain_only_youtube_is_not_allowed_by_default',
+  'decision.domain_only_youtube_at_bedtime_is_blocked',
+  'decision.new_friction_rule_inherits_escalation',
+  'decision.bedtime_follows_the_pinned_zone_not_the_device',
+  'decision.pending_time_zone_applies_the_stricter_bedtime',
+  'decision.budget_day_follows_the_pinned_zone',
+  'decision.rule_on_an_alias_domain_matches_the_canonical_host',
+  'decision.budget_on_a_non_winning_candidate_blocks',
+  'decision.budget_exhausted_yields_to_an_emergency_override',
+  'decision.unlock_for_another_target_does_not_lift_a_block',
+  'decision.rejected_url_matches_no_rule',
+  'decision.emergency_override_lifts_a_friction_gate',
+  'decision.decide_in_timed_out_returns_the_current_gate',
+  'decision.hide_feed_beats_allow_at_equal_specificity',
+  'specificity.catch_all_path_counts_as_no_path',
+  'url-normalize.percent_encoded_unreserved_are_decoded',
+  'url-normalize.percent_escapes_are_upper_cased',
+  'url-normalize.encoded_slash_makes_the_path_unknown',
+  'url-normalize.reddit_controversial_is_a_feed',
+  'url-normalize.reddit_user_page_is_a_user_feed',
+  'url-normalize.reddit_multireddit_is_a_feed',
+  'url-normalize.youtube_subscriptions_is_a_feed',
+  'url-normalize.youtube_hashtag_is_explore',
+  'url-normalize.instagram_explore_search_is_utility',
+  'url-normalize.instagram_explore_tag_is_a_feed',
+  'schedule.schedule_uses_the_rule_set_time_zone',
+  'escalation.reset_is_measured_from_the_last_event',
+  'escalation.third_extension_requires_a_full_gate',
+  'rule-change.added_friction_that_outranks_a_block_waits',
+  'rule-change.enabling_a_friction_rule_that_outranks_a_block_waits',
+  'rule-change.widening_friction_schedule_over_a_block_waits',
+  'rule-change.changing_the_time_zone_waits_and_evaluates_both_zones',
+  'rule-change.disabling_bedtime_waits_until_bedtime_ends',
+  'rule-change.new_change_never_moves_a_pending_effective_from_earlier',
+  'rule-change.schedule_containment_uses_the_whole_week',
+  'rule-change.lowering_a_category_level_applies_immediately',
+  'rule-change.raising_a_category_level_waits',
+  'rule-change.changing_work_hours_waits',
+  'rule-change.widening_a_block_schedule_applies_immediately',
+  'rule-change.disabling_a_block_waits',
+  'rule-change.enabling_a_block_applies_immediately',
+  'rule-change.adding_a_budget_applies_immediately',
+  'rule-change.lowering_a_budget_applies_immediately',
+  'rule-change.removing_a_budget_waits',
+  'rule-change.adding_bedtime_days_applies_immediately',
+  'rule-change.enabling_bedtime_applies_immediately',
+  'rule-change.removing_an_allow_rule_applies_immediately',
+  'rule-change.changing_a_rule_target_waits',
+  'rule-change.effective_from_is_local_midnight_across_dst',
   'decision.allow_listed_subreddit_is_shown',
   'decision.active_intention_allows_access_until_expiry',
   'decision.expired_intention_requires_gate',
@@ -190,9 +240,10 @@ describe('fixture files', () => {
       for (const match of text.matchAll(/"timeZone": "([^"]+)"/g)) {
         const zone = match[1] ?? ''
         expect(() => new Intl.DateTimeFormat('en', { timeZone: zone }), zone).not.toThrow()
-        expect(['UTC', 'Australia/Sydney'], `${file.relativePath}: generic zones only`).toContain(
-          zone
-        )
+        expect(
+          ['UTC', 'Australia/Sydney', 'Europe/London'],
+          `${file.relativePath}: generic zones only`
+        ).toContain(zone)
       }
     }
   })

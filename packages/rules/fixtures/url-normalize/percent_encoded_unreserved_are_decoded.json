@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.percent_encoded_unreserved_are_decoded",
+  "kind": "url-normalize",
+  "description": "Escapes of unreserved characters are decoded, so `/%73horts/` is the Shorts surface.",
+  "given": {
+    "urlText": "https://www.youtube.com/%73horts/abc123DEF45"
+  },
+  "then": {
+    "host": "youtube.com",
+    "path": "/shorts/abc123DEF45",
+    "pathKnown": true,
+    "surface": "youtube.shorts"
+  }
+}

@@ -8,7 +8,7 @@ all run the same fixtures. There is **no decision logic** here; the semantics
 every engine implements are in [SEMANTICS.md](SEMANTICS.md).
 
 ```
-schema/v1/*.schema.json      contracts (strict: unknown fields rejected, documents <= 256 KiB)
+schema/v1/*.schema.json      contracts (strict: unknown fields rejected, unique keys via x-uniqueBy, documents <= 256 KiB)
 data/surfaces.json           surface registry (feed | permalink | utility)
 data/sites/<domain>.json     site profiles: URL path globs -> surfaces (no DOM selectors)
 data/categories/default.json factory category levels (0/25/50/75/100)
@@ -37,7 +37,9 @@ unknown kind, an invalid fixture or one filed under the wrong directory.
 Node APIs) validates rule sets in a browser; `schemaValidator()` is the
 Node-side instance over the package's own schemas.
 
-Kotlin and Swift read `schema/`, `data/` and `fixtures/` by relative path and
+Validators on every platform must also enforce the `x-uniqueBy` extension
+keyword (duplicate rule ids, category targets, escalation groups or surface ids
+are invalid). Kotlin and Swift read `schema/`, `data/` and `fixtures/` by relative path and
 validate fixtures against `schema/v1/fixture.schema.json`.
 
 ## Scripts

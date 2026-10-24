@@ -8,6 +8,7 @@
       "phase": "idle",
       "attemptCount": 3,
       "lastAttemptAt": "2026-10-25T22:50:00Z",
+      "lastActivityAt": "2026-10-25T22:50:00Z",
       "brokenCount": 0,
       "lastFrictionType": "reflect",
       "gate": null,
@@ -31,6 +32,7 @@
           "phase": "pausing",
           "attemptCount": 4,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:00Z",
           "brokenCount": 0,
           "lastFrictionType": "type-intention",
           "gate": {
@@ -60,6 +62,7 @@
           "phase": "pausing",
           "attemptCount": 4,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:00Z",
           "brokenCount": 0,
           "lastFrictionType": "type-intention",
           "gate": {
@@ -89,6 +92,7 @@
           "phase": "asking",
           "attemptCount": 4,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:01:00Z",
           "brokenCount": 0,
           "lastFrictionType": "type-intention",
           "gate": {
@@ -121,6 +125,7 @@
           "phase": "active",
           "attemptCount": 4,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:01:10Z",
           "brokenCount": 0,
           "lastFrictionType": "type-intention",
           "gate": null,

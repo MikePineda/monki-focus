@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.instagram_explore_search_is_utility",
+  "kind": "url-normalize",
+  "description": "Search inside Explore is a utility, never hidden.",
+  "given": {
+    "urlText": "https://www.instagram.com/explore/search/keyword/?q=history"
+  },
+  "then": {
+    "host": "instagram.com",
+    "path": "/explore/search/keyword",
+    "pathKnown": true,
+    "surface": "instagram.search"
+  }
+}

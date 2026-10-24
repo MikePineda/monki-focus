@@ -4,7 +4,9 @@
   "aliases": [],
   "spaNavigation": "yt-navigate-finish",
   "surfaces": {
-    "youtube.home": ["/", "/feed/trending"],
+    "youtube.home": ["/"],
+    "youtube.subscriptions": ["/feed/subscriptions"],
+    "youtube.explore": ["/feed/explore", "/feed/trending", "/hashtag/*"],
     "youtube.shorts": ["/shorts/**"],
     "youtube.watch": ["/watch", "/live/*"],
     "youtube.search": ["/results"]

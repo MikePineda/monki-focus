@@ -8,6 +8,7 @@
       "phase": "idle",
       "attemptCount": 0,
       "lastAttemptAt": null,
+      "lastActivityAt": null,
       "brokenCount": 0,
       "lastFrictionType": null,
       "gate": null,
@@ -31,6 +32,7 @@
           "phase": "pausing",
           "attemptCount": 1,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:00Z",
           "brokenCount": 0,
           "lastFrictionType": "countdown",
           "gate": {
@@ -60,6 +62,7 @@
           "phase": "pausing",
           "attemptCount": 1,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:00Z",
           "brokenCount": 0,
           "lastFrictionType": "countdown",
           "gate": {
@@ -89,6 +92,7 @@
           "phase": "pausing",
           "attemptCount": 1,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:00Z",
           "brokenCount": 0,
           "lastFrictionType": "countdown",
           "gate": {
@@ -118,6 +122,7 @@
           "phase": "asking",
           "attemptCount": 1,
           "lastAttemptAt": "2026-10-25T23:00:00Z",
+          "lastActivityAt": "2026-10-25T23:00:05Z",
           "brokenCount": 0,
           "lastFrictionType": "countdown",
           "gate": {

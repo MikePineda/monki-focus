@@ -1,7 +1,7 @@
 {
-  "id": "schedule.schedule_uses_device_time_zone",
+  "id": "schedule.schedule_uses_the_rule_set_time_zone",
   "kind": "schedule",
-  "description": "Sunday 23:00 UTC is Monday 10:00 in Sydney: inside Mon-Fri 09:00-17:30.",
+  "description": "Schedules use the rule set's pinned zone: Sunday 23:00 UTC is Monday 10:00 in Sydney, inside Mon-Fri 09:00-17:30.",
   "given": {
     "schedules": [
       {

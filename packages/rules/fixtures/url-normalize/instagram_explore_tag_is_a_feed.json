@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.instagram_explore_tag_is_a_feed",
+  "kind": "url-normalize",
+  "description": "A tag page under Explore is a feed.",
+  "given": {
+    "urlText": "https://www.instagram.com/explore/tags/history/"
+  },
+  "then": {
+    "host": "instagram.com",
+    "path": "/explore/tags/history",
+    "pathKnown": true,
+    "surface": "instagram.explore"
+  }
+}

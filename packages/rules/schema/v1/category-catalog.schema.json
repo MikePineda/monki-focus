@@ -7,11 +7,16 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "assignments"],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": {
+      "const": 1
+    },
     "assignments": {
       "type": "array",
       "maxItems": 2000,
-      "items": { "$ref": "category-assignment.schema.json" }
+      "items": {
+        "$ref": "category-assignment.schema.json"
+      },
+      "x-uniqueBy": "/target"
     }
   }
 }

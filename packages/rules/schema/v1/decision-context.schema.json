@@ -7,7 +7,14 @@
     "observation": {
       "title": "Observation",
       "description": "What the user is about to see: raw URL text (normalised by the engine) or an app with the surface its detector resolved.",
-      "oneOf": [{ "$ref": "#/$defs/siteObservation" }, { "$ref": "#/$defs/appObservation" }]
+      "oneOf": [
+        {
+          "$ref": "#/$defs/siteObservation"
+        },
+        {
+          "$ref": "#/$defs/appObservation"
+        }
+      ]
     },
     "siteObservation": {
       "title": "SiteObservation",
@@ -15,8 +22,14 @@
       "additionalProperties": false,
       "required": ["kind", "urlText"],
       "properties": {
-        "kind": { "const": "site" },
-        "urlText": { "type": "string", "minLength": 1, "maxLength": 2048 }
+        "kind": {
+          "const": "site"
+        },
+        "urlText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        }
       }
     },
     "appObservation": {
@@ -25,10 +38,21 @@
       "additionalProperties": false,
       "required": ["kind", "package", "surface"],
       "properties": {
-        "kind": { "const": "app" },
-        "package": { "$ref": "target.schema.json#/$defs/appPackage" },
+        "kind": {
+          "const": "app"
+        },
+        "package": {
+          "$ref": "target.schema.json#/$defs/appPackage"
+        },
         "surface": {
-          "oneOf": [{ "$ref": "target.schema.json#/$defs/surfaceId" }, { "type": "null" }]
+          "oneOf": [
+            {
+              "$ref": "target.schema.json#/$defs/surfaceId"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -39,9 +63,15 @@
       "additionalProperties": false,
       "required": ["target", "notBefore", "expiresAt"],
       "properties": {
-        "target": { "$ref": "target.schema.json" },
-        "notBefore": { "$ref": "time.schema.json#/$defs/instant" },
-        "expiresAt": { "$ref": "time.schema.json#/$defs/instant" }
+        "target": {
+          "$ref": "target.schema.json"
+        },
+        "notBefore": {
+          "$ref": "time.schema.json#/$defs/instant"
+        },
+        "expiresAt": {
+          "$ref": "time.schema.json#/$defs/instant"
+        }
       }
     },
     "dailyUsage": {
@@ -51,12 +81,20 @@
       "additionalProperties": false,
       "required": ["localDate", "secondsByRule"],
       "properties": {
-        "localDate": { "$ref": "time.schema.json#/$defs/localDate" },
+        "localDate": {
+          "$ref": "time.schema.json#/$defs/localDate"
+        },
         "secondsByRule": {
           "type": "object",
           "maxProperties": 500,
-          "propertyNames": { "$ref": "rule.schema.json#/$defs/ruleId" },
-          "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 86400 }
+          "propertyNames": {
+            "$ref": "rule.schema.json#/$defs/ruleId"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400
+          }
         }
       }
     },
@@ -70,17 +108,31 @@
           "description": "At most one state per target group; a missing group is the initial idle state.",
           "type": "array",
           "maxItems": 500,
-          "items": { "$ref": "escalation.schema.json#/$defs/state" }
+          "items": {
+            "$ref": "escalation.schema.json#/$defs/state"
+          },
+          "x-uniqueBy": "/targetGroup"
         },
         "usage": {
-          "oneOf": [{ "$ref": "#/$defs/dailyUsage" }, { "type": "null" }]
+          "oneOf": [
+            {
+              "$ref": "#/$defs/dailyUsage"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "unlocks": {
           "type": "array",
           "maxItems": 64,
-          "items": { "$ref": "#/$defs/verifiedUnlock" }
+          "items": {
+            "$ref": "#/$defs/verifiedUnlock"
+          }
         },
-        "guardianLinked": { "type": "boolean" }
+        "guardianLinked": {
+          "type": "boolean"
+        }
       }
     }
   }
