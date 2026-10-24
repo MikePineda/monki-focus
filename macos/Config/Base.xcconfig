@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Build settings shared by every target and configuration (applied at project
+// level by project.yml). Keep target-specific settings in project.yml.
+
+#include "Version.xcconfig"
+
+CURRENT_PROJECT_VERSION = 1
+
+// Toolchain: Xcode 26.x, Swift 6 language mode with complete strict
+// concurrency checking, macOS 14 (Sonoma) and later.
+MACOSX_DEPLOYMENT_TARGET = 14.0
+SWIFT_VERSION = 6.0
+SWIFT_STRICT_CONCURRENCY = complete
+SWIFT_TREAT_WARNINGS_AS_ERRORS = YES
+GCC_TREAT_WARNINGS_AS_ERRORS = YES
+
+// Signing: ad-hoc and no team, so the app builds on any Mac and in CI with no
+// secret. Hardened runtime is on; the app is not sandboxed (it watches the
+// frontmost app, hides apps and serves the bridge socket in its home folder).
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+ENABLE_HARDENED_RUNTIME = YES
+// Xcode 26 resolves ENABLE_HARDENED_RUNTIME to NO for an ad-hoc identity, so
+// Release asks codesign for the runtime flag directly. Debug keeps Xcode's
+// behaviour: with an ad-hoc signature, the runtime's library validation
+// would refuse to load the test bundle into the host app (no Team ID).
+OTHER_CODE_SIGN_FLAGS[config=Release] = $(inherited) --options=runtime
+ENABLE_APP_SANDBOX = NO
+ENABLE_USER_SCRIPT_SANDBOXING = YES
+
+// Localization: one string catalog (en + es), see App/Resources.
+LOCALIZATION_PREFERS_STRING_CATALOGS = YES
+SWIFT_EMIT_LOC_STRINGS = YES
+
+DEAD_CODE_STRIPPING = YES
