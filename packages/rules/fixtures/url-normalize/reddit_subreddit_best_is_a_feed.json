@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.reddit_subreddit_best_is_a_feed",
+  "kind": "url-normalize",
+  "description": "The best order of a subreddit is a feed.",
+  "given": {
+    "urlText": "https://www.reddit.com/r/examplesub/best/"
+  },
+  "then": {
+    "host": "reddit.com",
+    "path": "/r/examplesub/best",
+    "pathKnown": true,
+    "surface": "reddit.feed"
+  }
+}

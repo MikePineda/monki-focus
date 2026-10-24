@@ -6,7 +6,7 @@
   "surfaces": {
     "youtube.home": ["/"],
     "youtube.subscriptions": ["/feed/subscriptions"],
-    "youtube.explore": ["/feed/explore", "/feed/trending", "/hashtag/*"],
+    "youtube.explore": ["/feed/explore", "/feed/trending", "/hashtag/*", "/gaming", "/feed/you"],
     "youtube.shorts": ["/shorts/**"],
     "youtube.watch": ["/watch", "/live/*"],
     "youtube.search": ["/results"]

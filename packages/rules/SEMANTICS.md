@@ -100,7 +100,11 @@ normalisation.
 - `{kind: "surface", surface}` matches any observation whose resolved surface
   equals it: on the web from the site profile (§2.8), in an app from the
   detector (`AppObservation.surface`). One surface rule therefore acts on the
-  app and the web alike.
+  app and the web alike. A surface that no site profile lists a glob for is
+  **app-only**: `instagram.reel_from_dm` (a reel opened from a direct
+  message) has the same `/reel/<id>` URL on the web as any other reel, so
+  the web can never tell the two apart and resolves it to
+  `instagram.reel_permalink`; only the Android detector yields it.
 
 ### 3.2 Path globs
 
