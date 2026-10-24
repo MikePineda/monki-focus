@@ -5,8 +5,8 @@ import { parseThemePreference, type ThemePreference } from '../theme/ThemePrefer
 
 /**
  * `browser.storage.local` keys of the appearance preferences. The options
- * page (E8) changes them through a service-worker command; every page only
- * reads them here.
+ * page changes them through `preferences.set` (the service worker writes);
+ * every page only reads them here.
  */
 export const UI_PREFERENCE_KEYS = {
   theme: 'ui.theme',
@@ -39,17 +39,20 @@ export async function readUiPreferences(storage: StorageReader): Promise<UiPrefe
 
 export interface UiPreferenceListeners {
   onTheme?: (theme: ThemePreference) => void
+  onLanguage?: (language: LanguagePreference) => void
 }
 
-/** Reports theme changes made from another page; returns the unsubscribe. */
+/** Reports theme and language changes (from any page); returns the unsubscribe. */
 export function watchUiPreferences(
   onChanged: StorageChangedEvent,
-  { onTheme }: UiPreferenceListeners
+  { onTheme, onLanguage }: UiPreferenceListeners
 ): () => void {
   const listener: ChangeListener = (changes, areaName) => {
     if (areaName !== 'local') return
     const theme = changes[UI_PREFERENCE_KEYS.theme]
     if (theme && onTheme) onTheme(parseThemePreference(theme.newValue))
+    const language = changes[UI_PREFERENCE_KEYS.language]
+    if (language && onLanguage) onLanguage(parseLanguagePreference(language.newValue))
   }
   onChanged.addListener(listener)
   return () => onChanged.removeListener(listener)

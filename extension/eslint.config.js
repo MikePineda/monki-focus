@@ -45,6 +45,9 @@ export default tseslint.config(
       'src/entrypoints/**/*.{ts,tsx}',
       'src/dev/**/*.{ts,tsx}',
       'src/content/**/*.{ts,tsx}',
+      'src/popup/**/*.{ts,tsx}',
+      'src/options/**/*.{ts,tsx}',
+      'src/pages/**/*.{ts,tsx}',
     ],
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },

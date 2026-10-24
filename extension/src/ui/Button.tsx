@@ -10,8 +10,10 @@ import { Icon, type LucideIcon } from './Icon'
  * - `ink`: the primary action everywhere else (`ink-1` fill).
  * - `secondary`: the alternative that costs something (hairline border).
  * - `quiet`: inline text action with an underline ("End now").
+ * - `destructive`: the secondary shape in `status-critical` ("Delete all
+ *   local data"); never a red fill.
  */
-export type ButtonVariant = 'leave' | 'ink' | 'secondary' | 'quiet'
+export type ButtonVariant = 'leave' | 'ink' | 'secondary' | 'quiet' | 'destructive'
 
 export interface ButtonProps {
   variant: ButtonVariant

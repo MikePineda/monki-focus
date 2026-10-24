@@ -63,6 +63,17 @@
   color: var(--mf-ink-2);
 }
 
+/* Destructive: the secondary shape in the critical status colour, never a fill. */
+.mf-button--destructive {
+  background: transparent;
+  border-color: var(--mf-status-critical);
+  color: var(--mf-status-critical);
+}
+
+.mf-button--destructive:hover:not(:disabled) {
+  background: var(--mf-surface-2);
+}
+
 /* Disabled never relies on opacity alone: ink-3 label, line border, a reason. */
 .mf-button:disabled {
   background: transparent;

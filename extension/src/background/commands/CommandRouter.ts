@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import {
   COMMAND_PAYLOAD_GUARDS,
+  EXTENSION_PAGE_COMMANDS,
   GATE_PAGE_COMMANDS,
   isCommandEnvelope,
   TAB_URL_COMMANDS,
@@ -77,6 +78,17 @@ function isGatePageAllowed(type: CommandType, sender: CommandSender): boolean {
   }
 }
 
+/** Whether the sender is one of this extension's own pages (not a content script). */
+function isExtensionPage(sender: CommandSender, runtimeId: string): boolean {
+  if (!sender.url) return false
+  try {
+    const { protocol, host } = new URL(sender.url)
+    return protocol === 'chrome-extension:' && host === runtimeId
+  } catch {
+    return false
+  }
+}
+
 /**
  * Single entry point for commands sent to the service worker. It answers only
  * messages from this extension's own contexts (`sender.id === runtime.id`;
@@ -106,6 +118,9 @@ export class CommandRouter {
       return { ok: false, error: 'message.malformed' }
     }
     if (!isTabUrlAllowed(type, payload, sender) || !isGatePageAllowed(type, sender)) {
+      return { ok: false, error: 'sender.rejected' }
+    }
+    if (EXTENSION_PAGE_COMMANDS.has(type) && !isExtensionPage(sender, this.runtimeId)) {
       return { ok: false, error: 'sender.rejected' }
     }
     const handler = this.handlers[type] as CommandHandler<CommandType>

@@ -13,7 +13,14 @@ import { delayedFeedDecisions } from '../background/e2e/DecisionDelay'
 import { SiteTabs } from '../background/feeds/SiteTabs'
 import { UserStylesheetInjector } from '../background/feeds/UserStylesheetInjector'
 import { createGateModule, type GateModule } from '../background/gate/GateModule'
+import { PreferenceService } from '../background/preferences/PreferenceService'
 import { deviceTimeZone } from '../background/rules/DeviceTimeZone'
+import { PendingRuleChangeStore } from '../background/rules/PendingRuleChangeStore'
+import {
+  PENDING_RULES_ALARM,
+  RuleChangeService,
+  pendingRulesAlarm,
+} from '../background/rules/RuleChangeService'
 import { RulesetStore } from '../background/rules/RulesetStore'
 import { ShortsRedirectSync } from '../background/shorts/ShortsRedirectSync'
 import { openMonkiDb } from '../background/storage/db'
@@ -40,6 +47,13 @@ export default defineBackground(() => {
     rulesets,
     clock: gateClock,
     states: () => gateHolder.module?.decisionState() ?? EMPTY_DECISION_STATE,
+  })
+  const ruleChanges = new RuleChangeService({
+    rulesets,
+    pending: new PendingRuleChangeStore(browser.storage.local),
+    catalog,
+    clock: gateClock,
+    onPendingChanged: pendingRulesAlarm(browser.alarms),
   })
   const shortsRedirect = new ShortsRedirectSync(decisionService, browser.declarativeNetRequest)
   const siteTabs = new SiteTabs({
@@ -114,6 +128,9 @@ export default defineBackground(() => {
       shortsRedirect,
       tracking: tracking.commands,
       gate,
+      rules: ruleChanges,
+      preferences: new PreferenceService(browser.storage.local),
+      localData: tracking.localData,
     })
   )
   router.listen(browser.runtime.onMessage)
@@ -132,12 +149,16 @@ export default defineBackground(() => {
     void gate.refresh().catch(() => undefined)
   })
   browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === PENDING_RULES_ALARM) void ruleChanges.promoteIfDue().catch(() => undefined)
     if (alarm.name !== RESTRICTION_ALARM) return
     void restrictions.check().catch(() => undefined)
     // Schedule edges and spent budgets change which sites the gate redirects.
     void gate.refresh().catch(() => undefined)
+    // The per-minute check also catches a pending change whose alarm was lost.
+    void ruleChanges.promoteIfDue().catch(() => undefined)
   })
   void browser.alarms.create(RESTRICTION_ALARM, { periodInMinutes: RESTRICTION_CHECK_MINUTES })
+  void ruleChanges.promoteIfDue().catch(() => undefined)
   void shortsRedirect.sync().catch(() => undefined)
   void restrictions.check().catch(() => undefined)
   tracking.start()

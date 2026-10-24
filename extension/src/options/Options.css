@@ -1,0 +1,205 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Options page: fluid, at most 1120px, side nav of 40px items, one column under 720px. */
+body:has(.options) .page-shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--mf-space-lg);
+}
+
+.options {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--mf-space-xl);
+  align-items: start;
+}
+
+@media (width < 720px) {
+  .options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.options__nav ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.options__nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--mf-space-sm);
+  min-height: var(--mf-tap);
+  padding: 0 var(--mf-space-md);
+  border-radius: var(--mf-radius-md);
+  color: var(--mf-ink-2);
+  text-decoration: none;
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  font-weight: var(--mf-type-label-weight);
+}
+
+.options__nav-item:hover {
+  background: var(--mf-surface-2);
+}
+
+.options__nav-item[aria-current='page'] {
+  background: var(--mf-accent-soft);
+  color: var(--mf-accent);
+}
+
+.options__nav-item:focus-visible,
+.options__link:focus-visible {
+  outline: 2px solid var(--mf-focus);
+  outline-offset: 2px;
+}
+
+.options__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-lg);
+  min-width: 0;
+}
+
+.options__heading {
+  margin: 0;
+  font-size: var(--mf-type-title-size);
+  line-height: var(--mf-type-title-line-height);
+  font-weight: var(--mf-type-title-weight);
+  letter-spacing: var(--mf-type-title-letter-spacing);
+}
+
+.options__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-xl);
+}
+
+.options__block,
+.options__pending,
+.options__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-md);
+  margin: 0;
+  padding: 0 0 var(--mf-space-xl);
+  border: 0;
+  border-bottom: 1px solid var(--mf-line);
+}
+
+.options__pending,
+.options__confirm {
+  padding: var(--mf-space-md);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius-lg);
+  background: var(--mf-surface-1);
+}
+
+.options__subheading {
+  display: flex;
+  align-items: center;
+  gap: var(--mf-space-sm);
+  margin: 0;
+  font-size: var(--mf-type-heading-size);
+  line-height: var(--mf-type-heading-line-height);
+  font-weight: var(--mf-type-heading-weight);
+  text-wrap: balance;
+}
+
+.options__editor,
+.options__inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-md);
+}
+
+.options__editor {
+  padding: var(--mf-space-md);
+  border: 1px solid var(--mf-line);
+  border-radius: var(--mf-radius-lg);
+}
+
+.options__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--mf-space-md);
+  align-items: start;
+}
+
+.options__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mf-space-sm);
+}
+
+.options__muted,
+.options__caption {
+  margin: 0;
+  color: var(--mf-ink-2);
+  max-width: 72ch;
+}
+
+.options__caption {
+  color: var(--mf-ink-3);
+  font-size: var(--mf-type-caption-size);
+  line-height: var(--mf-type-caption-line-height);
+}
+
+.options__feedback:empty {
+  display: none;
+}
+
+.options__list,
+.options__pending-list,
+.options__bullets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.options__pending-list,
+.options__bullets {
+  padding-inline-start: var(--mf-space-lg);
+  list-style: disc;
+}
+
+.options__list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mf-space-md);
+  border-bottom: 1px solid var(--mf-line);
+}
+
+.options__level,
+.options__outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mf-space-xs);
+  color: var(--mf-ink-2);
+}
+
+.options__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mf-space-xs);
+  min-height: var(--mf-tap-min);
+  color: var(--mf-accent);
+  text-underline-offset: var(--mf-space-xs);
+}
+
+.options__numeric {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.options p {
+  margin: 0;
+}

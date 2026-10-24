@@ -3,6 +3,7 @@ import preact from '@preact/preset-vite'
 import { defineConfig } from 'wxt'
 import { isEntrypointBuilt } from './config/devOnlyEntrypoints'
 import { extensionManifest } from './config/extensionManifest'
+import { rulesetValidatorPlugin } from './config/rulesetValidatorPlugin'
 
 /** Modules of `@monki-focus/rules` and its validator that have no side effects at import. */
 const RULES_VALIDATOR_MODULES =
@@ -17,7 +18,7 @@ export default defineConfig({
   manifest: ({ mode }) =>
     extensionManifest({ mode, devPublicKey: process.env.EXTENSION_DEV_PUBLIC_KEY }),
   vite: () => ({
-    plugins: [preact()],
+    plugins: [preact(), rulesetValidatorPlugin()],
     build: {
       rollupOptions: {
         treeshake: {

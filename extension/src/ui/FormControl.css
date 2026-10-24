@@ -1,0 +1,97 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Shared look of the native form controls (select, number, time, checkbox). */
+.mf-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-sm);
+  min-width: 0;
+}
+
+.mf-field__label,
+.mf-fieldset__legend {
+  padding: 0;
+  color: var(--mf-ink-2);
+  font-size: var(--mf-type-label-size);
+  line-height: var(--mf-type-label-line-height);
+  font-weight: var(--mf-type-label-weight);
+  letter-spacing: var(--mf-type-label-letter-spacing);
+}
+
+.mf-field__control {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--mf-tap);
+  padding: 0 var(--mf-space-md);
+  border: 1px solid var(--mf-line-strong);
+  border-radius: var(--mf-radius-md);
+  background: var(--mf-surface-1);
+  color: var(--mf-ink-1);
+  font: inherit;
+  font-size: var(--mf-type-body-size);
+  line-height: var(--mf-type-body-line-height);
+  font-variant-numeric: tabular-nums;
+  color-scheme: inherit;
+}
+
+.mf-field__control:focus-visible,
+.mf-checkbox__input:focus-visible {
+  outline: 2px solid var(--mf-focus);
+  outline-offset: 2px;
+}
+
+.mf-field__hint {
+  margin: 0;
+  color: var(--mf-ink-3);
+  font-size: var(--mf-type-caption-size);
+  line-height: var(--mf-type-caption-line-height);
+  letter-spacing: var(--mf-type-caption-letter-spacing);
+}
+
+.mf-fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-sm);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mf-fieldset__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mf-space-xs) var(--mf-space-md);
+}
+
+.mf-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mf-space-sm);
+  min-height: var(--mf-tap-min);
+  color: var(--mf-ink-1);
+}
+
+.mf-checkbox__label {
+  cursor: pointer;
+}
+
+.mf-checkbox__input {
+  flex: none;
+  width: var(--mf-space-md);
+  height: var(--mf-space-md);
+  margin: var(--mf-space-xs) 0 0;
+  border-radius: var(--mf-radius-sm);
+  accent-color: var(--mf-ink-1);
+}
+
+.mf-checkbox__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mf-space-xs);
+}
+
+.mf-checkbox__description {
+  color: var(--mf-ink-3);
+  font-size: var(--mf-type-caption-size);
+  line-height: var(--mf-type-caption-line-height);
+}

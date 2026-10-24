@@ -37,7 +37,10 @@ repo (`*.pem` is gitignored).
 ```
 src/entrypoints/   background.ts and feed-guard.content/ (wiring only), popup/, options/, gate/
 src/gate/          the intention gate page (GatePage, PauseBlock, IntentionForm, GateClient)
-src/background/    service-worker modules (commands/, decisions/, gate/, rules/, shorts/, tracking/, storage/, stats/, privacy/)
+src/popup/         popup view model and view (E8)
+src/options/       options page: rules/, preferences/, stats/, about/ (E8)
+src/pages/         page-side hooks (remembered chart view, file download)
+src/background/    service-worker modules (commands/, data/, decisions/, gate/, preferences/, rules/, shorts/, tracking/, storage/, stats/, privacy/)
 src/content/       feed guard: FeedGuard, FeedHider, SpaNavigationWatcher, FeedPlaceholder, ...
 src/sites/         per-site DOM selectors keyed by surface id (reddit, x, youtube, instagram)
 src/shared/        clock.ts, messages.ts (typed commands), bundledRulesCatalog.ts, FeedSurfaces.ts, StatsContract.ts
@@ -89,7 +92,10 @@ e2e/               Playwright: support/, fixtures/sites/<site>/, tests/
 - `/dev.html` (`npm run build:dev`, or `npm run dev`) shows every component in
   both themes and both languages with synthetic data. `config/devOnlyEntrypoints.ts`
   marks it skipped in the e2e and production builds, so the zip never has it.
-- Inter is not bundled yet; the token font stack falls back to the system face.
+- Inter (variable, OFL) is self-hosted from `@fontsource-variable/inter`
+  (`src/theme/inter.css`, imported by `startPage`): latin and latin-ext only,
+  `font-display: swap`, bundled woff2, no network font request. Numbers use
+  `tabular-nums` through the type tokens (`stat`, `numeric`, tables).
 
 ## Feeds and Shorts (E5)
 
@@ -330,6 +336,47 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   pause, a 5-minute intention or the 2-minute wait. Specs start from a rule
   set without friction and bedtime unless they ask for `startingRuleset:
 'gated'` (`e2e/support/extensionTest.ts`).
+
+## Popup and options (E8)
+
+- **Popup** (360 wide, plan §8.2): the running intention (only when the
+  intention gate answers `intention.active` with `available: true`), Pulse
+  today ("—" without data), the level bar with its table view, the top five
+  sites, the intentions line, warnings (no incognito access: a way around
+  the rules; missing host access, with "Allow" asking for it) and the
+  Settings/Statistics footer. There is no on/off switch anywhere.
+- **Options** (`options.html#rules|preferences|stats|about`): rule list and
+  editor (mode, daily budget, always / work hours / custom times, on/off of a
+  rule), allowed Reddit communities (`allow` rules on
+  `reddit.com/r/<name>/**`), bedtime, work hours, site levels (category
+  overrides), rule set import/export; language, theme, "store page titles"
+  (off by default) and "count a playing tab while idle"; the 7-day pulse,
+  the hour × weekday heatmap (each with its table), the intentions log (E6),
+  export (ActivityWatch JSON, CSV of blocks) and "Delete all local data"
+  behind an in-page confirmation (rules and preferences stay; bypass records
+  of a later package are never erased).
+- **Rule changes** go only through `rules.propose` with the whole edited set
+  and the revision the page started from (`stale_revision` otherwise).
+  `RuleChangeService` validates it, then runs the engine's
+  `effectiveRuleSet(effective, proposed, now, pendingEffectiveFrom, catalog)`:
+  the effective set (`rules.ruleset`, written only through
+  `RulesetStore.save`) gets what applies today; when anything loosens, the
+  whole proposal waits in `rules.pending` with its `effectiveFrom`, an alarm
+  (`rules.pending`, plus the per-minute check and every `rules.state` read)
+  applies it once due, and `rules.cancelPending` drops it, which never
+  loosens anything. Editors start from the pending set while one waits.
+- **Validation without eval.** MV3 forbids Ajv's run-time code generation,
+  so `config/rulesetValidatorPlugin.ts` compiles the rules package's schemas
+  at build time (Ajv standalone, same options) into
+  `virtual:monki-ruleset-validator`; `src/shared/RulesetValidation.ts`
+  answers the same rejection codes, and a test runs every `invalid` fixture
+  through both validators.
+- **Commands for pages only.** `rules.*`, `preferences.*`, `data.*` and
+  `intention.*` are answered only when `sender.url` is one of this
+  extension's pages (never a content script). Preference writes go through
+  `preferences.set` (`ui.theme`, `ui.language`, `privacy.storeTitles`,
+  `tracking.countAudibleWhileIdle`, `ui.chartView.<chart>`); every page
+  follows theme and language changes live.
 
 ## Live smoke before release
 
