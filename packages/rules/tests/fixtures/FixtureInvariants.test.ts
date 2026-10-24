@@ -95,6 +95,45 @@ describe('reference invariants', () => {
     expect(checkFixtureInvariants(fixture).join('\n')).toMatch(/300/)
   })
 
+  it('blocks_must_be_totally_ordered_by_source_and_level', () => {
+    const fixture = structuredClone(
+      loadFixtures('activity').find((f) => f.id === 'activity.split_preserves_total_seconds')
+    )
+    if (fixture?.operation !== 'blocks') throw new Error('missing blocks fixture')
+    const [first] = fixture.then.blocks
+    if (!first) throw new Error('no blocks')
+    fixture.then.blocks = [
+      { ...first, source: 'web', seconds: 1 },
+      { ...first, source: 'app', seconds: 1 },
+    ]
+    expect(checkFixtureInvariants(fixture).join('\n')).toMatch(/source, level/)
+  })
+
+  it('browser_unknown_long_after_the_latest_heartbeat_is_reported', () => {
+    const fixture = structuredClone(
+      loadFixtures('activity').find(
+        (f) => f.id === 'activity.browser_unknown_is_judged_against_the_latest_heartbeat_before_it'
+      )
+    )
+    if (fixture?.operation !== 'browser-dedupe') throw new Error('missing dedupe fixture')
+    fixture.then.segments = fixture.then.segments.map((segment) =>
+      segment.source === 'app' ? { ...segment, activityKey: 'browser-unknown' } : segment
+    )
+    expect(checkFixtureInvariants(fixture).join('\n')).toMatch(/latest heartbeat/)
+  })
+
+  it('clipped_web_segment_is_reported', () => {
+    const fixture = structuredClone(
+      loadFixtures('activity').find(
+        (f) => f.id === 'activity.web_segments_are_not_clipped_to_browser_window_time'
+      )
+    )
+    if (fixture?.operation !== 'browser-dedupe') throw new Error('missing dedupe fixture')
+    const [web] = fixture.then.segments
+    if (web) web.end = '2026-10-26T10:05:00Z'
+    expect(checkFixtureInvariants(fixture).join('\n')).toMatch(/whole/)
+  })
+
   it('rule_change_without_deferral_must_equal_the_new_ruleset', () => {
     const fixture = structuredClone(
       loadFixtures('rule-change').find((f) => f.then.effectiveFrom === null)

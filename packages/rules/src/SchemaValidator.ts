@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Ajv2020 } from 'ajv/dist/2020.js'
 import formatsModule from 'ajv-formats'
-import type { JsonSchemaDocument } from './SchemaFiles.ts'
+import type { JsonSchemaDocument } from './JsonSchemaDocument.ts'
 import type { SchemaName } from './SchemaName.ts'
 import { schemaIdOf } from './SchemaName.ts'
 import type { AliasMap } from './TargetNormaliser.ts'
@@ -12,7 +12,7 @@ export const MAX_DOCUMENT_BYTES = 256 * 1024
 
 /** Why a document was rejected; the `invalid` fixtures name these codes. */
 export type RejectionCode =
-  'schema' | 'duplicate_key' | 'invalid_domain' | 'too_large' | 'invalid_json'
+  'schema' | 'duplicate_key' | 'invalid_domain' | 'invalid_time_zone' | 'too_large' | 'invalid_json'
 
 export type ValidationResult =
   { valid: true } | { valid: false; code: RejectionCode; errors: string[] }
@@ -41,6 +41,24 @@ export const UNIQUE_BY_KEYWORD = 'x-uniqueBy'
 /** Extension keyword: a domain that still has two labels and is no public suffix once normalised. */
 export const REGISTRABLE_DOMAIN_KEYWORD = 'x-registrableDomain'
 
+/** Extension keyword: an IANA zone name the platform's time zone database resolves, case-sensitively. */
+export const TIME_ZONE_KEYWORD = 'x-timeZone'
+
+/**
+ * True when `Intl` knows the zone. A name that only differs from the resolved
+ * one by letter case is rejected (Kotlin and Swift look zones up
+ * case-sensitively); links such as `Asia/Calcutta` are accepted.
+ */
+export function isResolvableTimeZone(zone: string): boolean {
+  let resolved: string
+  try {
+    resolved = new Intl.DateTimeFormat('en-US', { timeZone: zone }).resolvedOptions().timeZone
+  } catch {
+    return false
+  }
+  return resolved === zone || resolved.toLowerCase() !== zone.toLowerCase()
+}
+
 function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
   if (value !== null && typeof value === 'object') {
@@ -62,6 +80,7 @@ function valueAt(item: unknown, pointer: string): unknown {
 function codeOf(keywords: string[]): RejectionCode {
   if (keywords.includes(UNIQUE_BY_KEYWORD)) return 'duplicate_key'
   if (keywords.includes(REGISTRABLE_DOMAIN_KEYWORD)) return 'invalid_domain'
+  if (keywords.includes(TIME_ZONE_KEYWORD)) return 'invalid_time_zone'
   return 'schema'
 }
 
@@ -102,6 +121,13 @@ export function createSchemaValidator(
     errors: false,
     validate: (enabled: boolean, domain: string) =>
       !enabled || isRegistrableDomain(domain, aliases),
+  })
+  ajv.addKeyword({
+    keyword: TIME_ZONE_KEYWORD,
+    type: 'string',
+    schemaType: 'boolean',
+    errors: false,
+    validate: (enabled: boolean, zone: string) => !enabled || isResolvableTimeZone(zone),
   })
   for (const schema of schemas) ajv.addSchema(schema)
   for (const schema of schemas) ajv.getSchema(schema.$id)

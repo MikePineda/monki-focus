@@ -41,9 +41,10 @@
   "$defs": {
     "ruleId": {
       "title": "RuleId",
-      "description": "ASCII id (a ULID or a slug). Ties are broken by code-unit order.",
+      "description": "ASCII id (a ULID or a slug). Ties are broken by code-unit order. `bedtime` is reserved for the bedtime target group.",
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+      "not": { "const": "bedtime" }
     },
     "mode": {
       "title": "RuleMode",

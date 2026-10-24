@@ -1,0 +1,30 @@
+{
+  "id": "invalid.unknown_time_zone_is_rejected",
+  "kind": "invalid",
+  "description": "A time zone name that matches the pattern but is not in the time zone database is rejected.",
+  "schema": "ruleset",
+  "document": {
+    "schemaVersion": 1,
+    "revision": 1,
+    "updatedAt": "2026-10-01T00:00:00Z",
+    "timeZone": "Mars/Olympus",
+    "rules": [],
+    "categories": [],
+    "bedtime": {
+      "enabled": true,
+      "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "start": "22:30",
+      "end": "07:00",
+      "warnMinutesBefore": 30
+    },
+    "workHours": {
+      "days": ["mon", "tue", "wed", "thu", "fri"],
+      "start": "09:00",
+      "end": "17:30"
+    }
+  },
+  "then": {
+    "rejected": true,
+    "code": "invalid_time_zone"
+  }
+}

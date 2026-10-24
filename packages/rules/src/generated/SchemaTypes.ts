@@ -65,7 +65,7 @@ export type Pulse = number | null
  */
 export type BlockList = ActivityBlock[]
 /**
- * IANA time zone name, for example `Australia/Sydney` or `UTC`.
+ * IANA time zone name, for example `Australia/Sydney` or `UTC`. `x-timeZone`: validators also reject a name the platform's time zone database cannot resolve (SEMANTICS.md §1).
  */
 export type TimeZone = string
 /**
@@ -102,7 +102,7 @@ export type EscalationLevel = 0 | 1 | 2 | 3
  */
 export type Instant = string
 /**
- * ASCII id (a ULID or a slug). Ties are broken by code-unit order.
+ * ASCII id (a ULID or a slug). Ties are broken by code-unit order. `bedtime` is reserved for the bedtime target group.
  */
 export type RuleId = string
 export type RuleMode = 'allow' | 'hide-feed' | 'friction' | 'block'
@@ -121,6 +121,7 @@ export type ReasonCode =
   | 'permalink_never_hidden'
   | 'path_unknown_allow'
   | 'not_a_feed'
+  | 'engine_error'
 /**
  * i18n key; fixed mapping from the primary outcome (SEMANTICS.md §5.3).
  */
@@ -138,37 +139,11 @@ export type ExplanationKey =
   | 'decision.permalink_never_hidden'
   | 'decision.path_unknown_allow'
   | 'decision.not_a_feed'
+  | 'decision.engine_error'
 /**
  * Accessibility view id, short (`clips_viewer_view_pager`) or fully qualified (`com.example:id/name`).
  */
 export type ViewId = string
-/**
- * The surface applies when every `all` predicate, at least one `any` predicate (if present) and no `none` predicate match. Detectors are evaluated by descending `priority`, ties by surface id.
- */
-export type SurfaceDetector = {
-  [k: string]: unknown | undefined
-} & {
-  surface: SurfaceId
-  priority: number
-  all?: NodePredicateList
-  any?: NodePredicateList
-  none?: NodePredicateList
-}
-/**
- * Matches one node. Needs a view id, text or content description; text fields are literal comparisons, never regex.
- */
-export type NodePredicate = {
-  [k: string]: unknown | undefined
-} & {
-  viewId?: ViewId
-  contentDesc?: string
-  contentDescPrefix?: string
-  text?: string
-  className?: string
-  onScreen?: boolean
-  selected?: boolean
-  minHeightRatio?: number
-}
 /**
  * @minItems 1
  * @maxItems 32
@@ -177,7 +152,7 @@ export type NodePredicateList = NodePredicate[]
 export type EscalationEvent = EscalationSimpleEvent | EscalationCommitEvent
 export type EscalationEffect = 'record_bypass'
 export type RejectionCode =
-  'schema' | 'duplicate_key' | 'invalid_domain' | 'too_large' | 'invalid_json'
+  'schema' | 'duplicate_key' | 'invalid_domain' | 'invalid_time_zone' | 'too_large' | 'invalid_json'
 /**
  * Either `isScheduleActive(schedules, workHours, now, timeZone)` or `bedtimePhase(bedtime, now, timeZone)` (SEMANTICS.md §6).
  */
@@ -801,6 +776,29 @@ export interface DetectorPack {
    * @maxItems 64
    */
   surfaces: SurfaceDetector[]
+}
+/**
+ * The surface applies when every `all` predicate, at least one `any` predicate (if present) and no `none` predicate match. Detectors are evaluated by descending `priority`, ties by surface id.
+ */
+export interface SurfaceDetector {
+  surface: SurfaceId
+  priority: number
+  all?: NodePredicateList
+  any?: NodePredicateList
+  none?: NodePredicateList
+}
+/**
+ * Matches one node. Needs a view id, text or content description; text fields are literal comparisons, never regex.
+ */
+export interface NodePredicate {
+  viewId?: ViewId
+  contentDesc?: string
+  contentDescPrefix?: string
+  text?: string
+  className?: string
+  onScreen?: boolean
+  selected?: boolean
+  minHeightRatio?: number
 }
 /**
  * A multi-step run of `nextEscalation(state, event, now, guardianLinked)`; each step feeds the previous step's state (SEMANTICS.md §7).

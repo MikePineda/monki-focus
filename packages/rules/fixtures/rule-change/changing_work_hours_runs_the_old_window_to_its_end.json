@@ -1,0 +1,72 @@
+{
+  "id": "rule-change.changing_work_hours_runs_the_old_window_to_its_end",
+  "kind": "rule-change",
+  "description": "Shortening a night shift that spans midnight waits past local midnight until the old window ends (06:00 local).",
+  "given": {
+    "old": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "22:00",
+        "end": "06:00"
+      }
+    },
+    "new": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "22:00",
+        "end": "04:00"
+      }
+    },
+    "now": "2026-10-26T15:00:00+11:00",
+    "pendingEffectiveFrom": null
+  },
+  "then": {
+    "effectiveToday": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-26T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "22:00",
+        "end": "06:00"
+      }
+    },
+    "effectiveFrom": "2026-10-26T19:00:00Z"
+  }
+}

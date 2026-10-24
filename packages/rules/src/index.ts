@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * @monki-focus/rules: schemas, data and conformance fixtures shared by every
- * platform. No decision logic lives here (that is @monki-focus/engine).
+ * @monki-focus/rules (also `@monki-focus/rules/node`): schemas, data and
+ * conformance fixtures shared by every platform, plus the Node readers
+ * (`loadFixtures`, `loadSchemas`, typed data loaders). Browsers and service
+ * workers import `@monki-focus/rules/pure` instead. No decision logic lives
+ * here (that is @monki-focus/engine).
  */
-export type * from './generated/SchemaTypes.ts'
+export * from './pure.ts'
 export type { Fixture, FixtureByKind } from './Fixture.ts'
 export type { FixtureKind, LoadableFixtureKind } from './FixtureKind.ts'
 export { FIXTURE_KINDS, isFixtureKind } from './FixtureKind.ts'
@@ -12,20 +15,8 @@ export { listFixtureFiles } from './FixtureFiles.ts'
 export type { LoadFixturesOptions } from './FixtureLoader.ts'
 export { loadFixtures } from './FixtureLoader.ts'
 export { checkFixtureInvariants, explanationKeyOf } from './FixtureInvariants.ts'
-export type { SchemaName } from './SchemaName.ts'
-export { SCHEMA_BASE_URI, SCHEMA_NAMES, schemaIdOf } from './SchemaName.ts'
-export type { JsonSchemaDocument } from './SchemaFiles.ts'
 export { loadSchemas } from './SchemaFiles.ts'
-export type {
-  RejectionCode,
-  SchemaValidator,
-  SchemaValidatorOptions,
-  ValidationResult,
-} from './SchemaValidator.ts'
-export { MAX_DOCUMENT_BYTES, createSchemaValidator } from './SchemaValidator.ts'
 export { loadAliasMap, schemaValidator } from './PackageSchemaValidator.ts'
-export type { AliasMap } from './TargetNormaliser.ts'
-export { canonicalTarget, isRegistrableDomain, normaliseDomain } from './TargetNormaliser.ts'
 export type { SiteProfileFile } from './RulesData.ts'
 export {
   loadDefaultCategories,

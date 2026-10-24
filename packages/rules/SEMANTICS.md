@@ -13,8 +13,9 @@ the rule set's pinned `timeZone` (§6.3).
 
 ## 1. Conventions
 
-- **Instants** in inputs are RFC 3339 with an explicit offset and whole
-  seconds. Every instant an engine **computes** (escalation state, rule-change
+- **Instants** in inputs (`now` included) MUST be RFC 3339 with an explicit
+  offset or `Z` and whole seconds (the schema pattern); a floating local time
+  is invalid input. Every instant an engine **computes** (escalation state, rule-change
   `effectiveFrom`, analytics) is written in UTC with `Z` and no fractional
   seconds (`2026-10-25T23:00:00Z`), so fixture comparison is a string compare.
 - **Local time** means the wall clock in the pinned IANA time zone. Days of
@@ -35,10 +36,13 @@ the rule set's pinned `timeZone` (§6.3).
   `x.com`, are duplicates. A domain marked `x-registrableDomain` MUST keep two
   labels after normalisation and MUST NOT be a bare public suffix (two labels
   under a two-letter TLD with second label `ac`, `co`, `com`, `edu`, `gov`,
-  `net` or `org`): `m.me` and `www.co.uk` are rejected. Every platform's
-  validator enforces both keywords and reports a rejection code (`schema`,
-  `duplicate_key`, `invalid_domain`, `too_large`, `invalid_json`), checked by
-  the `invalid` fixtures (§12). Data contains literals, globs and view ids
+  `net` or `org`): `m.me` and `www.co.uk` are rejected. A time zone marked
+  `x-timeZone` MUST resolve in the platform's time zone database, matched
+  case-sensitively (links such as `Asia/Calcutta` are fine): `Mars/Olympus`
+  is rejected. Every platform's validator enforces these keywords and reports
+  a rejection code (`schema`, `duplicate_key`, `invalid_domain`,
+  `invalid_time_zone`, `too_large`, `invalid_json`), checked by the `invalid`
+  fixtures (§12). Data contains literals, globs and view ids
   only, never regular expressions or code.
 
 ## 2. URL normalisation (`url-normalize`)
@@ -219,7 +223,8 @@ rule counts as `friction` when it can cover a `feed` surface of that profile
 (a site rule of the domain, or a surface rule on a feed surface), and a
 surface `block` counts as `friction` too (remove the feed, not the tool; a
 site `block` stays a block). The access winner is the unknown-path candidate
-with the strictest effective mode (`block > friction > allow`; ties by §4).
+with the strictest effective mode (`block > friction > allow`; ties by §4,
+with step 5 using the rule's own mode, not the effective mode).
 `block` → `rule_match`; `friction` → the gate of its group (a promoted rule
 is its own group). All unknown-path candidates take part in the budget step
 (§5.2.2). For
@@ -278,7 +283,8 @@ ships with `UTC`; clients set the device zone once at install.
 
 `nextEscalation(state, event, now, guardianLinked) → {state, effects}`.
 One state per **target group**: the id of the friction rule (or the blocked
-rule / `bedtime` for emergency overrides). The initial state is `idle` with
+rule / `bedtime` for emergency overrides; `bedtime` is reserved, so no rule
+may use it as its id). The initial state is `idle` with
 counters 0, `pendingExtension` false and every other field null. Events that
 do not apply in the current phase leave the state unchanged; every event that
 changes the state sets `lastActivityAt = now`.
@@ -324,20 +330,28 @@ short extension path; the third and later require a full gate.
   required and not verified.
 - **`intention_expired`** in `active` with `now ≥ intentionExpiresAt`:
   `timed_out`.
-- **`leave`** in `active` or `timed_out`: `idle`, intention ended (kept).
+- **`leave`** in `active` or `timed_out`: `idle`; the intention ends and
+  `intentionExpiresAt` becomes null (the attempt still counts).
 - **`extend`** in `timed_out`: `brokenCount += 1`; the next friction type;
   phase `pausing`. If `brokenCount` was < 2: the gate at the current level
   with the doubled pause and no typing or key, `pendingExtension` true (then 5
   minutes). Otherwise a **full gate** at the current level (typing and key as
   §7.1), `pendingExtension` false (then `asking` and a new `commit`).
-- **`emergency_request`** in `idle`, `pausing`, `asking`, `timed_out`:
-  `override_waiting`, `overrideReadyAt = now + 120 s`.
+- **`emergency_request`** in `idle`, `pausing`, `asking`, `active`,
+  `timed_out` (every phase in which `decide` can gate or block, so the user is
+  never trapped; `active` matters when a budget runs out mid-intention):
+  `override_waiting`, `overrideReadyAt = now + 120 s`. From `active` the
+  intention ends (`intentionExpiresAt` becomes null).
 - **`emergency_wait_elapsed`** in `override_waiting` with
   `now ≥ overrideReadyAt`: `override_active`,
   `overrideEndsAt = now + 15 min`, effect `record_bypass` (always reported to
   the guardian, queued while offline).
 - **`emergency_expired`** in `override_active` with `now ≥ overrideEndsAt`:
   `idle`, override timers cleared.
+
+Every transition to `idle` clears `gate`, `pauseEndsAt`, `pendingExtension`
+(false), `intentionExpiresAt`, `overrideReadyAt` and `overrideEndsAt`; only
+the counters, `lastAttemptAt`, `lastActivityAt` and `lastFrictionType` survive.
 
 ### 7.4 Gate in `decide`
 
@@ -352,7 +366,8 @@ For a friction restriction without a lift, `decide` returns:
   rule id never resets it. For each matching friction candidate's group apply
   the session check of §7.2; the effective `attemptCount` and `brokenCount`
   are the maxima, `lastFrictionType` comes from the group with the latest
-  `lastActivityAt` (ties: the winner's). Adapters MUST call `nextEscalation`
+  `lastActivityAt` (ties: the winner's group, then the smallest rule id,
+  code-unit order). Adapters MUST call `nextEscalation`
   for the winner's group with that effective state, so the stored gate equals
   the returned one.
 
@@ -372,7 +387,11 @@ tightening) waits. Each part is judged on its own:
   (removing or disabling any rule that carries a budget waits); mode `allow → any`, `friction → block`,
   `hide-feed → block`; schedules whose week set (§6.1) contains the old one on
   a non-allow rule (outrank check when it grows); budget added or lowered
-  (raised or removed waits); `note` is neutral.
+  (raised or removed waits); `note` is neutral. A `{"ref": "workHours"}`
+  schedule resolves to `old.workHours` in the old rule and to the work hours
+  that apply **today** in the new one (`old.workHours` while a `workHours`
+  change waits, otherwise `new.workHours`): moving a rule to work hours while
+  widening them waits.
 - **Outrank check.** A rule that becomes active where it was not (added,
   enabled, schedule widened) is tightening only if, at every instant it is
   active, it does not outrank (§4, access axis) an overlapping rule of
@@ -405,11 +424,22 @@ version (added loosening rules left out, removed restrictive rules kept), with
 
 1. the next local midnight after `now` (with a waiting `timeZone` change, the
    later of the next midnights in both zones);
-2. if a waiting change touches bedtime, categories (they decide bedtime), a
-   schedule of a rule, `workHours` or `timeZone`, and an old bedtime or
-   schedule window of a changed part is active at that instant (in either
-   zone; for categories the bedtime window), move to the end of that window;
-   repeat while one is active;
+2. the first instant at or after that one that lies in no old window of a
+   waiting part (in either zone): the end of the union of the half-open
+   windows that chain from it, however many there are. It is a time bound,
+   never a round count, and never later than `now` + 8 days (691 200 s): if
+   the union still covers that instant (24-hour windows on every day never
+   end), the result is exactly `now` + 8 days. The old windows of the waiting
+   parts are (an old bedtime window only while the old bedtime is enabled; a
+   `workHours` reference resolves to the old `workHours`):
+   - bedtime or categories (they decide bedtime): the old bedtime window;
+   - a rule whose `schedules` changed, and an enabled non-allow rule that is
+     removed or disabled: its old schedule windows (deleting a block during
+     its window waits until the window ends); a rule without schedules has
+     no window;
+   - `workHours`: the old `workHours` window;
+   - `timeZone`: the old bedtime window and the schedule windows of every
+     enabled old rule;
 3. never earlier than `pendingEffectiveFrom`.
 
 The result is a UTC instant (turning bedtime off at 23:00 takes effect at
@@ -457,22 +487,30 @@ hb.timestamp + hb.duration − last.timestamp)`; otherwise append the
    device's blocks in a `blockStart` exceed 300 s they are scaled by the
    largest-remainder rule of step 9. Blocks carry no title, URL or path
    (enforced by the schema). Output sorted by `blockStart`, `deviceId`,
-   `activityKey` (null first), `categoryPath`.
+   `activityKey` (null first), `categoryPath`, `source`, `level` (ascending;
+   strings in code-unit order), a total order.
 7. **`daily-totals`**: intervals are split at local midnight in the time zone
    (days last 23, 24 or 25 hours); per local date: total seconds, seconds by
    level and the pulse. Only dates with time appear, ascending.
 8. **`browser-dedupe`** (macOS, one aggregator per device). Window events of a
    browser app (`browserApps`) minus the union of web events are uncovered
-   time. Uncovered time up to `extensionLastHeartbeatAt + staleAfterSeconds`
-   is `browser-unknown` (source `app`, neutral); later uncovered time (a
-   silent extension) is attributed to the browser app itself. Web events become
-   `web` segments with their domain; other window events stay `app` segments.
-   Output sorted by start.
+   time. The extension's known heartbeats are the end of every web event
+   (`timestamp + duration`) and `extensionLastHeartbeatAt` (when not null).
+   An uncovered instant `t` is `browser-unknown` (source `app`, neutral) when
+   the latest known heartbeat at or before `t` is less than
+   `staleAfterSeconds` earlier (`h ≤ t < h + staleAfterSeconds`); otherwise
+   (a silent extension, or no heartbeat yet) it is attributed to the browser
+   app itself. Each stretch is judged against its own latest heartbeat, never
+   against one global `extensionLastHeartbeatAt`: a later heartbeat does not
+   cover earlier silence. Web events become `web` segments with their domain
+   and are **not** clipped to browser-window time; other window events stay
+   `app` segments. Output sorted by start, then end, `source` and
+   `activityKey`.
 9. **`cross-device-cap`** (server). Per `blockStart`, if the devices' seconds
    add up to more than 300, each becomes `floor(s × 300 / total)` and the
    remaining seconds go one each to the largest fractional parts (ties by
-   `deviceId`, `activityKey`, `categoryPath` ascending). Blocks that reach 0
-   are dropped.
+   `deviceId`, `activityKey` (null first), `categoryPath`, `source`, `level`
+   ascending, a total order). Blocks that reach 0 are dropped.
 
 The guardian only ever sees per-level totals and the pulse.
 
@@ -536,3 +574,19 @@ decisions are folded into the sections above):
     explore/trending/hashtags (`youtube.explore`) are feeds; Instagram Explore
     search is `instagram.search` (utility). The starter preset hides
     `youtube.explore` but not subscriptions or user pages.
+
+## 14. Failure handling
+
+- **Fail closed.** Any exception or invalid input while computing `decide`
+  (an input that fails its schema, an unresolvable time zone, an instant
+  without an offset, an internal error) yields
+  `{access: block, content: hide-feed, ruleId: null, reason: engine_error,
+explanationKey: decision.engine_error}` and no gate. Adapters log the
+  reason code only, never URLs or titles.
+- **Validated inputs.** Rule sets are validated (§1) before they reach an
+  engine; an unknown time zone is rejected with `invalid_time_zone`, so at
+  run time it can only come from a bug and fails closed as above.
+- **Ids are data.** Lookups by rule id, target group or usage key MUST use
+  maps or own-property checks and never reach an object prototype:
+  `constructor`, `toString` or `hasOwnProperty` are ordinary ids
+  (`decision.rule_ids_named_like_object_members_are_plain_ids`).

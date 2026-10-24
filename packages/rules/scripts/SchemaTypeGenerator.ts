@@ -3,9 +3,15 @@
  * Generates `src/generated/SchemaTypes.ts` from `schema/v1/*.schema.json` with
  * json-schema-to-typescript. All schemas are compiled through one in-memory
  * bundle so that every titled definition is declared exactly once.
+ *
+ * Schemas are fed to the generator through an in-memory file resolver that
+ * drops presence-only combinators (`anyOf: [{required: [a]}, {required: [b]}]`):
+ * TypeScript cannot express them, and json-schema-to-typescript would turn
+ * each branch into a `{[k: string]: unknown}` index signature that lets any
+ * stray key through. Validation still enforces them (ajv reads the originals).
  */
 import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { compile } from 'json-schema-to-typescript'
 import type { JSONSchema } from 'json-schema-to-typescript'
 import { format, resolveConfig } from 'prettier'
@@ -20,6 +26,32 @@ const BANNER = `// SPDX-License-Identifier: AGPL-3.0-or-later
  * Do not edit by hand: change the schema and run \`npm run generate -w @monki-focus/rules\`.
  * A test fails when this file and the schemas drift apart.
  */`
+
+const COMBINATORS = ['anyOf', 'oneOf'] as const
+
+/** True for a branch that only lists required keys (`{"required": ["viewId"]}`). */
+function isPresenceOnly(branch: unknown): boolean {
+  return (
+    branch !== null &&
+    typeof branch === 'object' &&
+    Object.keys(branch).every((keyword) => keyword === 'required')
+  )
+}
+
+/** Copy of a schema without presence-only combinators, at any depth. */
+export function withoutPresenceCombinators(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(withoutPresenceCombinators)
+  if (node === null || typeof node !== 'object') return node
+  const copy: Record<string, unknown> = {}
+  for (const [keyword, child] of Object.entries(node)) {
+    const isPresenceCombinator =
+      (COMBINATORS as readonly string[]).includes(keyword) &&
+      Array.isArray(child) &&
+      child.every(isPresenceOnly)
+    if (!isPresenceCombinator) copy[keyword] = withoutPresenceCombinators(child)
+  }
+  return copy
+}
 
 interface SchemaFile {
   fileName: string
@@ -71,7 +103,21 @@ export async function generateSchemaTypes(): Promise<string> {
     strictIndexSignatures: true,
     ignoreMinAndMaxItems: true,
     format: false,
-    $refOptions: { resolve: { http: false } },
+    $refOptions: {
+      resolve: {
+        http: false,
+        file: {
+          order: 1,
+          canRead: (file: { url: string }) => file.url.endsWith('.schema.json'),
+          read: (file: { url: string }) => {
+            const fileName = basename(file.url)
+            const found = files.find((candidate) => candidate.fileName === fileName)
+            if (!found) throw new Error(`unknown schema file ${file.url}`)
+            return withoutPresenceCombinators(found.schema) as JSONSchema
+          },
+        },
+      },
+    },
   })
   const config = (await resolveConfig(generatedTypesPath)) ?? {}
   return format(source, { ...config, parser: 'typescript' })

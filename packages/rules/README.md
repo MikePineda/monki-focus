@@ -37,9 +37,21 @@ unknown kind, an invalid fixture or one filed under the wrong directory.
 Node APIs) validates rule sets in a browser; `schemaValidator()` is the
 Node-side instance over the package's own schemas.
 
+Browsers and service workers import `@monki-focus/rules/pure`: the generated
+types, the bundled schemas, surfaces, site profiles, default categories and
+starter preset as imported JSON, and `bundledSchemaValidator()`. Its module
+graph never touches a Node builtin (a test compiles it with only the `es2024`
+and `webworker` libs). The root entry (also `@monki-focus/rules/node`) adds the
+file-system readers such as `loadFixtures`.
+
+```ts
+import { bundledSchemaValidator, starterPreset } from '@monki-focus/rules/pure'
+```
+
 Validators on every platform must also enforce the `x-uniqueBy` extension
 keyword (duplicate rule ids, category targets, escalation groups or surface ids
-are invalid). Kotlin and Swift read `schema/`, `data/` and `fixtures/` by relative path and
+are invalid), `x-registrableDomain` and `x-timeZone` (a zone the platform's
+time zone database cannot resolve is rejected with `invalid_time_zone`). Kotlin and Swift read `schema/`, `data/` and `fixtures/` by relative path and
 validate fixtures against `schema/v1/fixture.schema.json`.
 
 ## Scripts

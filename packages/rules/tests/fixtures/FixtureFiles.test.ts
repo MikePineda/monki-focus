@@ -258,7 +258,9 @@ describe('fixture files', () => {
   })
 
   it('fixture_time_zones_are_real_iana_zones', () => {
-    for (const file of files) {
+    // An invalid fixture may carry an unknown zone on purpose.
+    const zoneFiles = files.filter((file) => !file.text.includes('"code": "invalid_time_zone"'))
+    for (const file of zoneFiles) {
       const text = file.text
       for (const match of text.matchAll(/"timeZone": "([^"]+)"/g)) {
         const zone = match[1] ?? ''
