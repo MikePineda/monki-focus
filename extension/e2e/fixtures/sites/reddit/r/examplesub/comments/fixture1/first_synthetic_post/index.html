@@ -17,6 +17,19 @@
           <p>A synthetic comment.</p>
         </shreddit-comment>
       </shreddit-comment-tree>
+      <button id="silent-home" type="button">Home</button>
     </shreddit-app>
+    <script>
+      // An in-app navigation that fires no popstate, no site event and keeps
+      // the title: only the URL and the DOM change.
+      document.getElementById('silent-home').addEventListener('click', () => {
+        history.pushState({}, '', '/')
+        const feed = document.createElement('shreddit-feed')
+        const post = document.createElement('article')
+        post.textContent = 'A synthetic post rendered by the app'
+        feed.append(post)
+        document.querySelector('shreddit-app').append(feed)
+      })
+    </script>
   </body>
 </html>

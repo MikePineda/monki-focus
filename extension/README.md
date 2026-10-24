@@ -105,28 +105,48 @@ the extension never lists feed paths.
   of the site). The router only answers `decision.get` from a tab whose URL
   has the same host as the URL asked about.
 - **Feed guard** (`feed-guard.content`, `document_start`, the four sites and
-  their subdomains/aliases). It injects one `<style>` whose rules key on
-  `html[data-mf-hide~="<surface>"]` (page content of the current surface)
-  and `html[data-mf-restrict~="<surface>"]` (entry points such as Shorts
-  shelves or the Reels link, hidden on every page while the surface is
-  restricted). Until the first answer it hides the page's surface when the
-  bundled catalog says it is a feed; after 1.5 s without an answer it stays
-  hidden and shows the placeholder (fail closed); a late answer still
-  applies. `SpaNavigationWatcher` re-evaluates on `popstate`,
-  `yt-navigate-finish`, `<title>` changes and a 1 s URL poll; nothing is
-  patched in the page's MAIN world.
-- **Placeholder.** `FeedPlaceholder` mounts in an open shadow root right
-  before the hidden feed, with the tokens and UI kit CSS inlined into the
-  shadow root only (`cssInjectionMode: 'manual'`): Reddit search and the
-  allowed communities (filled by E8), X Following and Search, YouTube search
-  and Subscriptions, Instagram Direct and Search. Text comes only from the
+  their subdomains/aliases). Hiding is CSS keyed on two `<html>` attributes
+  with **random names per page** (no fixed `data-*` a site could detect or
+  strip): `hide` lists the surface whose page content is hidden (URL-scoped),
+  `restrict` the restricted surfaces whose page containers (YouTube
+  `ytd-browse[page-subtype]`) and entry points (Shorts shelves, the Reels
+  link) are hidden on every page, so an SPA cannot show them between a
+  navigation and its decision. The stylesheet goes into the page as a
+  `<style>` at `document_start` (first paint) and is injected again by the
+  service worker with `scripting.insertCSS({origin: 'USER'})`, which the page
+  can neither remove nor outrank; MutationObservers put the `<style>` and the
+  attribute values straight back if the page touches them. Until the first
+  answer it hides the page's surface when the bundled catalog says it is a
+  feed; after 1.5 s without an answer it stays hidden and shows the
+  placeholder (fail closed); a late answer applies only while the page is
+  still on that URL.
+- **Re-evaluation.** `SpaNavigationWatcher` listens to the Navigation API
+  (`currententrychange`, `navigate`; reachable from the isolated world and
+  verified by an E2E with the poll disabled), `popstate`,
+  `yt-navigate-finish`, `<title>` changes and a 250 ms URL poll; nothing is
+  patched in the page's MAIN world. The service worker pushes
+  `decision.changed` to open site tabs when the rule set changes and when a
+  per-minute alarm (`decision.refresh`) sees the set of restricted feeds
+  change (a schedule edge; the engine has no "valid until"), and pages
+  restored from the back/forward cache ask again. After an install or update
+  the feed guard is injected into open site tabs (`scripting.executeScript`);
+  an orphaned instance tears itself down once its runtime id is gone.
+- **Placeholder.** `FeedPlaceholder` mounts in a **closed** shadow root
+  (open only in the `e2e` build) under a random tag right before the hidden
+  feed, with the tokens and UI kit CSS inlined into the shadow root only
+  (`cssInjectionMode: 'manual'`); theme and language sit inside the shadow
+  root, never on the host. It offers Reddit search and the allowed
+  communities (filled by E8), X Following and Search, YouTube search and
+  Subscriptions, Instagram Direct and Search. Text comes only from the
   catalogs; nothing read from the page is shown or sent anywhere.
 - **Selectors** live in `src/sites/<site>.ts`, keyed by the surface ids of
   `packages/rules/data/surfaces.json` (a test checks every key): custom
   elements and stable attributes only (`shreddit-feed`, `data-testid`,
-  `ytd-browse[page-subtype]`, `is-shorts`, ARIA roles, exact `href`s), never
-  hashed class names. X "For you" is the first tab of the home tablist, by
-  position, never by its text.
+  `ytd-browse[page-subtype]`, `ytm-*` on m.youtube.com, `is-shorts`, ARIA
+  roles, exact `href`s), never hashed class names. On X the home timeline
+  shows only while a chosen timeline is selected, and two signals must agree
+  (not the first tab, and a `/home` or `/i/lists/` link); "For you" or any
+  layout they cannot place hides it. Never by the tab's text.
 - **Shorts.** The static DNR ruleset `shorts-redirect` turns a hard load of
   `https://(www.|m.)youtube.com/shorts/<11-char id>` into
   `https://www.youtube.com/watch?v=<id>`. Chromium refuses to compile a
@@ -135,12 +155,18 @@ the extension never lists feed paths.
   three anchored rules: end of URL, `/…` and `?…`. `ShortsRedirectSync`
   enables or disables the ruleset with `updateEnabledRulesets` whenever the
   rule set changes, at start-up and on every YouTube decision, according to
-  whether the rule set blocks or hides `youtube.shorts`. In-app navigations
+  whether the rule set blocks or hides `youtube.shorts` (updates run one at a
+  time). In-app navigations
   to `/shorts/…` (which DNR never sees) are replaced by the watch URL in the
   feed guard.
+- **Rule set writes** go through `RulesetStore` only: one promise chain
+  serialises read-create and `save`, so creating the starter can never
+  overwrite a concurrent save.
 - The `e2e` build can delay decisions (`e2e.decisionDelayMs` in
-  `storage.local`) to test the fail-closed timeout; the production bundle
-  drops that code.
+  `storage.local`), names the random attributes on `<html>`
+  (`data-mf-e2e-attributes`, `data-mf-e2e-applied`) and opens the shadow
+  root, so specs can tamper and look inside; the production bundle drops all
+  of it.
 
 ## Live smoke before release
 
@@ -156,7 +182,7 @@ unpacked and the starter rule set:
    (check in a non-English UI too), "Following" shows its timeline, the
    placeholder's Following button switches tabs, Explore is hidden and its
    nav link is gone, a status permalink and search work.
-3. **YouTube**: the home grid is gone, the placeholder search opens
+3. **YouTube** (`www` and `m.youtube.com`): the home grid is gone, the placeholder search opens
    `/results`, Subscriptions works; no Shorts shelf on search results or a
    watch page; the Shorts guide entry is hidden; pasting a `/shorts/<id>`
    URL lands on `/watch?v=<id>`; clicking a Short inside the site (SPA) lands

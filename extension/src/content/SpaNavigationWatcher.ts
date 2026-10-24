@@ -2,8 +2,14 @@
 
 /** YouTube's own event at the end of an in-app navigation. */
 export const YT_NAVIGATE_FINISH = 'yt-navigate-finish'
-/** Backstop poll for history changes no event reports (`pushState`). */
-export const DEFAULT_POLL_MS = 1000
+/** Backstop poll for history changes no event reports. */
+export const DEFAULT_POLL_MS = 250
+
+/** The slice of the Navigation API (Chromium 102+) the watcher listens to. */
+interface NavigationEvents {
+  addEventListener(type: string, listener: () => void): void
+  removeEventListener(type: string, listener: () => void): void
+}
 
 export interface SpaNavigationWatcherOptions {
   window: Window & typeof globalThis
@@ -13,10 +19,13 @@ export interface SpaNavigationWatcherOptions {
 
 /**
  * Reports in-app navigations of single-page sites without patching
- * `history` in the page's MAIN world: `popstate`, YouTube's
- * `yt-navigate-finish`, a MutationObserver on `<title>` (SPAs retitle on
- * every route) and a low-frequency URL poll as a backstop. Each signal only
- * triggers a check of `location.href`; the callback runs once per new URL.
+ * `history` in the page's MAIN world: the Navigation API
+ * (`currententrychange`, which also fires for `pushState`, and `navigate`;
+ * the `navigation` object is reachable from the isolated world),
+ * `popstate`, YouTube's `yt-navigate-finish`, a MutationObserver on
+ * `<title>` (SPAs retitle on every route) and a 250 ms URL poll as a
+ * backstop. Each signal only triggers a check of `location.href`; the
+ * callback runs once per new URL.
  */
 export class SpaNavigationWatcher {
   private lastUrl: string
@@ -24,7 +33,10 @@ export class SpaNavigationWatcher {
   private titleObserver: MutationObserver | undefined
   private headObserver: MutationObserver | undefined
   private observedTitle: Element | null = null
+  private navigation: NavigationEvents | undefined
   private readonly check = () => this.checkUrl()
+  // `navigate` fires before the URL changes: check once it has.
+  private readonly checkSoon = () => void setTimeout(this.check, 0)
   private readonly attachTitle = () => this.observeTitle()
 
   constructor(private readonly options: SpaNavigationWatcherOptions) {
@@ -35,6 +47,9 @@ export class SpaNavigationWatcher {
     const { window } = this.options
     window.addEventListener('popstate', this.check)
     window.document.addEventListener(YT_NAVIGATE_FINISH, this.check)
+    this.navigation = (window as { navigation?: NavigationEvents }).navigation
+    this.navigation?.addEventListener('currententrychange', this.check)
+    this.navigation?.addEventListener('navigate', this.checkSoon)
     this.timer = setInterval(this.check, this.options.pollMs ?? DEFAULT_POLL_MS)
     if (window.document.readyState === 'loading') {
       window.document.addEventListener('DOMContentLoaded', this.attachTitle, { once: true })
@@ -47,6 +62,9 @@ export class SpaNavigationWatcher {
     const { window } = this.options
     window.removeEventListener('popstate', this.check)
     window.document.removeEventListener(YT_NAVIGATE_FINISH, this.check)
+    this.navigation?.removeEventListener('currententrychange', this.check)
+    this.navigation?.removeEventListener('navigate', this.checkSoon)
+    this.navigation = undefined
     window.document.removeEventListener('DOMContentLoaded', this.attachTitle)
     if (this.timer !== undefined) clearInterval(this.timer)
     this.timer = undefined

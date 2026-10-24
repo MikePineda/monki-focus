@@ -12,7 +12,8 @@ describe.each(SITE_FEED_PROFILES.map((site) => [site.domain, site] as const))(
   'site feed profile %s',
   (domain, site) => {
     const profile = siteProfiles.find((candidate) => candidate.domain === domain)
-    const keys = [...Object.keys(site.hide), ...Object.keys(site.entryPoints)]
+    const maps = [site.hide, site.pageContainers, site.entryPoints]
+    const keys = maps.flatMap((map) => Object.keys(map))
 
     it('belongs_to_a_bundled_site_profile', () => {
       expect(profile).toBeDefined()
@@ -36,7 +37,7 @@ describe.each(SITE_FEED_PROFILES.map((site) => [site.domain, site] as const))(
     })
 
     it('selectors_are_valid_css_and_never_hashed_class_names', () => {
-      const selectors = [...Object.values(site.hide), ...Object.values(site.entryPoints)].flat()
+      const selectors = maps.flatMap((map) => Object.values(map)).flat()
       expect(selectors.length).toBeGreaterThan(0)
       for (const selector of selectors) {
         expect(
@@ -87,5 +88,38 @@ describe('siteFeedProfileFor', () => {
     expect(SITE_FEED_PROFILES.map((site) => site.domain).sort()).toEqual(
       siteProfiles.map((profile) => profile.domain).sort()
     )
+  })
+})
+
+describe('X For you detection', () => {
+  const [forYou] = SITE_FEED_PROFILES.find((site) => site.domain === 'x.com')?.hide['x.home'] ?? []
+
+  it('needs_position_and_link_to_agree_before_showing_a_timeline', () => {
+    // Shown only for a selected tab that is not the first one and links to
+    // a chosen timeline; anything else hides it (fail closed).
+    expect(forYou).toContain(':not(:has(')
+    expect(forYou).toContain(':not(:first-child)')
+    expect(forYou).toContain('[href="/home"]')
+    expect(forYou).toContain('[href^="/i/lists/"]')
+    expect(forYou).not.toMatch(/For you|Following/)
+  })
+})
+
+describe('YouTube on desktop and mobile', () => {
+  const site = SITE_FEED_PROFILES.find((candidate) => candidate.domain === 'youtube.com')
+
+  it.each(['youtube.home', 'youtube.subscriptions', 'youtube.explore'])(
+    '%s_has_ytd_page_containers_and_ytm_page_content',
+    (surface) => {
+      expect(site?.pageContainers[surface]?.join(' ')).toContain('ytd-')
+      expect(site?.hide[surface]?.join(' ')).toContain('ytm-')
+    }
+  )
+
+  it('shorts_entry_points_cover_both_sites', () => {
+    const entries = site?.entryPoints['youtube.shorts']?.join(' ') ?? ''
+    expect(entries).toContain('ytd-reel-shelf-renderer')
+    expect(entries).toContain('ytm-reel-shelf-renderer')
+    expect(entries).toContain('ytm-pivot-bar-item-renderer')
   })
 })

@@ -17,10 +17,16 @@ const FEED_DECISION: FeedDecision = {
 function makeRouter() {
   const ping = vi.fn(() => ({ at: 42 }))
   const decide = vi.fn(() => FEED_DECISION)
+  const attach = vi.fn(() => ({ injected: true }))
   return {
-    router: new CommandRouter(OWN_ID, { 'system.ping': ping, 'decision.get': decide }),
+    router: new CommandRouter(OWN_ID, {
+      'system.ping': ping,
+      'decision.get': decide,
+      'feedGuard.attach': attach,
+    }),
     ping,
     decide,
+    attach,
   }
 }
 
@@ -84,6 +90,7 @@ describe('CommandRouter', () => {
         throw new Error('internal detail')
       },
       'decision.get': () => FEED_DECISION,
+      'feedGuard.attach': () => ({ injected: false }),
     })
 
     expect(await router.route(commandMessage('system.ping', {}), { id: OWN_ID })).toEqual({
@@ -156,5 +163,48 @@ describe('CommandRouter', () => {
 
     expect(result).toEqual({ ok: false, error: 'message.malformed' })
     expect(ping).not.toHaveBeenCalled()
+  })
+
+  const ATTRIBUTES = { hide: 'data-aaaaaaaaaaaa', restrict: 'data-bbbbbbbbbbbb' }
+
+  it('attach_from_the_tab_it_names_is_answered', async () => {
+    const { router, attach } = makeRouter()
+
+    const result = await router.route(
+      commandMessage('feedGuard.attach', { url: REDDIT_HOME, attributes: ATTRIBUTES }),
+      { id: OWN_ID, tab: { id: 7, url: REDDIT_HOME }, frameId: 0 }
+    )
+
+    expect(result).toEqual({ ok: true, data: { injected: true } })
+    expect(attach).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    { url: REDDIT_HOME },
+    { url: REDDIT_HOME, attributes: { hide: 'data-mf-hide', restrict: 'data-mf-restrict' } },
+    { url: REDDIT_HOME, attributes: { hide: 'data-aaaaaaaaaaaa"]{}', restrict: 'x' } },
+    { url: REDDIT_HOME, attributes: { ...ATTRIBUTES, restrict: ATTRIBUTES.hide } },
+  ])('attach_payload_%j_is_malformed', async (payload) => {
+    const { router, attach } = makeRouter()
+
+    const result = await router.route(
+      { v: 1, type: 'feedGuard.attach', payload },
+      { id: OWN_ID, tab: { id: 7, url: REDDIT_HOME }, frameId: 0 }
+    )
+
+    expect(result).toEqual({ ok: false, error: 'message.malformed' })
+    expect(attach).not.toHaveBeenCalled()
+  })
+
+  it('attach_for_another_host_than_the_tab_is_rejected', async () => {
+    const { router, attach } = makeRouter()
+
+    const result = await router.route(
+      commandMessage('feedGuard.attach', { url: REDDIT_HOME, attributes: ATTRIBUTES }),
+      { id: OWN_ID, tab: { id: 7, url: 'https://x.com/home' }, frameId: 0 }
+    )
+
+    expect(result).toEqual({ ok: false, error: 'sender.rejected' })
+    expect(attach).not.toHaveBeenCalled()
   })
 })

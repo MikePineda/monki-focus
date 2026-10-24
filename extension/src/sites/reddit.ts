@@ -13,6 +13,7 @@ export const reddit: SiteFeedProfile = {
     'reddit.feed': ['shreddit-feed', '#siteTable'],
     'reddit.user_feed': ['shreddit-feed', '#siteTable'],
   },
+  pageContainers: {},
   entryPoints: {},
   placeholder: [{ kind: 'search', action: '/search/', param: 'q' }, { kind: 'communities' }],
 }

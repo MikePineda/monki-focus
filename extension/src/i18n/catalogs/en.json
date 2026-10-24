@@ -57,6 +57,7 @@
   "dev.sample.pauseProgress": "Pause progress",
   "dev.sample.pulse": "Pulse today",
   "dev.sample.pulseContext": "of 100 · {tracked} tracked",
+  "dev.sample.trackedDuration": "{hours} h {minutes} min",
   "dev.sample.pulseMissingContext": "Nothing tracked yet",
   "dev.sample.todayByLevel": "Today by level",
   "dev.sample.topSites": "Top sites",

@@ -29,19 +29,33 @@ export interface RulesetStoreOptions {
  * a rule change (E8, SEMANTICS.md §8) can move it. Editing arrives with E8;
  * until then the stored copy is only read. The parsed value is cached until
  * storage reports a change.
+ *
+ * Every read-create and every write runs through one in-memory promise
+ * chain, so creating the starter can never overwrite a rule set saved
+ * concurrently. **Every writer of `rules.ruleset` must go through this store
+ * (`save`)**; writing the key directly bypasses the lock.
  */
 export class RulesetStore {
   private cached: Promise<Ruleset> | undefined
+  private lock: Promise<unknown> = Promise.resolve()
 
   constructor(private readonly options: RulesetStoreOptions) {}
 
   /** The stored rule set, creating the starter one when there is none. */
   load(): Promise<Ruleset> {
-    this.cached ??= this.readOrCreate().catch((error: unknown) => {
+    this.cached ??= this.exclusive(() => this.readOrCreate()).catch((error: unknown) => {
       this.cached = undefined
       throw error
     })
     return this.cached
+  }
+
+  /** Stores `ruleset` (after any pending read or write) and caches it. */
+  save(ruleset: Ruleset): Promise<void> {
+    return this.exclusive(async () => {
+      await this.options.storage.set({ [RULESET_KEY]: ruleset })
+      this.cached = Promise.resolve(ruleset)
+    })
   }
 
   /** Install hook: creates the starter rule set now (no-op when one exists). */
@@ -56,6 +70,13 @@ export class RulesetStore {
       this.cached = undefined
       onChange?.()
     })
+  }
+
+  /** Runs `task` after every task queued before it; a failure never blocks the queue. */
+  private exclusive<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.lock.then(task)
+    this.lock = run.catch(() => undefined)
+    return run
   }
 
   private async readOrCreate(): Promise<Ruleset> {

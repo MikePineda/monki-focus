@@ -102,4 +102,27 @@ describe('RulesetStore', () => {
     await expect(store.load()).rejects.toThrow('io')
     expect(await store.load()).toEqual(starterPreset)
   })
+
+  it('a_save_racing_the_first_read_is_never_overwritten_by_the_starter', async () => {
+    const { store } = makeStore()
+    const custom = { ...structuredClone(starterPreset), rules: [], timeZone: 'UTC' }
+
+    const loading = store.load()
+    const saving = store.save(custom)
+    await Promise.all([loading, saving])
+
+    expect(await stored()).toEqual(custom)
+    expect(await store.load()).toEqual(custom)
+  })
+
+  it('a_failed_save_does_not_block_later_ones', async () => {
+    const set = vi.fn().mockRejectedValueOnce(new Error('quota')).mockResolvedValue(undefined)
+    const store = new RulesetStore({
+      storage: { get: vi.fn().mockResolvedValue({}), set },
+      deviceTimeZone: () => 'UTC',
+    })
+
+    await expect(store.save(starterPreset)).rejects.toThrow('quota')
+    await expect(store.save(starterPreset)).resolves.toBeUndefined()
+  })
 })

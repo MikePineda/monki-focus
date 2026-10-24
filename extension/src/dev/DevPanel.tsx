@@ -141,7 +141,9 @@ function PanelBody({ theme, clock }: { theme: DevTheme; clock: Clock }) {
           <StatNumber
             label={t('dev.sample.pulse')}
             value={SAMPLE_PULSE}
-            context={t('dev.sample.pulseContext', { tracked: SAMPLE_TRACKED })}
+            context={t('dev.sample.pulseContext', {
+              tracked: t('dev.sample.trackedDuration', SAMPLE_TRACKED),
+            })}
           />
           <StatNumber
             label={t('dev.sample.pulse')}

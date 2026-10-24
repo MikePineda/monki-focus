@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { SiteFeedProfile } from '../sites/SiteFeedProfile'
 
-/** Tag of the shadow host the placeholder lives in. */
-export const PLACEHOLDER_TAG = 'monki-focus-placeholder'
+/** A custom-element-shaped tag, random per page, for the shadow host. */
+export function randomPlaceholderTag(
+  randomBytes: (size: number) => Uint8Array = (size) => crypto.getRandomValues(new Uint8Array(size))
+): string {
+  const letters = [...randomBytes(10)].map((byte) => String.fromCharCode(97 + (byte % 26))).join('')
+  return `${letters.slice(0, 4)}-${letters.slice(4)}`
+}
 /** Coalesces DOM mutations before re-checking where the feed is. */
 const RECONCILE_DELAY_MS = 50
 
@@ -15,6 +20,10 @@ export interface PlaceholderMountOptions {
   /** Stylesheet text for the shadow root (tokens + UI kit), from the bundle. */
   css: string
   render: PlaceholderRenderer
+  /** Tag of the shadow host; random per page so pages cannot target it. */
+  tag: string
+  /** `closed` in production; E2E builds use `open` so tests can look inside. */
+  shadowMode?: ShadowRootMode
 }
 
 /**
@@ -22,7 +31,8 @@ export interface PlaceholderMountOptions {
  * CSS; this only places the placeholder, and since feed containers arrive
  * late and SPAs re-render them, a MutationObserver re-checks (coalesced)
  * while a surface is hidden. The placeholder lives in a shadow root so the
- * page's CSS and the UI kit's never meet.
+ * page's CSS and the UI kit's never meet; the host carries no attribute
+ * (theme and language sit on an element inside the shadow root).
  */
 export class PlaceholderMount {
   private surface: string | null = null
@@ -56,7 +66,8 @@ export class PlaceholderMount {
   }
 
   private selectorsOf(surface: string): readonly string[] {
-    return this.options.site.hide[surface] ?? []
+    const { hide, pageContainers } = this.options.site
+    return [...(hide[surface] ?? []), ...(pageContainers[surface] ?? [])]
   }
 
   private anchor(): Element | null {
@@ -79,9 +90,9 @@ export class PlaceholderMount {
   }
 
   private create(): HTMLElement {
-    const { document, css, render } = this.options
-    const host = document.createElement(PLACEHOLDER_TAG)
-    const shadow = host.attachShadow({ mode: 'open' })
+    const { document, css, render, tag, shadowMode = 'closed' } = this.options
+    const host = document.createElement(tag)
+    const shadow = host.attachShadow({ mode: shadowMode })
     const style = document.createElement('style')
     style.textContent = css
     const container = document.createElement('div')

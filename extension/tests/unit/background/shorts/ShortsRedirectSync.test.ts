@@ -67,4 +67,37 @@ describe('ShortsRedirectSync', () => {
 
     expect(updateEnabledRulesets).toHaveBeenCalledTimes(2)
   })
+
+  it('racing_updates_run_in_order_so_the_newest_state_wins', async () => {
+    const calls: string[] = []
+    let releaseFirst: () => void = () => undefined
+    const updateEnabledRulesets = vi.fn(
+      (options: { enableRulesetIds?: string[]; disableRulesetIds?: string[] }) => {
+        const label = options.enableRulesetIds ? 'enable' : 'disable'
+        calls.push(`start ${label}`)
+        if (label === 'enable') {
+          return new Promise<void>((resolve) => {
+            releaseFirst = () => {
+              calls.push('end enable')
+              resolve()
+            }
+          })
+        }
+        calls.push(`end ${label}`)
+        return Promise.resolve()
+      }
+    )
+    const sync = new ShortsRedirectSync(
+      { restricts: () => Promise.resolve(true) },
+      { updateEnabledRulesets }
+    )
+
+    const first = sync.apply(true)
+    const second = sync.apply(false)
+    await Promise.resolve()
+    releaseFirst()
+    await Promise.all([first, second])
+
+    expect(calls).toEqual(['start enable', 'end enable', 'start disable', 'end disable'])
+  })
 })

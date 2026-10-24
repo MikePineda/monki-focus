@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SpaNavigationWatcher, YT_NAVIGATE_FINISH } from '../../../src/content/SpaNavigationWatcher'
+import {
+  DEFAULT_POLL_MS,
+  SpaNavigationWatcher,
+  YT_NAVIGATE_FINISH,
+} from '../../../src/content/SpaNavigationWatcher'
 
 describe('SpaNavigationWatcher', () => {
   let watcher: SpaNavigationWatcher | undefined
@@ -121,5 +125,51 @@ describe('SpaNavigationWatcher', () => {
 
     expect(history.pushState).toBe(pushState)
     expect(history.replaceState).toBe(replaceState)
+  })
+
+  it('the_backstop_poll_runs_every_250_ms', () => {
+    expect(DEFAULT_POLL_MS).toBe(250)
+  })
+
+  describe('with the Navigation API', () => {
+    const navigation = new EventTarget()
+
+    beforeEach(() => {
+      Object.defineProperty(window, 'navigation', { value: navigation, configurable: true })
+    })
+
+    afterEach(() => {
+      Reflect.deleteProperty(window, 'navigation')
+    })
+
+    it('currententrychange_reports_a_silent_push_state_at_once', () => {
+      start(60_000)
+      history.pushState(null, '', '/best/')
+
+      navigation.dispatchEvent(new Event('currententrychange'))
+
+      expect(onNavigate).toHaveBeenCalledWith(`${location.origin}/best/`)
+    })
+
+    it('navigate_checks_once_the_url_has_changed', async () => {
+      vi.useFakeTimers()
+      start(60_000)
+
+      navigation.dispatchEvent(new Event('navigate'))
+      history.pushState(null, '', '/explore/')
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(onNavigate).toHaveBeenCalledWith(`${location.origin}/explore/`)
+    })
+
+    it('stop_detaches_the_navigation_listeners', () => {
+      start(60_000)
+      watcher?.stop()
+      history.pushState(null, '', '/later-again')
+
+      navigation.dispatchEvent(new Event('currententrychange'))
+
+      expect(onNavigate).not.toHaveBeenCalled()
+    })
   })
 })

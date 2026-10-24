@@ -26,9 +26,12 @@ export interface SurfaceRestriction {
  * change and whenever a YouTube page asks for a decision, so schedules that
  * open or close are picked up on the next YouTube visit. Fails closed: when
  * the decision cannot be made the restriction counts, so the redirect stays on.
+ * Updates run one after another (a promise chain), so two racing callers can
+ * never leave the ruleset in the state of the older one.
  */
 export class ShortsRedirectSync {
   private last: boolean | undefined
+  private queue: Promise<void> = Promise.resolve()
 
   constructor(
     private readonly restriction: SurfaceRestriction,
@@ -46,13 +49,18 @@ export class ShortsRedirectSync {
    * Applies a restriction already known (a YouTube feed decision carries
    * it); only calls the browser when the state changes.
    */
-  async apply(enabled: boolean): Promise<void> {
-    if (enabled === this.last) return
-    await this.toggle.updateEnabledRulesets(
-      enabled
-        ? { enableRulesetIds: [SHORTS_REDIRECT_RULESET_ID] }
-        : { disableRulesetIds: [SHORTS_REDIRECT_RULESET_ID] }
-    )
-    this.last = enabled
+  apply(enabled: boolean): Promise<void> {
+    const run = this.queue.then(async () => {
+      if (enabled === this.last) return
+      await this.toggle.updateEnabledRulesets(
+        enabled
+          ? { enableRulesetIds: [SHORTS_REDIRECT_RULESET_ID] }
+          : { disableRulesetIds: [SHORTS_REDIRECT_RULESET_ID] }
+      )
+      this.last = enabled
+    })
+    // A failed update must not block the ones queued after it.
+    this.queue = run.catch(() => undefined)
+    return run
   }
 }

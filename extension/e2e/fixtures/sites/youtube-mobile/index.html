@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Synthetic stand-in for the m.youtube.com home page: real structure, fake content. -->
+<html lang="en" data-fixture="youtube-mobile-home">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture: youtube mobile home</title>
+  </head>
+  <body>
+    <ytm-app>
+      <ytm-mobile-topbar-renderer>
+        <a href="/results">Search</a>
+      </ytm-mobile-topbar-renderer>
+      <ytm-browse>
+        <ytm-rich-grid-renderer>
+          <ytm-rich-item-renderer>
+            <a href="/watch?v=abcdefghijk">A synthetic video</a>
+          </ytm-rich-item-renderer>
+          <ytm-rich-section-renderer>
+            <ytm-reel-shelf-renderer>
+              <a href="/shorts/abcdefghijk">A synthetic short</a>
+            </ytm-reel-shelf-renderer>
+          </ytm-rich-section-renderer>
+        </ytm-rich-grid-renderer>
+      </ytm-browse>
+      <ytm-pivot-bar-renderer role="tablist">
+        <ytm-pivot-bar-item-renderer data-fixture="pivot-home">
+          <div class="pivot-bar-item-tab pivot-w2w" role="tab">Home</div>
+        </ytm-pivot-bar-item-renderer>
+        <ytm-pivot-bar-item-renderer data-fixture="pivot-shorts">
+          <div class="pivot-bar-item-tab pivot-shorts" role="tab">Shorts</div>
+        </ytm-pivot-bar-item-renderer>
+        <ytm-pivot-bar-item-renderer data-fixture="pivot-subscriptions">
+          <div class="pivot-bar-item-tab pivot-subs" role="tab">Subscriptions</div>
+        </ytm-pivot-bar-item-renderer>
+      </ytm-pivot-bar-renderer>
+    </ytm-app>
+  </body>
+</html>

@@ -57,6 +57,7 @@
   "dev.sample.pauseProgress": "Progreso de la pausa",
   "dev.sample.pulse": "Pulso de hoy",
   "dev.sample.pulseContext": "de 100 · {tracked} registrados",
+  "dev.sample.trackedDuration": "{hours} h {minutes} min",
   "dev.sample.pulseMissingContext": "Aún no hay nada registrado",
   "dev.sample.todayByLevel": "Hoy por nivel",
   "dev.sample.topSites": "Sitios principales",
