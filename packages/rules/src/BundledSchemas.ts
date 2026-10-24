@@ -7,6 +7,7 @@
 import activity from '../schema/v1/activity.schema.json' with { type: 'json' }
 import activityFixture from '../schema/v1/activity-fixture.schema.json' with { type: 'json' }
 import bedtime from '../schema/v1/bedtime.schema.json' with { type: 'json' }
+import candidatesFixture from '../schema/v1/candidates-fixture.schema.json' with { type: 'json' }
 import categoryAssignment from '../schema/v1/category-assignment.schema.json' with { type: 'json' }
 import categoryCatalog from '../schema/v1/category-catalog.schema.json' with { type: 'json' }
 import decision from '../schema/v1/decision.schema.json' with { type: 'json' }
@@ -33,6 +34,7 @@ export const bundledSchemas: readonly JsonSchemaDocument[] = [
   activity,
   activityFixture,
   bedtime,
+  candidatesFixture,
   categoryAssignment,
   categoryCatalog,
   decision,

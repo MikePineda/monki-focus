@@ -69,6 +69,7 @@
     "content": "show",
     "ruleId": "r-x-friction",
     "reason": "intention_active",
-    "explanationKey": "decision.intention_active"
+    "explanationKey": "decision.intention_active",
+    "validUntil": "2026-10-25T23:00:01Z"
   }
 }

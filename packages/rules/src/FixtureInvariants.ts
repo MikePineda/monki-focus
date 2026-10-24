@@ -7,6 +7,7 @@
  */
 import type {
   ActivityFixture,
+  CandidatesFixture,
   Decision,
   DecisionFixture,
   EscalationFixture,
@@ -77,8 +78,55 @@ function checkGate(gate: Gate, guardianLinked: boolean, where: string, problems:
   }
 }
 
+const VALIDITY_HORIZON_SECONDS = 86_400
+
+/** §5.6: `validUntil` is null only for `engine_error`, else after `now` and at most a day later. */
+function checkValidUntil(fixture: DecisionFixture, problems: string[]): void {
+  const { then, given } = fixture
+  if (then.reason === 'engine_error') {
+    if (then.validUntil !== null) problems.push('then.validUntil must be null for engine_error')
+    return
+  }
+  if (then.validUntil === null) {
+    problems.push('then.validUntil must be an instant unless the reason is engine_error')
+    return
+  }
+  const now = epochSeconds(given.now)
+  const validUntil = epochSeconds(then.validUntil)
+  if (validUntil <= now || validUntil > now + VALIDITY_HORIZON_SECONDS) {
+    problems.push('then.validUntil must lie in (now, now + 24 h]')
+  }
+  const pending = given.state.pendingEffectiveFrom
+  if (pending !== undefined && pending !== null && epochSeconds(pending) > now) {
+    if (validUntil > epochSeconds(pending)) {
+      problems.push('then.validUntil must not be later than a pending rule change')
+    }
+  }
+}
+
+function checkCandidates(fixture: CandidatesFixture, problems: string[]): void {
+  const ids = new Set(fixture.given.ruleset.rules.map((rule) => rule.id))
+  for (const field of ['frictionCandidates', 'budgetedRules'] as const) {
+    const listed = fixture.then[field]
+    const sorted = [...listed].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+    if (canonical(listed) !== canonical(sorted)) {
+      problems.push(`then.${field} must be in code-unit ascending order`)
+    }
+    for (const id of listed) {
+      if (!ids.has(id)) problems.push(`then.${field}: ${id} is not a rule of given.ruleset`)
+    }
+  }
+  for (const id of fixture.then.budgetedRules) {
+    const rule = fixture.given.ruleset.rules.find((candidate) => candidate.id === id)
+    if (rule?.dailyBudgetMinutes === undefined) {
+      problems.push(`then.budgetedRules: ${id} carries no dailyBudgetMinutes`)
+    }
+  }
+}
+
 function checkDecision(fixture: DecisionFixture, problems: string[]): void {
   const { then, given } = fixture
+  checkValidUntil(fixture, problems)
   if (!ACCESS_REASONS[then.access].includes(then.reason)) {
     problems.push(`then.reason ${then.reason} cannot produce access ${then.access}`)
   }
@@ -387,6 +435,9 @@ export function checkFixtureInvariants(fixture: unknown): string[] {
       break
     case 'activity':
       checkActivity(fixture as ActivityFixture, problems)
+      break
+    case 'candidates':
+      checkCandidates(fixture as CandidatesFixture, problems)
       break
     case 'url-normalize':
     case 'schedule':

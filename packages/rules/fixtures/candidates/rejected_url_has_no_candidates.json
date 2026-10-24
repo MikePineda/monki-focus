@@ -1,0 +1,50 @@
+{
+  "id": "candidates.rejected_url_has_no_candidates",
+  "kind": "candidates",
+  "description": "A browser settings page normalises to rejected and matches no rule.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-x-friction",
+          "target": {
+            "kind": "site",
+            "domain": "x.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true,
+          "dailyBudgetMinutes": 10
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00"
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "chrome://settings/"
+    }
+  },
+  "then": {
+    "frictionCandidates": [],
+    "budgetedRules": []
+  }
+}

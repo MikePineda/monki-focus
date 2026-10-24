@@ -53,6 +53,7 @@
     "content": "show",
     "ruleId": null,
     "reason": "schedule_bedtime",
-    "explanationKey": "decision.schedule_bedtime"
+    "explanationKey": "decision.schedule_bedtime",
+    "validUntil": "2026-10-26T20:00:00Z"
   }
 }

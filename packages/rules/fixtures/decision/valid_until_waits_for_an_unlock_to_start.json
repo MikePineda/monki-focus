@@ -1,0 +1,68 @@
+{
+  "id": "decision.valid_until_waits_for_an_unlock_to_start",
+  "kind": "decision",
+  "description": "A verified unlock that starts in 30 minutes does not lift the block yet; the decision is valid until it starts.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-03-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-reddit-block",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-25T23:00:00Z",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [
+        {
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "notBefore": "2026-10-25T23:30:00Z",
+          "expiresAt": "2026-10-26T00:00:00Z"
+        }
+      ],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "reddit.com/r/AskHistorians"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": "r-reddit-block",
+    "reason": "rule_match",
+    "explanationKey": "decision.blocked_by_rule",
+    "validUntil": "2026-10-25T23:30:00Z"
+  }
+}

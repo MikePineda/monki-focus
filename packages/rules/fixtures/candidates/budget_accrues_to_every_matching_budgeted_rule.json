@@ -1,0 +1,84 @@
+{
+  "id": "candidates.budget_accrues_to_every_matching_budgeted_rule",
+  "kind": "candidates",
+  "description": "Watching a video counts towards the domain allow budget and the more specific friction budget, not the Shorts budget or a disabled rule.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-yt-budget",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com"
+          },
+          "mode": "allow",
+          "schedules": [],
+          "enabled": true,
+          "dailyBudgetMinutes": 30
+        },
+        {
+          "id": "r-watch-friction",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com",
+            "path": "/watch"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true,
+          "dailyBudgetMinutes": 10
+        },
+        {
+          "id": "r-shorts-budget",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.shorts"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true,
+          "dailyBudgetMinutes": 5
+        },
+        {
+          "id": "r-yt-disabled",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com"
+          },
+          "mode": "allow",
+          "schedules": [],
+          "enabled": false,
+          "dailyBudgetMinutes": 15
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00"
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.youtube.com/watch?v=abc123DEF45"
+    }
+  },
+  "then": {
+    "frictionCandidates": ["r-watch-friction"],
+    "budgetedRules": ["r-watch-friction", "r-yt-budget"]
+  }
+}

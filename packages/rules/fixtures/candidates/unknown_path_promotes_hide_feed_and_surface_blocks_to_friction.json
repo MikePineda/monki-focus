@@ -1,0 +1,82 @@
+{
+  "id": "candidates.unknown_path_promotes_hide_feed_and_surface_blocks_to_friction",
+  "kind": "candidates",
+  "description": "A bare youtube.com: the home hide-feed and the Shorts block gate, and the watch budget counts (unknown-path pool).",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-yt-home-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.home"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "r-yt-shorts-block",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.shorts"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "r-yt-watch-allow",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com",
+            "path": "/watch"
+          },
+          "mode": "allow",
+          "schedules": [],
+          "enabled": true,
+          "dailyBudgetMinutes": 30
+        },
+        {
+          "id": "r-reddit-friction",
+          "target": {
+            "kind": "site",
+            "domain": "reddit.com"
+          },
+          "mode": "friction",
+          "schedules": [],
+          "enabled": true,
+          "dailyBudgetMinutes": 10
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": false,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00"
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "youtube.com"
+    }
+  },
+  "then": {
+    "frictionCandidates": ["r-yt-home-hide", "r-yt-shorts-block"],
+    "budgetedRules": ["r-yt-watch-allow"]
+  }
+}

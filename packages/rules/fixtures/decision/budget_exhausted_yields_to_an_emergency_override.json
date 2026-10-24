@@ -75,6 +75,7 @@
     "content": "show",
     "ruleId": "r-yt-budget",
     "reason": "emergency_active",
-    "explanationKey": "decision.emergency_active"
+    "explanationKey": "decision.emergency_active",
+    "validUntil": "2026-10-25T23:10:00Z"
   }
 }

@@ -159,6 +159,7 @@
     "content": "show",
     "ruleId": null,
     "reason": "emergency_active",
-    "explanationKey": "decision.emergency_active"
+    "explanationKey": "decision.emergency_active",
+    "validUntil": "2026-10-26T12:13:00Z"
   }
 }
