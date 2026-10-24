@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  // No Node types and a web worker lib: src/ must run unchanged in a Chromium service worker.
+  "compilerOptions": {
+    "lib": ["es2024", "webworker"],
+    "types": [],
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "sourceMap": true
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,41 @@
+{
+  "name": "@monki-focus/analytics",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure TypeScript analytics core of monki-focus: ActivityWatch-compatible events, heartbeat merging, categorisation, the focus pulse, 5-minute blocks, browser dedupe, cross-device capping and ActivityWatch export.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.build.json --noEmit",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@monki-focus/engine": "*",
+    "@monki-focus/rules": "*"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.13.0",
+    "fast-check": "4.10.2",
+    "typescript-eslint": "8.72.0",
+    "vitest": "5.0.5"
+  }
+}
