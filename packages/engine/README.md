@@ -33,11 +33,24 @@ bedtimePhase(bedtime, now, timeZone) // §6.2
 ```
 
 Every input type comes from `@monki-focus/rules` (generated from the JSON
-Schemas). Inputs are assumed valid: validate rule sets with the rules
-package validator first. When `decide` returns a gate computed from the
+Schemas). Validate rule sets with the rules package validator first
+(`@monki-focus/rules/pure` is the browser-safe entry point for the bundled
+data, schemas and validator). When `decide` returns a gate computed from the
 shared escalation of several friction rules (§7.4), the adapter passes
 `effectiveEscalationState(...)` to `nextEscalation` so the stored gate equals
 the returned one.
+
+## Failure handling (§14)
+
+`decide` fails closed: any exception or invalid input (garbage URL text, an
+unknown observation, an instant without an explicit offset, an unresolvable
+time zone, an internal error) returns `ENGINE_ERROR_DECISION`, i.e. `block`,
+`hide-feed`, reason `engine_error`, no gate. Instants are parsed strictly
+(RFC 3339 with `Z` or `±HH:MM`, never `Date.parse` leniency) and every input
+instant is checked up front, so the outcome does not depend on which rule
+reads it. Rule ids, target groups and usage keys are data: lookups use maps
+and own-property checks, so `constructor` or `toString` are ordinary ids.
+Adapters log the reason code only, never URLs or titles.
 
 ## Purity
 
@@ -60,6 +73,9 @@ back into an instant (local midnight, the end of a window) tries the zone's
 offsets around that wall time and, for a time inside a spring-forward gap,
 binary-searches the transition: such a time resolves to the first existing
 instant after the gap, and a repeated fall-back time to its next occurrence.
+A waiting rule change runs to the end of the union of the old windows that
+chain from the next local midnight, bounded by time: never more than 8 days
+after `now` (§8 step 2).
 
 ## Scripts
 

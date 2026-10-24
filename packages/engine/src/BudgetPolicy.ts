@@ -10,6 +10,11 @@ import type { DailyUsage, Rule } from '@monki-focus/rules'
 import type { RulesCatalog } from './RulesCatalog.ts'
 import { mostSpecific } from './Specificity.ts'
 
+/** Seconds used by a rule today; rule ids are data, so only own keys count (§14). */
+function usedSeconds(usage: DailyUsage, ruleId: string): number {
+  return Object.hasOwn(usage.secondsByRule, ruleId) ? (usage.secondsByRule[ruleId] ?? 0) : 0
+}
+
 export function exhaustedBudgetRule(
   candidates: readonly Rule[],
   usage: DailyUsage | null,
@@ -20,7 +25,7 @@ export function exhaustedBudgetRule(
   const exhausted = candidates.filter(
     (rule) =>
       rule.dailyBudgetMinutes !== undefined &&
-      (usage.secondsByRule[rule.id] ?? 0) >= rule.dailyBudgetMinutes * 60
+      usedSeconds(usage, rule.id) >= rule.dailyBudgetMinutes * 60
   )
   return mostSpecific(exhausted, catalog)
 }

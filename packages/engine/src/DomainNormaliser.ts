@@ -10,8 +10,8 @@
 /** Alias domain → canonical domain, longest alias first so the most specific suffix wins. */
 export type AliasTable = readonly (readonly [alias: string, canonical: string])[]
 
-export function aliasTableOf(aliases: Readonly<Record<string, string>>): AliasTable {
-  return Object.entries(aliases).sort(([a], [b]) =>
+export function aliasTableOf(aliases: ReadonlyMap<string, string>): AliasTable {
+  return [...aliases].sort(([a], [b]) =>
     b.length !== a.length ? b.length - a.length : a < b ? -1 : 1
   )
 }

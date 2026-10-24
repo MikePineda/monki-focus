@@ -26,7 +26,7 @@ describe('EscalationPolicy', () => {
     ['timed_out', 'visit'],
     ['override_waiting', 'visit'],
     ['override_waiting', 'emergency_request'],
-    ['active', 'emergency_request'],
+    ['override_active', 'emergency_request'],
   ])('an_event_that_does_not_apply_in_%s_ignores_%s', (phase, type) => {
     const state = makeEscalation('r-x', { phase, lastActivityAt: '2026-10-26T09:59:00Z' })
     expect(nextEscalation(state, { type } as EscalationEvent, NOW, false)).toEqual({
@@ -96,6 +96,29 @@ describe('EscalationPolicy', () => {
       phase: 'override_waiting',
       overrideReadyAt: '2026-10-26T10:02:00Z',
       lastActivityAt: NOW,
+    })
+  })
+
+  it('an_emergency_request_during_an_intention_ends_it_and_starts_the_wait', () => {
+    const state = makeEscalation('r-x', {
+      phase: 'active',
+      intentionExpiresAt: '2026-10-26T10:05:00Z',
+    })
+    expect(nextEscalation(state, { type: 'emergency_request' }, NOW, false).state).toMatchObject({
+      phase: 'override_waiting',
+      intentionExpiresAt: null,
+      overrideReadyAt: '2026-10-26T10:02:00Z',
+    })
+  })
+
+  it('an_emergency_request_after_a_time_out_keeps_the_expired_intention', () => {
+    const state = makeEscalation('r-x', {
+      phase: 'timed_out',
+      intentionExpiresAt: '2026-10-26T09:55:00Z',
+    })
+    expect(nextEscalation(state, { type: 'emergency_request' }, NOW, false).state).toMatchObject({
+      phase: 'override_waiting',
+      intentionExpiresAt: '2026-10-26T09:55:00Z',
     })
   })
 

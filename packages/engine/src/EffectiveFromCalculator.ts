@@ -4,20 +4,21 @@
  *
  * 1. the next local midnight after `now` (the later one across both zones
  *    while a zone change waits);
- * 2. while an old bedtime or schedule window of a changed part is active at
- *    that instant (in either zone), move to the end of that window;
+ * 2. the first instant at or after it that lies in no old window of a
+ *    waiting part (in either zone): the end of the union of the half-open
+ *    windows that chain from it, however many there are. This is a time
+ *    bound, never a round count: the result is never later than `now` +
+ *    8 days, and exactly that when the union still covers it (24-hour windows
+ *    on every day never end);
  * 3. never earlier than the pending change's `effectiveFrom`.
- *
- * Windows last at most 24 hours, so step 2 normally ends within a few
- * rounds. A set of windows that covers every minute (24-hour windows on every
- * day) would never end: after `MAX_WINDOW_ROUNDS` the instant reached is used.
  */
 import type { TimeZone } from '@monki-focus/rules'
 import { MINUTES_PER_DAY, occurrenceAt } from './DailyWindow.ts'
 import type { DailyWindowSpec } from './DailyWindow.ts'
 import { firstInstantReachingWall, localTimeAt, nextLocalMidnight } from './ZonedTime.ts'
 
-export const MAX_WINDOW_ROUNDS = 32
+/** Step 2 never pushes `effectiveFrom` more than 8 days after `now`. */
+export const MAX_DEFERRAL_SECONDS = 8 * 86_400
 
 /** End instants of the windows active at `epochSeconds` in any of the zones. */
 function activeWindowEnds(
@@ -45,11 +46,14 @@ export function effectiveFromOf(
   windows: readonly DailyWindowSpec[],
   pendingSeconds: number | null
 ): number {
+  const latest = nowSeconds + MAX_DEFERRAL_SECONDS
   let instant = Math.max(...zones.map((zone) => nextLocalMidnight(nowSeconds, zone)))
-  for (let round = 0; round < MAX_WINDOW_ROUNDS; round += 1) {
+  // Each step jumps to the end of a window covering `instant`, so it strictly advances.
+  while (instant < latest) {
     const ends = activeWindowEnds(instant, zones, windows)
     if (ends.length === 0) break
     instant = Math.max(...ends)
   }
-  return pendingSeconds === null ? instant : Math.max(instant, pendingSeconds)
+  const bounded = Math.min(instant, latest)
+  return pendingSeconds === null ? bounded : Math.max(bounded, pendingSeconds)
 }

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Rule, Ruleset } from '@monki-focus/rules'
 import { effectiveRuleSet } from '../../src/index.ts'
-import { effectiveFromOf, MAX_WINDOW_ROUNDS } from '../../src/EffectiveFromCalculator.ts'
+import { effectiveFromOf, MAX_DEFERRAL_SECONDS } from '../../src/EffectiveFromCalculator.ts'
 import { epochSecondsOf } from '../../src/Instant.ts'
 import { fixtureCatalog } from '../fixtures/FixtureCatalog.ts'
 import { makeRule, makeRuleset } from '../factories/RulesetFactory.ts'
@@ -105,6 +105,26 @@ describe('RuleChangePolicy', () => {
     })
     const after = makeRule({ id: 'r', mode: 'allow', schedules: [] })
     expect(rulesChange([before], [after]).effectiveFrom).toBe(NEXT_MIDNIGHT)
+  })
+
+  it('disabling_a_block_during_its_window_waits_until_it_ends', () => {
+    const before = makeRule({
+      id: 'r',
+      schedules: [{ days: ['mon'], start: '23:00', end: '02:00' }],
+    })
+    expect(rulesChange([before], [{ ...before, enabled: false }]).effectiveFrom).toBe(
+      '2026-10-27T02:00:00Z'
+    )
+  })
+
+  it('removing_an_allow_rule_with_a_budget_does_not_run_its_window', () => {
+    const before = makeRule({
+      id: 'r',
+      mode: 'allow',
+      dailyBudgetMinutes: 5,
+      schedules: [{ days: ['mon'], start: '23:00', end: '02:00' }],
+    })
+    expect(rulesChange([before], []).effectiveFrom).toBe(NEXT_MIDNIGHT)
   })
 
   it('a_waiting_schedule_change_runs_its_old_window_to_the_end', () => {
@@ -211,19 +231,30 @@ describe('RuleChangePolicy', () => {
 })
 
 describe('EffectiveFromCalculator', () => {
-  it('windows_that_cover_the_whole_week_stop_after_a_bounded_number_of_rounds', () => {
-    const always = {
-      days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const,
-      start: '00:00',
-      end: '00:00',
-    }
-    const from = effectiveFromOf(
-      epochSecondsOf(NOW),
-      ['UTC'],
-      [{ ...always, days: [...always.days] }],
-      null
+  it('windows_that_cover_the_whole_week_end_exactly_eight_days_after_now', () => {
+    const everyDay = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
+    const always = { days: [...everyDay], start: '00:00', end: '00:00' }
+    const from = effectiveFromOf(epochSecondsOf(NOW), ['UTC'], [always], null)
+    expect(from).toBe(epochSecondsOf(NOW) + MAX_DEFERRAL_SECONDS)
+  })
+
+  it('chained_windows_run_to_the_end_of_their_union', () => {
+    const daily = (start: string, end: string) => ({
+      days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as (
+        'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+      )[],
+      start,
+      end,
+    })
+    const windows = [daily('23:00', '01:00'), daily('01:00', '03:00'), daily('02:30', '04:00')]
+    expect(effectiveFromOf(epochSecondsOf(NOW), ['UTC'], windows, null)).toBe(
+      epochSecondsOf('2026-10-27T04:00:00Z')
     )
-    expect(from).toBe(epochSecondsOf(NEXT_MIDNIGHT) + MAX_WINDOW_ROUNDS * 86_400)
+  })
+
+  it('a_pending_change_later_than_the_bound_is_kept', () => {
+    const pending = epochSecondsOf(NOW) + MAX_DEFERRAL_SECONDS + 60
+    expect(effectiveFromOf(epochSecondsOf(NOW), ['UTC'], [], pending)).toBe(pending)
   })
 
   it('never_moves_a_pending_change_earlier', () => {

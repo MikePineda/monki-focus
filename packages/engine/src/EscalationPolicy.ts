@@ -186,11 +186,13 @@ function transition(
     case 'extend':
       return phase === 'timed_out' ? extended(state, nowSeconds, guardianLinked) : null
     case 'emergency_request':
-      return ['idle', 'pausing', 'asking', 'timed_out'].includes(phase)
+      // Every phase in which `decide` can gate or block: the user is never trapped.
+      return ['idle', 'pausing', 'asking', 'active', 'timed_out'].includes(phase)
         ? {
             ...state,
             phase: 'override_waiting',
             overrideReadyAt: utcInstantOf(nowSeconds + OVERRIDE_WAIT_SECONDS),
+            intentionExpiresAt: phase === 'active' ? null : state.intentionExpiresAt,
           }
         : null
     case 'emergency_wait_elapsed':

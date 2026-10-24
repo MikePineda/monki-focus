@@ -8,7 +8,7 @@
 export type { RulesCatalog, RulesCatalogInput } from './RulesCatalog.ts'
 export { createRulesCatalog } from './RulesCatalog.ts'
 export { normalizeUrl } from './UrlNormalizer.ts'
-export { decide } from './DecisionEngine.ts'
+export { ENGINE_ERROR_DECISION, decide } from './FailClosedDecision.ts'
 export type { EscalationResult } from './EscalationPolicy.ts'
 export { nextEscalation } from './EscalationPolicy.ts'
 export { effectiveEscalationState } from './DecisionGate.ts'

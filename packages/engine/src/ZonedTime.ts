@@ -35,6 +35,11 @@ function formatterFor(timeZone: string): Intl.DateTimeFormat {
   return formatter
 }
 
+/** Throws a RangeError unless `timeZone` resolves in the time zone database (§14). */
+export function assertResolvableTimeZone(timeZone: string): void {
+  formatterFor(timeZone)
+}
+
 /** The local wall second of an instant (epoch seconds) in `timeZone`. */
 export function wallSecondsAt(epochSeconds: number, timeZone: string): number {
   const fields: Record<string, string> = {}

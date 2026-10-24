@@ -39,9 +39,9 @@ export interface RulesCatalog {
 }
 
 export function createRulesCatalog(input: RulesCatalogInput): RulesCatalog {
-  const aliasMap: Record<string, string> = {}
+  const aliasMap = new Map<string, string>()
   for (const profile of input.siteProfiles) {
-    for (const alias of profile.aliases) aliasMap[alias] = profile.domain
+    for (const alias of profile.aliases) aliasMap.set(alias, profile.domain)
   }
   const aliases = aliasTableOf(aliasMap)
   const profiles: CompiledProfile[] = input.siteProfiles

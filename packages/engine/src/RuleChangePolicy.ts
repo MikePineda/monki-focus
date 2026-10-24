@@ -62,11 +62,20 @@ function applicableRuleIds(
   }
 }
 
-function ruleParts(old: Ruleset, next: Ruleset, catalog: RulesCatalog): RulePart[] {
+/**
+ * `{ref: "workHours"}` resolves to `old.workHours` in the old rule and to the
+ * work hours that apply today in the new one (§8).
+ */
+function ruleParts(
+  old: Ruleset,
+  next: Ruleset,
+  workHoursToday: Ruleset['workHours'],
+  catalog: RulesCatalog
+): RulePart[] {
   const previousById = new Map(old.rules.map((rule) => [rule.id, rule]))
   const nextById = new Map(next.rules.map((rule) => [rule.id, rule]))
   const ids = [...new Set([...previousById.keys(), ...nextById.keys()])].sort()
-  const workHours = { previous: old.workHours, next: next.workHours }
+  const workHours = { previous: old.workHours, next: workHoursToday }
   return ids.map((id) => {
     const previous = previousById.get(id)
     const rule = nextById.get(id)
@@ -76,6 +85,18 @@ function ruleParts(old: Ruleset, next: Ruleset, catalog: RulesCatalog): RulePart
       : judgeRuleChange(previous, rule, workHours, catalog)
     return { id, previous, next: rule, verdict }
   })
+}
+
+/**
+ * Whether the old schedule windows of a waiting rule must run to their end
+ * (§8 step 2): its `schedules` changed, or it is an enabled non-allow rule
+ * that is removed or disabled (deleting a block during its window waits).
+ */
+function windowRunsOut({ previous, next }: RulePart): boolean {
+  if (previous === undefined) return false
+  if (next !== undefined && !jsonEqual(previous.schedules, next.schedules)) return true
+  const stopsApplying = next === undefined || !next.enabled
+  return stopsApplying && previous.enabled && previous.mode !== 'allow'
 }
 
 export function effectiveRuleSet(
@@ -90,7 +111,7 @@ export function effectiveRuleSet(
   const bedtimeWaits = bedtimeChangeWaits(old.bedtime, next.bedtime)
   const categories = planCategories(old.categories, next.categories, catalog)
   const workHoursToday = workHoursWait ? old.workHours : next.workHours
-  const parts = ruleParts(old, next, catalog)
+  const parts = ruleParts(old, next, workHoursToday, catalog)
   const applicable = applicableRuleIds(parts, workHoursToday, catalog)
   const waitingRules = parts.filter((part) => !applicable.has(part.id))
 
@@ -122,16 +143,10 @@ export function effectiveRuleSet(
     windows.push(old.bedtime)
   }
   if (workHoursWait) windows.push(old.workHours)
-  const scheduledOldRules = timeZoneWaits
-    ? old.rules
-    : waitingRules.flatMap((part) =>
-        part.previous !== undefined &&
-        part.next !== undefined &&
-        !jsonEqual(part.previous.schedules, part.next.schedules)
-          ? [part.previous]
-          : []
-      )
-  for (const rule of scheduledOldRules.filter((candidate) => candidate.enabled)) {
+  const windowedOldRules = timeZoneWaits
+    ? old.rules.filter((rule) => rule.enabled)
+    : waitingRules.flatMap((part) => (windowRunsOut(part) ? [part.previous as Rule] : []))
+  for (const rule of windowedOldRules) {
     windows.push(...resolveSchedules(rule.schedules, old.workHours))
   }
 

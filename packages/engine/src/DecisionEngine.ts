@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /**
- * `decide(ruleset, observation, state, now, catalog) → Decision`
- * (SEMANTICS.md §5). Two independent axes, access and content, each choose a
+ * The throwing core of `decide(ruleset, observation, state, now, catalog) →
+ * Decision` (SEMANTICS.md §5); the public `decide` wraps it fail-closed
+ * (`FailClosedDecision.ts`, §14). Two independent axes, access and content, each choose a
  * winner among the enabled, scheduled, matching rules. Access restrictions
  * are checked in order (bedtime, budget, rule block, friction); each one
  * either applies or is lifted (unlock, emergency override, intention).
@@ -26,9 +27,9 @@ import { categoryLevelOf } from './CategoryLevelResolver.ts'
 import { contentOutcome } from './ContentAxis.ts'
 import type { ContentOutcome } from './ContentAxis.ts'
 import { decisionGate } from './DecisionGate.ts'
+import { guardDecisionInputs } from './DecisionInputGuard.ts'
 import { isOverrideActive } from './EmergencyOverridePolicy.ts'
 import { explanationKeyOf } from './ExplanationKey.ts'
-import { epochSecondsOf } from './Instant.ts'
 import { isIntentionActive } from './IntentionPolicy.ts'
 import { isRuleScheduledAt, localDatesAt, zonesOf } from './PinnedTimeZones.ts'
 import { hasUnknownPath, resolveObservation } from './ResolvedObservation.ts'
@@ -179,19 +180,20 @@ function primaryOutcome(
   return { reason: access.reason, ruleId: access.ruleId }
 }
 
-export function decide(
+export function decideOrThrow(
   ruleset: Ruleset,
   observation: Observation,
   state: DecisionState,
   now: Instant,
   catalog: RulesCatalog
 ): Decision {
+  const nowSeconds = guardDecisionInputs(ruleset, observation, state, now)
   const resolved = resolveObservation(observation, catalog)
   const inputs: DecisionInputs = {
     ruleset,
     state,
     observation: resolved,
-    nowSeconds: epochSecondsOf(now),
+    nowSeconds,
     catalog,
   }
   const scheduled = scheduledRules(inputs)
