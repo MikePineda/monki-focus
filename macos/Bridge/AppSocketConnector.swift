@@ -23,8 +23,7 @@ enum AppSocketConnector {
                 return try? BridgeSocketPath.validated(override)
             }
         #endif
-        guard let home = homeDirectory() else { return nil }
-        return try? BridgeSocketPath.path(home: home)
+        return UserHomeDirectory.bridgeSocketPath()
     }
 
     static func connect(path: String) -> Outcome {
@@ -47,12 +46,5 @@ enum AppSocketConnector {
             return .refused
         }
         return .connected(socket)
-    }
-
-    /// The home folder from the user database, not from `$HOME`, which the
-    /// launching browser's environment controls.
-    private static func homeDirectory() -> String? {
-        guard let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir else { return nil }
-        return String(cString: directory)
     }
 }

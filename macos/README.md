@@ -53,15 +53,26 @@ extension --connectNative("dev.monkifocus.bridge")--> Brave/Chrome
   caps every message at 1 MiB both ways, relays the original bytes and never
   logs them. Without the app it answers `app.unavailable` and exits; it exits
   0 when either side closes and 1 on anything malformed.
-- **The socket** (`BridgeSocketServer`) is 0600 in a 0700 folder owned by the
-  user; a peer whose `getpeereid` uid is not the user's is closed before
-  anything is read; at most 4 connections; a malformed or oversized line
-  closes that connection only. The app accepts only `hello`, `browser.focus`,
-  `browser.activity` and `bypass.event`, so nothing over the bridge changes
-  rules or unlocks anything. It answers `hello` with
-  `hello.ack {aggregator: "mac"}` and feeds `browser.activity` into the capture
-  queue (`BrowserActivityRecorder`, bucket `monki-web-<browser>_<host>`).
-- **The manifest** (`NativeHostManifestInstaller`) goes to the
+- **The socket** (`BridgeSocketServer`) is 0600 in a 0700, ACL-free folder
+  owned by the user, checked through an `O_NOFOLLOW` descriptor; a socket
+  another running app answers on is never taken over (`alreadyRunning`). A
+  peer whose `getpeereid` uid is not the user's is closed before anything is
+  read. Per connection (`BridgeConnectionLimits`): a valid `hello` within
+  5 s, closed after 10 min of silence, 10 messages/s with a burst of 40 (the
+  excess dropped); a malformed or oversized line closes that connection
+  only. At most 4 connections, evicting the oldest one without `hello` when
+  full; broadcasts reach only connections that said `hello`. The app accepts
+  only `hello`, `browser.focus`, `browser.activity` and `bypass.event`, so
+  nothing over the bridge changes rules or unlocks anything. It answers
+  `hello` with `hello.ack {aggregator: "mac"}` and hands `browser.activity`
+  through a bounded `BrowserActivityInbox` to the capture queue
+  (`BrowserActivityRecorder`, bucket `monki-web-<browser>_<host>`; heartbeats
+  longer than the 45 s pulsetime or 5 min off the clock are dropped). The
+  socket path comes from the user database (`UserHomeDirectory`), never
+  `$HOME`, on both sides.
+- **The manifest** (`NativeHostManifestInstaller`) is written only when the
+  app runs from an installed location (`HostManifestPlacement`: not
+  translocated, not from a disk image or `/tmp`) and goes to the
   `NativeMessagingHosts` folder of each installed browser (sources in
   `BrowserHostFolder.swift`):
   `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/`

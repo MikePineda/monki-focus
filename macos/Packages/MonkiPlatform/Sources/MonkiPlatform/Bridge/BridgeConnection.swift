@@ -4,32 +4,49 @@ import Darwin
 import Dispatch
 import Foundation
 import MonkiCore
+import os
 
 /// One accepted `monki-bridge` connection: NDJSON in, NDJSON out, on its own
-/// serial queue. Every line is validated as a message from the extension;
-/// the first malformed line, an oversized line, a write that times out or the
-/// peer hanging up closes this connection and no other.
+/// serial queue. Every line is validated as a message from the extension.
+/// The connection closes, without affecting any other, on the first
+/// malformed or oversized line, a write that times out, the peer hanging up,
+/// no valid `hello` within the hello timeout, or silence past the idle
+/// timeout. Lines over the rate limit are dropped.
 final class BridgeConnection: @unchecked Sendable {
-    // State below is only touched on `queue`.
+    /// Accept order, so the server can evict the oldest connection that never said hello.
+    let sequence: UInt64
+    // State below is only touched on `queue`, except `greeted` (locked).
     private let socket: Int32
     private let queue: DispatchQueue
     private let handler: any BridgeMessageHandler
-    private let writeTimeoutMilliseconds: Int32
+    private let limits: BridgeConnectionLimits
     private let onClose: @Sendable (BridgeConnection) -> Void
+    private let greetedFlag = OSAllocatedUnfairLock(initialState: false)
     private var source: (any DispatchSourceRead)?
+    private var timer: (any DispatchSourceTimer)?
     private var lines = BridgeLineBuffer()
     private var session = BridgeSession()
+    private var limiter: BridgeRateLimiter
+    private let openedAt = ContinuousClock.now
+    private var lastActivity = ContinuousClock.now
     private var isClosed = false
 
     init(
-        socket: Int32, handler: any BridgeMessageHandler, writeTimeoutMilliseconds: Int32,
+        socket: Int32, sequence: UInt64, handler: any BridgeMessageHandler, limits: BridgeConnectionLimits,
         onClose: @escaping @Sendable (BridgeConnection) -> Void
     ) {
         self.socket = socket
+        self.sequence = sequence
         self.handler = handler
-        self.writeTimeoutMilliseconds = writeTimeoutMilliseconds
+        self.limits = limits
         self.onClose = onClose
+        limiter = BridgeRateLimiter(perSecond: limits.messagesPerSecond, burst: limits.burst)
         queue = DispatchQueue(label: "dev.monkifocus.bridge.connection")
+    }
+
+    /// Whether a valid `hello` arrived (only such connections get broadcasts).
+    var hasGreeted: Bool {
+        greetedFlag.withLock { $0 }
     }
 
     func start() {
@@ -39,6 +56,12 @@ final class BridgeConnection: @unchecked Sendable {
             source.setCancelHandler { [socket] in Darwin.close(socket) }
             self.source = source
             source.resume()
+            let timer = DispatchSource.makeTimerSource(queue: queue)
+            let tick = min(limits.helloTimeoutSeconds, limits.idleTimeoutSeconds) / 4
+            timer.schedule(deadline: .now() + tick, repeating: tick)
+            timer.setEventHandler { [weak self] in self?.checkDeadlines() }
+            self.timer = timer
+            timer.resume()
         }
     }
 
@@ -52,6 +75,18 @@ final class BridgeConnection: @unchecked Sendable {
 
     func close() {
         queue.async { [self] in closeNow() }
+    }
+
+    private func checkDeadlines() {
+        guard !isClosed else { return }
+        let now = ContinuousClock.now
+        if !hasGreeted, now - openedAt >= .seconds(limits.helloTimeoutSeconds) {
+            BridgeLog.event("no hello in time; connection closed")
+            closeNow()
+        } else if now - lastActivity >= .seconds(limits.idleTimeoutSeconds) {
+            BridgeLog.event("idle connection closed")
+            closeNow()
+        }
     }
 
     private func readAvailable() {
@@ -71,7 +106,12 @@ final class BridgeConnection: @unchecked Sendable {
             closeNow()
             return
         }
+        let now = ContinuousClock.now
+        let seconds =
+            Double((now - openedAt).components.seconds)
+            + Double((now - openedAt).components.attoseconds) / 1e18
         for line in received {
+            guard limiter.allow(at: seconds) else { continue }
             let message: BridgeMessage
             do {
                 message = try BridgeMessage.decode(line, from: .extensionToApp)
@@ -80,7 +120,12 @@ final class BridgeConnection: @unchecked Sendable {
                 closeNow()
                 return
             }
-            for reply in handler.handle(message, session: &session) {
+            lastActivity = now
+            let replies = handler.handle(message, session: &session)
+            if session.browser != nil {
+                greetedFlag.withLock { $0 = true }
+            }
+            for reply in replies {
                 write(reply)
                 if isClosed { return }
             }
@@ -113,12 +158,15 @@ final class BridgeConnection: @unchecked Sendable {
 
     private func waitUntilWritable() -> Bool {
         var descriptor = pollfd(fd: socket, events: Int16(POLLOUT), revents: 0)
-        return poll(&descriptor, 1, writeTimeoutMilliseconds) == 1 && descriptor.revents & Int16(POLLOUT) != 0
+        return poll(&descriptor, 1, limits.writeTimeoutMilliseconds) == 1
+            && descriptor.revents & Int16(POLLOUT) != 0
     }
 
     private func closeNow() {
         guard !isClosed else { return }
         isClosed = true
+        timer?.cancel()
+        timer = nil
         if let source {
             source.cancel()
         } else {
