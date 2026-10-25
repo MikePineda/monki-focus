@@ -22,7 +22,7 @@ class SetupIntentsTest {
         val intents = SetupIntents.accessibility(service)
 
         assertEquals(
-            listOf(Settings.ACTION_ACCESSIBILITY_DETAILS_SETTINGS, Settings.ACTION_ACCESSIBILITY_SETTINGS),
+            listOf(SetupIntents.ACCESSIBILITY_DETAILS_SETTINGS, Settings.ACTION_ACCESSIBILITY_SETTINGS),
             intents.map { it.action },
         )
         assertEquals(service.flattenToString(), intents[0].getStringExtra(Intent.EXTRA_COMPONENT_NAME))
