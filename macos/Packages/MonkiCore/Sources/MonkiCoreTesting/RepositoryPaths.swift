@@ -16,6 +16,9 @@ public enum RepositoryPaths {
         return url
     }()
 
+    /// `packages/rules`: schemas, rules data and fixtures.
+    public static let rulesPackage = root.appending(path: "packages/rules", directoryHint: .isDirectory)
+
     /// `packages/rules/fixtures`: the cross-platform conformance fixtures.
     public static let rulesFixtures = root.appending(path: "packages/rules/fixtures", directoryHint: .isDirectory)
 
