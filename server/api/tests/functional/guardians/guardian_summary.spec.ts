@@ -193,6 +193,26 @@ test.group('Guardian summary', (group) => {
     assert.equal(asSecond.body().bypasses.last7Days, 2)
   })
 
+  test('test_a_gap_still_open_after_eight_days_is_still_counted', async ({ client, assert }) => {
+    freezeTime(NOW)
+    const { ward, guardian } = await guardianPair({ state: 'active', confirmedAt: CONFIRMED })
+    await storeEvent(ward, null, 's:heartbeat_missing:long', '2026-01-04T09:00:00Z', {
+      kind: 'heartbeat_missing',
+      source: 'server',
+      details: JSON.stringify({ announced: false }),
+    })
+    await storeEvent(ward, null, 's:heartbeat_missing:before', '2025-12-31T09:00:00Z', {
+      kind: 'heartbeat_missing',
+      source: 'server',
+      details: JSON.stringify({ announced: false }),
+    })
+
+    const response = await summary(client, ward.id).actingAs(guardian)
+
+    assert.equal(response.body().bypasses.openGaps, 1, 'open since 8 days, after confirmation')
+    assert.equal(response.body().bypasses.last7Days, 0)
+  })
+
   test('test_guardian_cannot_read_ward_timeline_404', async ({ client, assert }) => {
     const { ward, guardian } = await guardianPair({ state: 'active' })
     const { device } = await enrolledDevice(ward)

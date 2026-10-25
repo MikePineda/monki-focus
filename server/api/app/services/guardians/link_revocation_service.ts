@@ -59,11 +59,23 @@ export default class LinkRevocationService {
 
   /** Answers the link while it lives on (a scheduled end), null once it ended. */
   async revoke(user: User, linkId: number, now: DateTime): Promise<GuardianLink | null> {
-    return retryOnDeadlock(() => this.revokeOnce(user, linkId, now))
+    const { link: parties } = await this.links.findLiveForParty(user, linkId, now)
+    return retryOnDeadlock(() => this.revokeOnce(user, linkId, parties, now))
   }
 
-  protected revokeOnce(user: User, linkId: number, now: DateTime): Promise<GuardianLink | null> {
+  protected revokeOnce(
+    user: User,
+    linkId: number,
+    parties: GuardianLink,
+    now: DateTime
+  ): Promise<GuardianLink | null> {
     return db.transaction(async (trx) => {
+      // Users first (user_row_locks.ts): the event and notice inserts
+      // reference them, and a deletion locks them before the link.
+      await lockUserRows(trx, [
+        { id: parties.wardUserId, mode: 'key share' },
+        { id: parties.guardianUserId, mode: 'key share' },
+      ])
       const { link, role } = await this.links.findLiveForParty(user, linkId, now, {
         trx,
         forUpdate: true,
@@ -108,11 +120,23 @@ export default class LinkRevocationService {
 
   /** The ward withdraws their request to leave. */
   async cancel(ward: User, linkId: number, now: DateTime): Promise<GuardianLink> {
-    return retryOnDeadlock(() => this.cancelOnce(ward, linkId, now))
+    const parties = await this.links.findLive(ward, linkId, 'ward', now)
+    return retryOnDeadlock(() => this.cancelOnce(ward, linkId, parties, now))
   }
 
-  protected cancelOnce(ward: User, linkId: number, now: DateTime): Promise<GuardianLink> {
+  protected cancelOnce(
+    ward: User,
+    linkId: number,
+    parties: GuardianLink,
+    now: DateTime
+  ): Promise<GuardianLink> {
     return db.transaction(async (trx) => {
+      // Users first (user_row_locks.ts): the event and notice inserts
+      // reference them, and a deletion locks them before the link.
+      await lockUserRows(trx, [
+        { id: parties.wardUserId, mode: 'key share' },
+        { id: parties.guardianUserId, mode: 'key share' },
+      ])
       const link = await this.links.findLive(ward, linkId, 'ward', now, { trx, forUpdate: true })
       if (!canCancelRevocation('ward', link.stateAt(now))) {
         throw new CodedError('E_NO_REVOCATION_PENDING', 409, 'No revocation to cancel')
@@ -137,11 +161,15 @@ export default class LinkRevocationService {
    * containers never finish the same link. Answers how many links ended.
    */
   async finalizeDue(now: DateTime): Promise<number> {
-    const lapsed = await db.rawQuery<{ rowCount: number }>(
-      `UPDATE ${GUARDIAN_LINKS_TABLE}
-          SET status = 'revoked', revoked_at = created_at + make_interval(hours => ?), updated_at = ?
-        WHERE status = 'pending' AND created_at <= ?`,
-      [PENDING_LINK_TTL_HOURS, now.toJSDate(), this.links.pendingCutoff(now)]
+    const lapsed = await retryOnDeadlock(() =>
+      db.transaction((trx) =>
+        trx.rawQuery<{ rowCount: number }>(
+          `UPDATE ${GUARDIAN_LINKS_TABLE}
+              SET status = 'revoked', revoked_at = created_at + make_interval(hours => ?), updated_at = ?
+            WHERE status = 'pending' AND created_at <= ?`,
+          [PENDING_LINK_TTL_HOURS, now.toJSDate(), this.links.pendingCutoff(now)]
+        )
+      )
     )
 
     const due = await this.dueQuery(GuardianLink.query(), now)
