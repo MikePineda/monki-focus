@@ -120,6 +120,56 @@ describe('DecisionService with the starter preset', () => {
     expect(await service.restricts('youtube.subscriptions')).toBe(false)
   })
 
+  it('a_feed_answer_holds_until_the_earliest_validity_of_the_decisions_it_is_made_of', async () => {
+    const ruleset = starter()
+    ruleset.rules = ruleset.rules.map((rule) =>
+      rule.id === 'starter-youtube-home-hide'
+        ? {
+            ...rule,
+            schedules: [
+              {
+                days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+                start: '09:00',
+                end: '13:00',
+              },
+            ],
+          }
+        : rule
+    )
+    const service = makeService({ rulesets: { load: () => Promise.resolve(ruleset) } })
+
+    const answer = await service.feedDecisionFor('https://www.youtube.com/watch?v=abcdefghijk')
+
+    expect(answer.restrict).toContain('youtube.home')
+    expect(answer.decision.validUntil).not.toBe('2026-10-27T13:00:00Z')
+    expect(answer.validUntil).toBe('2026-10-27T13:00:00Z')
+  })
+
+  it('every_decision_reports_its_validity_for_the_re_decision_alarm', async () => {
+    const reported: (string | null)[] = []
+    const service = makeService({ onValidity: (validUntil) => reported.push(validUntil) })
+    const broken = makeService({
+      rulesets: { load: () => Promise.reject(new Error('io')) },
+      onValidity: (validUntil) => reported.push(validUntil),
+    })
+
+    const decision = await service.decide('https://www.reddit.com/')
+    await broken.decide('https://www.reddit.com/')
+
+    expect(reported).toEqual([decision.validUntil, null])
+    expect(decision.validUntil).not.toBeNull()
+  })
+
+  it('a_throwing_validity_listener_never_changes_the_decision', async () => {
+    const service = makeService({
+      onValidity: () => {
+        throw new Error('alarms')
+      },
+    })
+
+    expect(await service.decide('https://www.reddit.com/')).toMatchObject({ access: 'gate' })
+  })
+
   it('decides_with_now_from_the_injected_clock', async () => {
     // 23:00 UTC is inside the starter bedtime (22:30-07:00 in the pinned zone).
     const service = makeService({ clock: fixedClock('2026-10-27T23:00:00Z') })

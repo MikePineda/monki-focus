@@ -22,7 +22,8 @@ function isFeedDecision(value: unknown): value is FeedDecision {
     typeof answer.decision === 'object' &&
     answer.decision !== null &&
     isStringArray(answer.hide) &&
-    isStringArray(answer.restrict)
+    isStringArray(answer.restrict) &&
+    (answer.validUntil === null || typeof answer.validUntil === 'string')
   )
 }
 

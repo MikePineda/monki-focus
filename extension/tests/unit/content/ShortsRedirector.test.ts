@@ -6,7 +6,7 @@ import type { FeedDecision } from '../../../src/shared/messages'
 import { shortsWatchUrl } from '../../../src/sites/youtube'
 
 function answer(surface: string | null, restrict: string[]): FeedDecision {
-  return { surface, decision: { ...ENGINE_ERROR_DECISION }, hide: [], restrict }
+  return { surface, decision: { ...ENGINE_ERROR_DECISION }, hide: [], restrict, validUntil: null }
 }
 
 function locationAt(href: string) {

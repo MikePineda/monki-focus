@@ -34,6 +34,7 @@ function answer(overrides: Partial<Decision>, session?: ActiveSession): FeedDeci
     decision: decision(overrides),
     hide: [],
     restrict: [],
+    validUntil: null,
     ...(session ? { session } : {}),
   }
 }

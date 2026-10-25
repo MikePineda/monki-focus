@@ -12,6 +12,7 @@ import { PlaceholderMount, randomPlaceholderTag } from '../../content/Placeholde
 import { PLACEHOLDER_CSS } from '../../content/placeholderStyles'
 import { watchReevaluationTriggers } from '../../content/ReevaluationTriggers'
 import { SpaNavigationWatcher } from '../../content/SpaNavigationWatcher'
+import { ValidityTimer } from '../../content/ValidityTimer'
 import { bundledRulesCatalog } from '../../shared/bundledRulesCatalog'
 import { pageSurfaceOf } from '../../shared/FeedSurfaces'
 import { randomGuardAttributes } from '../../shared/GuardAttributes'
@@ -83,6 +84,11 @@ export default defineContentScript({
       pillEnabled: () => readIntentionPillPreference(browser.storage.local),
       currentUrl: () => location.href,
     })
+    // `guard` exists by the time the timer fires.
+    const validity = new ValidityTimer({
+      clock,
+      reevaluate: () => void guard.evaluate(location.href),
+    })
     let applied = 0
     const guard = new FeedGuard({
       window,
@@ -96,7 +102,10 @@ export default defineContentScript({
         browser.runtime.sendMessage(
           commandMessage('feedGuard.attach', { url: location.href, attributes })
         ),
-      onDecision: (answer, url) => session.apply(answer, url),
+      onDecision: (answer, url) => {
+        session.apply(answer, url)
+        validity.schedule(answer.validUntil)
+      },
       ...(E2E
         ? { onApplied: () => root.setAttribute('data-mf-e2e-applied', String(++applied)) }
         : {}),
@@ -117,6 +126,7 @@ export default defineContentScript({
       if (browser.runtime?.id) return
       clearInterval(orphanCheck)
       watcher.stop()
+      validity.stop()
       stopTriggers()
       session.destroy()
       guard.destroy()

@@ -20,6 +20,7 @@ const FEED_DECISION: FeedDecision = {
   decision: { ...ENGINE_ERROR_DECISION },
   hide: ['reddit.feed'],
   restrict: ['reddit.feed'],
+  validUntil: null,
 }
 
 function makeRouter() {

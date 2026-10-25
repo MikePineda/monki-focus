@@ -9,6 +9,7 @@ import {
   RESTRICTION_CHECK_MINUTES,
   RestrictionWatcher,
 } from '../background/decisions/RestrictionWatcher'
+import { VALIDITY_ALARM, ValidityAlarm } from '../background/decisions/ValidityAlarm'
 import { delayedFeedDecisions } from '../background/e2e/DecisionDelay'
 import { SiteTabs } from '../background/feeds/SiteTabs'
 import { UserStylesheetInjector } from '../background/feeds/UserStylesheetInjector'
@@ -42,11 +43,14 @@ export default defineBackground(() => {
   const gateClock = runtimeClock()
   // The decisions read the gate's state; the gate decides with them.
   const gateHolder: { module?: GateModule } = {}
+  // One alarm at the earliest `validUntil` of every decision the worker makes.
+  const validity = new ValidityAlarm(browser.alarms, gateClock)
   const decisionService = new DecisionService({
     catalog,
     rulesets,
     clock: gateClock,
     states: () => gateHolder.module?.decisionState() ?? EMPTY_DECISION_STATE,
+    onValidity: (validUntil) => void validity.offer(validUntil),
   })
   const ruleChanges = new RuleChangeService({
     rulesets,
@@ -66,8 +70,8 @@ export default defineBackground(() => {
     await siteTabs.broadcast(decisionChangedMessage()).catch(() => undefined)
   }
   const restrictions = new RestrictionWatcher({
-    catalog,
-    restriction: decisionService,
+    rulesets,
+    clock: gateClock,
     storage: browser.storage.session,
     onChange: decisionsChanged,
   })
@@ -151,7 +155,16 @@ export default defineBackground(() => {
   })
   browser.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === PENDING_RULES_ALARM) void ruleChanges.promoteIfDue().catch(() => undefined)
+    if (alarm.name === VALIDITY_ALARM) {
+      // A decision ran out: decide the redirects and the open pages again.
+      validity.rang()
+      void decisionsChanged()
+      void restrictions.check().catch(() => undefined)
+      void gate.refresh().catch(() => undefined)
+      return
+    }
     if (alarm.name !== RESTRICTION_ALARM) return
+    // The coarse backstop: a lost alarm, a changed clock, usage that kept accruing.
     void restrictions.check().catch(() => undefined)
     // Schedule edges and spent budgets change which sites the gate redirects.
     void gate.refresh().catch(() => undefined)

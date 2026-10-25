@@ -131,11 +131,16 @@ the extension never lists feed paths.
   (`currententrychange`, `navigate`; reachable from the isolated world and
   verified by an E2E with the poll disabled), `popstate`,
   `yt-navigate-finish`, `<title>` changes and a 250 ms URL poll; nothing is
-  patched in the page's MAIN world. The service worker pushes
-  `decision.changed` to open site tabs when the rule set changes and when a
-  per-minute alarm (`decision.refresh`) sees the set of restricted feeds
-  change (a schedule edge; the engine has no "valid until"), and pages
-  restored from the back/forward cache ask again. After an install or update
+  patched in the page's MAIN world. Every answer carries the earliest
+  `validUntil` of the decisions it is made of (the page's and the restricted
+  feeds'), and the page asks again then (`ValidityTimer`, capped at 15 min).
+  The service worker keeps one alarm (`decision.validUntil`) at the earliest
+  `validUntil` of every decision it made (`ValidityAlarm`) and then re-syncs
+  the Shorts and gate redirects and pushes `decision.changed` to open site
+  tabs; it also pushes when the rule set changes and, as a coarse backstop,
+  when the per-minute `decision.refresh` alarm sees the rules in force change
+  (active schedules, bedtime phase, local date: `RestrictionWatcher`, no
+  decision probes). Pages restored from the back/forward cache ask again. After an install or update
   the feed guard is injected into open site tabs (`scripting.executeScript`);
   an orphaned instance tears itself down once its runtime id is gone.
 - **Placeholder.** `FeedPlaceholder` mounts in a **closed** shadow root
@@ -236,8 +241,8 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   domain's root page with the stored escalation, so a committed intention or
   an emergency override drops its group's rule and the expiry (or the next
   sync) restores it. Syncs run on start, on every escalation change, on rule
-  set changes and on the per-minute `decision.refresh` alarm (schedule
-  edges, budgets). An `engine_error` for any domain keeps the last installed
+  set changes, at the `decision.validUntil` alarm (schedule edges) and on
+  the per-minute `decision.refresh` alarm (budgets that keep accruing). An `engine_error` for any domain keeps the last installed
   rules (never "remove all"; the feed guard already hides every feed).
   After every sync and timer tick, open tabs whose page the engine now gates
   are sent to the gate (timed-out tabs on sites without the feed guard,

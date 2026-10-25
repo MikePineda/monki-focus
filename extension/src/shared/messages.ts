@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Decision } from '@monki-focus/rules/pure'
+import type { Decision, UtcInstant } from '@monki-focus/rules/pure'
 import {
   INTENTION_MINUTES,
   MAX_GATE_SEARCH_LENGTH,
@@ -53,6 +53,12 @@ export interface FeedDecision {
    * every page of the site (`data-mf-restrict`).
    */
   restrict: string[]
+  /**
+   * The earliest `validUntil` of the decisions this answer is made of (the
+   * page's and the restricted surfaces'): the page asks again then at the
+   * latest (SEMANTICS.md §5.6). Null when none has one (`engine_error`).
+   */
+  validUntil: UtcInstant | null
   /** The intention or emergency access this page is inside (E6), if any. */
   session?: ActiveSession
 }

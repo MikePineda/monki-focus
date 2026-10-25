@@ -21,6 +21,7 @@ function makeHandlers(extra: Partial<CommandDependencies> = {}) {
           decision: { ...ENGINE_ERROR_DECISION },
           hide: [],
           restrict: [],
+          validUntil: null,
         }),
     },
     tracking: {
