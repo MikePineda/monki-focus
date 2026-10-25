@@ -125,6 +125,11 @@
       "id": "youtube.search",
       "family": "youtube",
       "kind": "utility"
+    },
+    {
+      "id": "youtube.library",
+      "family": "youtube",
+      "kind": "utility"
     }
   ]
 }

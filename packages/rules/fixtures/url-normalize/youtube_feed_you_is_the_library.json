@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.youtube_feed_you_is_the_library",
+  "kind": "url-normalize",
+  "description": "The You page (history, playlists, watch later) is a utility surface, not a feed, so hiding feeds never empties it.",
+  "given": {
+    "urlText": "https://m.youtube.com/feed/you"
+  },
+  "then": {
+    "host": "youtube.com",
+    "path": "/feed/you",
+    "pathKnown": true,
+    "surface": "youtube.library"
+  }
+}
