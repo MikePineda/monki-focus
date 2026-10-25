@@ -8,7 +8,16 @@
       "email": "Enter a valid email address",
       "minLength": "The {field} needs at least {min} characters",
       "maxLength": "The {field} can have at most {max} characters",
-      "enum": "Choose a valid {field}"
+      "enum": "Choose a valid {field}",
+      "min": "The {field} must be at least {min}",
+      "max": "The {field} can be at most {max}",
+      "withoutDecimals": "The {field} must be a whole number",
+      "regex": "The {field} has the wrong format",
+      "requiredIfMissing": "Enter the {field}",
+      "timeZone": "Choose a valid time zone",
+      "passwordTooCommon": "This password is too easy to guess. Use a few unrelated words",
+      "passwordTooRepetitive": "This password repeats too few characters. Use a few unrelated words",
+      "passwordContainsEmail": "The password cannot contain your email"
     }
   }
 }

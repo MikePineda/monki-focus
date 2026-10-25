@@ -4,5 +4,14 @@
   "E_BAD_CSRF_TOKEN": "Your session expired. Reload the page and try again",
   "E_TOO_MANY_REQUESTS": "Too many requests. Wait a minute and try again",
   "E_CONFLICT": "This already exists. Reload and try again",
-  "E_INTERNAL_SERVER_ERROR": "Something went wrong on the server. Try again in a moment"
+  "E_INTERNAL_SERVER_ERROR": "Something went wrong on the server. Try again in a moment",
+  "E_UNAUTHORIZED_ACCESS": "Sign in to continue",
+  "E_INVALID_CREDENTIALS": "The email or the password is not correct",
+  "E_REAUTH_FAILED": "The password is not correct",
+  "E_REGISTRATION_REJECTED": "This sign-up is not possible. Check the invitation link or ask the admin for a new one",
+  "E_TWO_FACTOR_CHALLENGE_EXPIRED": "The sign-in expired. Enter your email and password again",
+  "E_INVALID_TWO_FACTOR_CODE": "The code is not valid. Try the current code from your app",
+  "E_TWO_FACTOR_ALREADY_ENABLED": "Two-step verification is already on",
+  "E_TWO_FACTOR_NOT_ENABLED": "Two-step verification is off",
+  "E_TWO_FACTOR_NOT_PENDING": "Start the two-step verification setup first"
 }

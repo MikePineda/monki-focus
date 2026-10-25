@@ -8,7 +8,16 @@
       "email": "Escribe un correo válido",
       "minLength": "El campo {field} necesita al menos {min} caracteres",
       "maxLength": "El campo {field} admite como máximo {max} caracteres",
-      "enum": "Elige un valor válido para {field}"
+      "enum": "Elige un valor válido para {field}",
+      "min": "El campo {field} debe ser al menos {min}",
+      "max": "El campo {field} puede ser como máximo {max}",
+      "withoutDecimals": "El campo {field} debe ser un número entero",
+      "regex": "El campo {field} no tiene el formato correcto",
+      "requiredIfMissing": "Escribe el campo {field}",
+      "timeZone": "Elige una zona horaria válida",
+      "passwordTooCommon": "Esta contraseña es demasiado fácil de adivinar. Usa varias palabras sin relación",
+      "passwordTooRepetitive": "Esta contraseña repite muy pocos caracteres. Usa varias palabras sin relación",
+      "passwordContainsEmail": "La contraseña no puede contener tu correo"
     }
   }
 }

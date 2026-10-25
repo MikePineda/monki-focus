@@ -7,8 +7,11 @@ without it; the server adds a guardian, sync across devices and a dashboard.
 Today it is the scaffold (work package S1): boot-time env validation, health
 probes, logger redaction, i18n, CSRF and CSP, rate limits in Postgres, the
 in-process scheduler with `scheduler_runs` claims and the `/api/v1` device
-gate (`X-Client-Version`, 426 for old clients). Accounts, devices, guardians
-and unlocks arrive with S2 to S8.
+gate (`X-Client-Version`, 426 for old clients). Accounts (S2): cookie
+sessions with `session_version` revocation, closed registration with admin
+invitations, optional TOTP two-step verification, profile, export and
+account deletion (routes in `docs/CONTRACTS.md`, "Dashboard API"). Devices,
+guardians and unlocks arrive with S3 to S8.
 
 ## Run it
 
@@ -58,7 +61,12 @@ global transaction per test, HTTP server). Test names read like specs.
 - The image (`Dockerfile`, final stage `runtime`) listens on 3333, runs as
   `node`, has no volume and probes `/api/health` with Node's fetch.
 - `docker/entrypoint.mjs` migrates when `MIGRATE_ON_START=true`, seeds when
-  `SEED_USERS=true`, then starts the server in the same process.
+  `SEED_USERS=true` (the first admin from `SEED_ADMIN_*`, idempotent; a weak
+  `SEED_ADMIN_PASSWORD` stops the start), then starts the server in the same
+  process.
+- No mail: reset a password with
+  `docker exec <container> node ace user:reset-password <email>` (prompts
+  twice, or `--generate`; `--disable-two-factor` for a lost authenticator).
 - Behind a CDN, set `CLIENT_IP_HEADER` (for example `cf-connecting-ip`) and
   `CLIENT_IP_HEADER_FROM` (the CDN's CIDRs); the header is trusted only from
   those ranges and must be stripped at the edge (docs/RUNBOOK.md).
