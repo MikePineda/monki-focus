@@ -139,6 +139,21 @@ describe('background entrypoint', () => {
     })
   })
 
+  it('decisions_schedule_the_validity_alarm_and_its_ring_tells_open_tabs_to_ask_again', async () => {
+    background.main()
+
+    await vi.waitFor(async () => {
+      expect(await fakeBrowser.alarms.get('decision.validUntil')).toBeDefined()
+    })
+    sendMessage.mockClear()
+    const alarm = await fakeBrowser.alarms.get('decision.validUntil')
+    await fakeBrowser.alarms.onAlarm.trigger(alarm as never)
+
+    await vi.waitFor(() => {
+      expect(sendMessage).toHaveBeenCalledWith(4, { v: 1, type: 'decision.changed' })
+    })
+  })
+
   it('background_starts_tracking_with_the_pulse_alarm', async () => {
     background.main()
 

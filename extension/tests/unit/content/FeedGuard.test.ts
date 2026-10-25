@@ -21,7 +21,7 @@ const SHOW: Decision = {
 }
 
 function shown(surface: string | null): FeedDecision {
-  return { surface, decision: SHOW, hide: [], restrict: [] }
+  return { surface, decision: SHOW, hide: [], restrict: [], validUntil: null }
 }
 
 function hidden(surface: string): FeedDecision {
@@ -30,6 +30,7 @@ function hidden(surface: string): FeedDecision {
     decision: { ...SHOW, content: 'hide-feed', reason: 'rule_match' },
     hide: [surface],
     restrict: [surface],
+    validUntil: null,
   }
 }
 
@@ -195,6 +196,7 @@ describe('FeedGuard', () => {
       decision: { ...ENGINE_ERROR_DECISION },
       hide: ['reddit.feed', 'reddit.user_feed'],
       restrict: ['reddit.feed', 'reddit.user_feed'],
+      validUntil: null,
     })
     await done
 
@@ -211,6 +213,7 @@ describe('FeedGuard', () => {
       decision: { ...SHOW, access: 'block', reason: 'rule_match' },
       hide: [],
       restrict: ['youtube.shorts'],
+      validUntil: null,
     })
     await done
 

@@ -7,7 +7,13 @@ import { fixedClock } from '../../../../src/shared/clock'
 import type { FeedDecision } from '../../../../src/shared/messages'
 
 function answer(restrict: string[]): FeedDecision {
-  return { surface: null, decision: { ...ENGINE_ERROR_DECISION }, hide: [], restrict }
+  return {
+    surface: null,
+    decision: { ...ENGINE_ERROR_DECISION },
+    hide: [],
+    restrict,
+    validUntil: null,
+  }
 }
 
 function makeHandlers(restrict: string[]) {

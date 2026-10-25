@@ -10,6 +10,7 @@ const ANSWER: FeedDecision = {
   decision: { ...ENGINE_ERROR_DECISION },
   hide: ['reddit.feed'],
   restrict: [],
+  validUntil: null,
 }
 
 describe('requestFeedDecision', () => {
@@ -26,6 +27,7 @@ describe('requestFeedDecision', () => {
     { ok: true, data: { surface: 1, decision: {}, hide: [], restrict: [] } },
     { ok: true, data: { ...ANSWER, hide: [1] } },
     { ok: true, data: { ...ANSWER, decision: null } },
+    { ok: true, data: { ...ANSWER, validUntil: 1767603600 } },
   ])('an_unusable_answer_%j_rejects', async (result) => {
     await expect(requestFeedDecision(() => Promise.resolve(result), URL_)).rejects.toThrow(
       'decision.unavailable'
