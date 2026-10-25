@@ -11,6 +11,7 @@ import { guardianPair } from '#tests/factories/guardian_link_factory'
 import { expectStatus } from '#tests/support/expect_response'
 import { captureSql, firstIndex } from '#tests/support/sql_capture'
 import { newPairingCode, redeem } from '#tests/support/guardians'
+import { WardRevocationJob } from '#scheduler/ward_revocation_job'
 
 const USERS = /\bfrom "?users"?/
 const CODES = /\bfrom "?pairing_codes"?/
@@ -104,6 +105,34 @@ test.group('Guardian lock order', (group) => {
     const users = firstIndex(sql, USERS, FOR_NO_KEY_UPDATE)
     assert.isAtLeast(users, 0, "the guardian's row is locked, like disabling two-factor does")
     assert.isAbove(firstIndex(sql, LINKS, FOR_UPDATE), users)
+  })
+
+  test('test_revoke_cancel_and_rotate_lock_the_users_before_the_link', async ({
+    client,
+    assert,
+  }) => {
+    const { ward, link } = await guardianPair({ state: 'active' })
+    const steps = [
+      () => client.post(`/api/v1/guardian/links/${link.id}/revoke`).actingAs(ward),
+      () => client.post(`/api/v1/guardian/links/${link.id}/cancel-revocation`).actingAs(ward),
+      () => client.post(`/api/v1/guardian/links/${link.id}/rotate-topic`).actingAs(ward),
+    ]
+
+    for (const step of steps) {
+      const sql = await captureSql(() => expectStatus(step(), 200))
+      const users = firstIndex(sql, USERS, FOR_KEY_SHARE)
+      assert.isAtLeast(users, 0, 'the users rows are locked')
+      assert.isAbove(firstIndex(sql, LINKS, FOR_UPDATE), users, 'the link after the users')
+    }
+  })
+
+  test('test_the_job_lapses_pending_links_inside_a_retried_transaction', async ({ assert }) => {
+    const clock = freezeTime('2026-01-05T09:00:00Z')
+    const sql = await captureSql(() => new WardRevocationJob().finalizeDue(clock.now()))
+
+    const lapse = firstIndex(sql, /^update "?guardian_links"?/, /status = 'pending'/)
+    assert.isAtLeast(lapse, 0)
+    assert.match(sql[lapse - 1], /^savepoint /, 'the lapse runs in its own transaction')
   })
 
   test('test_disabling_two_factor_checks_guardianship_under_the_users_row_lock', async ({

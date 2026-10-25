@@ -13,6 +13,7 @@ import GuardianLinkRegistry from '#services/guardians/guardian_link_registry'
 import { consumeTopicRotation } from '#services/guardians/guardian_throttles'
 import { drawNtfyTopic } from '#services/guardians/ntfy_topics'
 import { retryOnDeadlock } from '#services/database/deadlock_retry'
+import { lockUserRows } from '#services/database/user_row_locks'
 
 /**
  * `POST /guardian/links/:id/rotate-topic`: either side replaces an active
@@ -42,20 +43,27 @@ export default class TopicRotation {
     linkId: number,
     now: DateTime
   ): Promise<{ link: GuardianLink; role: LinkRole }> {
-    const { role } = await this.links.findLiveForParty(user, linkId, now)
+    const { link: parties, role } = await this.links.findLiveForParty(user, linkId, now)
     if (role === 'guardian') this.guardianship.requireTwoFactor(user)
     await consumeTopicRotation(user.id)
 
-    return retryOnDeadlock(() => this.rotateOnce(user, role, linkId, now))
+    return retryOnDeadlock(() => this.rotateOnce(user, role, linkId, parties, now))
   }
 
   protected rotateOnce(
     user: User,
     role: LinkRole,
     linkId: number,
+    parties: GuardianLink,
     now: DateTime
   ): Promise<{ link: GuardianLink; role: LinkRole }> {
     return db.transaction(async (trx) => {
+      // Users first (user_row_locks.ts): the event and notice inserts
+      // reference them, and a deletion locks them before the link.
+      await lockUserRows(trx, [
+        { id: parties.wardUserId, mode: 'key share' },
+        { id: parties.guardianUserId, mode: 'key share' },
+      ])
       const { link } = await this.links.findLiveForParty(user, linkId, now, {
         trx,
         forUpdate: true,

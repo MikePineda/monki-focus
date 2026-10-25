@@ -38,7 +38,9 @@ export default class GuardianSummaryService {
       .orderBy('id', 'desc')
       .limit(RECENT_LIMIT)
     const inWindow = await this.visibleEvents(link, since.toJSDate()).count('* as total')
-    const openGaps = await this.visibleEvents(link, since.toJSDate())
+    // An open gap counts however long ago it started (a long silence must
+    // never drop out of the window), only not from before the confirmation.
+    const openGaps = await this.visibleEvents(link, link.confirmedAt?.toJSDate() ?? new Date(0))
       .where('kind', 'heartbeat_missing')
       .whereNull('resolved_at')
       .count('* as total')
