@@ -108,6 +108,21 @@ export function canonicalPolicyMessage(claims: unknown): Encoded {
   ])
 }
 
+export function canonicalKeyEndorsementMessage(claims: unknown): Encoded {
+  if (!isRecord(claims)) return null
+  return object([
+    ['v', integer(claims.v)],
+    ['typ', string(claims.typ)],
+    ['iss', string(claims.iss)],
+    ['use', string(claims.use)],
+    ['kid', string(claims.kid)],
+    ['x', string(claims.x)],
+    ['iat', string(claims.iat)],
+    ['nbf', string(claims.nbf)],
+    ['exp', string(claims.exp)],
+  ])
+}
+
 export function canonicalTimeMessage(claims: unknown): Encoded {
   if (!isRecord(claims)) return null
   return object([
