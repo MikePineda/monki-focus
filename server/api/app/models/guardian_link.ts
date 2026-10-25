@@ -57,6 +57,7 @@ export default class GuardianLink extends BaseModel {
       {
         status: this.status,
         revocationEffectiveAt: this.revocationEffectiveAt?.toJSDate() ?? null,
+        createdAt: this.createdAt.toJSDate(),
       },
       now.toJSDate()
     )

@@ -15,6 +15,7 @@ export function userResource(user: User) {
     timeZone: user.timeZone,
     weekStart: user.weekStart,
     isAdmin: user.isAdmin,
+    guardianOnly: user.guardianOnly,
     twoFactorEnabled: user.twoFactorEnabled,
     createdAt: user.createdAt.toUTC().toISO(),
   }

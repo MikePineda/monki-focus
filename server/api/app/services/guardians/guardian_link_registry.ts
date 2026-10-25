@@ -7,7 +7,7 @@ import User from '#models/user'
 import GuardianLink from '#models/guardian_link'
 import { ownedBy } from '#services/tenancy/owned_by'
 import { drawNtfyTopic } from '#services/guardians/ntfy_topics'
-import type { LinkRole } from '#domain/guardians/link_state'
+import { PENDING_LINK_TTL_HOURS, type LinkRole } from '#domain/guardians/link_state'
 import { defaultMaxUnlockMinutes, maxUnlockMinutesCap } from '#domain/guardians/link_settings'
 import { guardianLinkResource, type LinkParties } from '#transformers/guardian_link_transformer'
 
@@ -90,19 +90,39 @@ export default class GuardianLinkRegistry {
     return { link, role: this.roleOf(link, user) }
   }
 
-  /** Live (pending or active) links of a user on one side, locked (account deletion). */
-  liveOn(user: User, role: LinkRole, now: DateTime, trx: TransactionClientContract) {
-    return this.live(ownedBy(GuardianLink, user, ROLE_COLUMN[role]), now)
-      .useTransaction(trx)
-      .forUpdate()
+  /**
+   * Live links of a user on either side. With `trx`, locked by one
+   * statement in id order (account deletion), so two deletions sharing
+   * links never lock them in opposite orders.
+   */
+  liveLinksOf(user: User, now: DateTime, trx?: TransactionClientContract) {
+    const query = this.live(
+      GuardianLink.query().where((either) =>
+        either.where('ward_user_id', user.id).orWhere('guardian_user_id', user.id)
+      ),
+      now
+    ).orderBy('id')
+    return trx ? query.useTransaction(trx).forUpdate() : query
   }
 
-  /** Whether the pair already holds a link that is not revoked (the unique index's rule). */
+  /**
+   * Whether the pair already holds a link that is not revoked (the unique
+   * index's rule). A pending link of the pair that has lapsed is stored as
+   * revoked first, so the pair can pair again at once.
+   */
   async pairIsLinked(
     wardUserId: number,
     guardianUserId: number,
+    now: DateTime,
     trx: TransactionClientContract
   ): Promise<boolean> {
+    await trx.rawQuery(
+      `UPDATE ${GUARDIAN_LINKS_TABLE}
+          SET status = 'revoked', revoked_at = created_at + make_interval(hours => ?), updated_at = ?
+        WHERE ward_user_id = ? AND guardian_user_id = ? AND status = 'pending'
+          AND created_at <= ?`,
+      [PENDING_LINK_TTL_HOURS, now.toJSDate(), wardUserId, guardianUserId, this.pendingCutoff(now)]
+    )
     const row = await GuardianLink.query({ client: trx })
       .where('ward_user_id', wardUserId)
       .where('guardian_user_id', guardianUserId)
@@ -118,10 +138,13 @@ export default class GuardianLinkRegistry {
   createPending(
     trx: TransactionClientContract,
     wardUserId: number,
-    guardianUserId: number
+    guardianUserId: number,
+    now: DateTime
   ): Promise<GuardianLink> {
     return GuardianLink.create(
       {
+        // The injected clock's instant: the pending lifetime counts from it.
+        createdAt: now,
         wardUserId,
         guardianUserId,
         status: 'pending',
@@ -164,15 +187,31 @@ export default class GuardianLinkRegistry {
     return link.wardUserId === user.id ? 'ward' : 'guardian'
   }
 
-  /** Pending or active, and not past a revocation deadline (link_state.ts). */
+  /** Pending links created at or before this have lapsed. */
+  pendingCutoff(now: DateTime): Date {
+    return now.minus({ hours: PENDING_LINK_TTL_HOURS }).toJSDate()
+  }
+
+  /**
+   * Pending and within its lifetime, or active and not past a revocation
+   * deadline (link_state.ts).
+   */
   protected live(query: ModelQueryBuilderContract<typeof GuardianLink>, now: DateTime) {
-    return query
-      .whereIn('status', ['pending', 'active'])
-      .where((deadline) =>
-        deadline
-          .whereNull('revocation_effective_at')
-          .orWhere('revocation_effective_at', '>', now.toJSDate())
-      )
+    return query.where((live) =>
+      live
+        .where((pending) =>
+          pending.where('status', 'pending').where('created_at', '>', this.pendingCutoff(now))
+        )
+        .orWhere((active) =>
+          active
+            .where('status', 'active')
+            .where((deadline) =>
+              deadline
+                .whereNull('revocation_effective_at')
+                .orWhere('revocation_effective_at', '>', now.toJSDate())
+            )
+        )
+    )
   }
 
   protected scoped(query: ModelQueryBuilderContract<typeof GuardianLink>, options: LookupOptions) {

@@ -16,6 +16,7 @@ export const UserFactory = factory
     timeZone: 'UTC',
     weekStart: 1,
     isAdmin: false,
+    guardianOnly: false,
     sessionVersion: 0,
   }))
   .state('admin', (user) => {

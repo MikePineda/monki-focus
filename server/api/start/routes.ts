@@ -52,6 +52,7 @@ const ProfileController = () => import('#controllers/profile_controller')
 const AccountController = () => import('#controllers/account_controller')
 const TwoFactorController = () => import('#controllers/two_factor_controller')
 const AdminInvitationsController = () => import('#controllers/admin_invitations_controller')
+const AccountInvitationsController = () => import('#controllers/account_invitations_controller')
 const DevicesController = () => import('#controllers/devices_controller')
 const DeviceApiController = () => import('#controllers/device_api_controller')
 const GuardianPairingController = () => import('#controllers/guardian_pairing_controller')
@@ -123,6 +124,9 @@ router
             router.delete('/', [AccountController, 'destroy']).as('destroy')
             router.put('password', [ProfileController, 'password']).as('password')
             router.get('export', [AccountController, 'export']).as('export')
+            router
+              .post('invitation', [AccountInvitationsController, 'accept'])
+              .as('invitation.accept')
             router.post('two-factor', [TwoFactorController, 'store']).as('two_factor.store')
             router
               .post('two-factor/confirm', [TwoFactorController, 'confirm'])

@@ -8,6 +8,8 @@ import PasswordReauth from '#services/accounts/password_reauth'
 import TwoFactorService from '#services/accounts/two_factor_service'
 import Guardianship from '#services/guardians/guardianship'
 import { CodedError } from '#exceptions/coded_error'
+import db from '@adonisjs/lucid/services/db'
+import { lockUserRows } from '#services/database/user_row_locks'
 import { refreshSessionVersion } from '#services/accounts/web_session'
 import { twoFactorRules } from '#services/accounts/account_throttles'
 import { throttleFailures } from '#services/accounts/failure_throttle'
@@ -60,11 +62,17 @@ export default class TwoFactorController {
    */
   async destroy(ctx: HttpContext) {
     const signedIn = ctx.auth.use('web').getUserOrFail()
-    if (await this.guardianship.isGuarding(signedIn, this.clock.now())) {
-      throw new CodedError('E_GUARDIAN_TWO_FACTOR_REQUIRED', 409, 'Guardians need 2FA')
-    }
+    // A cheap early answer before the password and code are spent...
+    if (await this.guardianship.isGuarding(signedIn, this.clock.now())) throw guardianNeedsIt()
     const user = await this.reauthenticate(ctx)
-    await this.twoFactor.disable(user)
+    // ...and the real check, under the users-row lock link confirmation
+    // also takes (link_confirmation.ts): the two serialise, so no link can
+    // turn active between the check and the change.
+    await db.transaction(async (trx) => {
+      await lockUserRows(trx, [{ id: user.id, mode: 'no key update' }])
+      if (await this.guardianship.isGuarding(user, this.clock.now(), trx)) throw guardianNeedsIt()
+      await this.twoFactor.disable(user, trx)
+    })
     return ctx.response.noContent()
   }
 
@@ -77,4 +85,8 @@ export default class TwoFactorController {
     )
     return user
   }
+}
+
+function guardianNeedsIt() {
+  return new CodedError('E_GUARDIAN_TWO_FACTOR_REQUIRED', 409, 'Guardians need 2FA')
 }

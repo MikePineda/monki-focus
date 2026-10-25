@@ -57,6 +57,7 @@ export default class RegistrationService {
             timeZone: input.timeZone ?? 'UTC',
             weekStart: input.weekStart ?? 1,
             isAdmin: false,
+            guardianOnly: false,
             sessionVersion: 0,
           },
           { client: trx }
@@ -78,7 +79,8 @@ export default class RegistrationService {
     }
   }
 
-  protected async lockUsableInvitation(
+  /** Locks an invitation `email` may use now, or throws the sign-up's refusal. */
+  async lockUsableInvitation(
     secretPart: string,
     email: string,
     now: DateTime,

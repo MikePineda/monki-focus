@@ -31,6 +31,8 @@ const cancel = (client: ApiClient, linkId: number) =>
   client.post(`/api/v1/guardian/links/${linkId}/cancel-revocation`)
 const summary = (client: ApiClient, wardId: number) =>
   client.get(`/api/v1/guardian/wards/${wardId}/summary`)
+const subscribe = (client: ApiClient, linkId: number) =>
+  client.get(`/api/v1/guardian/links/${linkId}/subscribe`)
 
 async function runRevocationJob() {
   const clock = await app.container.make(Clock)
@@ -91,12 +93,14 @@ test.group('Guardian link revocation', (group) => {
     ])
     assert.include(alerts.kinds(), 'guardian_revocation_requested')
 
-    // The guardian keeps the link through the cooldown...
-    clock.advance({ hours: 23, minutes: 59 })
-    await expectStatus(summary(client, ward.id).actingAs(guardian), 200)
-    // ...and loses it on time, even before the job has run.
-    clock.advance({ minutes: 1 })
+    // Two phases: the guardian stops seeing the ward at once...
     await expectStatus(summary(client, ward.id).actingAs(guardian), 404)
+    // ...but keeps the approval channel through the cooldown...
+    clock.advance({ hours: 23, minutes: 59 })
+    await expectStatus(subscribe(client, link.id).actingAs(guardian), 200)
+    // ...and loses the link on time, even before the job has run.
+    clock.advance({ minutes: 1 })
+    await expectStatus(subscribe(client, link.id).actingAs(guardian), 404)
 
     const finalized = await runRevocationJob()
 
@@ -188,6 +192,18 @@ test.group('Guardian link revocation', (group) => {
     clock.advance({ hours: 30 })
     assert.equal(await runRevocationJob(), 0)
     await expectStatus(summary(client, ward.id).actingAs(guardian), 200)
+  })
+
+  test('test_a_revoking_guardian_still_guards_so_two_factor_stays_on', async ({ client }) => {
+    const { guardian } = await guardianPair({ state: 'revoking' })
+
+    const response = await client
+      .delete('/api/v1/me/two-factor')
+      .json({ password: 'irrelevant password', code: '123456' })
+      .actingAs(guardian)
+
+    response.assertStatus(409)
+    response.assertBodyContains({ code: 'E_GUARDIAN_TWO_FACTOR_REQUIRED' })
   })
 
   test('test_the_guardian_cannot_cancel_the_wards_request', async ({ client, assert }) => {

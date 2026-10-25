@@ -15,7 +15,9 @@ export interface LinkParties {
  * the ntfy topic (the guardian gets it only from the subscribe and rotate
  * routes), never internal ids beyond the link's own and the ward's (the
  * summary route takes it). The other person is shown by email and name,
- * so the ward confirms exactly whom they are letting in.
+ * so the ward confirms exactly whom they are letting in; the guardian side
+ * gets neither the ward's id nor their identity (`counterpart: null`) for a
+ * link the ward never confirmed, pending or declined.
  * `guardianTwoFactorEnabled` tells both why a pending link cannot be
  * confirmed yet.
  */
@@ -25,13 +27,16 @@ export function guardianLinkResource(
   parties: LinkParties,
   now: DateTime
 ) {
-  const counterpart = role === 'ward' ? parties.guardian : parties.ward
+  const other = role === 'ward' ? parties.guardian : parties.ward
+  // Until the ward confirms them, the person who redeemed the code learns
+  // nothing about the ward: a guessed or leaked code reveals no one.
+  const wardHidden = role === 'guardian' && link.confirmedAt === null
   return {
     id: link.id,
     role,
     status: link.stateAt(now),
-    wardUserId: link.wardUserId,
-    counterpart: { email: counterpart.email, fullName: counterpart.fullName },
+    ...(wardHidden ? {} : { wardUserId: link.wardUserId }),
+    counterpart: wardHidden ? null : { email: other.email, fullName: other.fullName },
     guardianTwoFactorEnabled: parties.guardian.twoFactorEnabled,
     maxUnlockMinutes: link.maxUnlockMinutes,
     allowNotificationActions: link.allowNotificationActions,

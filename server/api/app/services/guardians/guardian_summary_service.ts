@@ -3,6 +3,8 @@ import { inject } from '@adonisjs/core'
 import type { DateTime } from 'luxon'
 import type User from '#models/user'
 import BypassEvent from '#models/bypass_event'
+import type GuardianLink from '#models/guardian_link'
+import { GUARDIAN_EVENT_KINDS } from '#domain/guardians/guardian_event_details'
 import { ownedBy } from '#services/tenancy/owned_by'
 import Guardianship from '#services/guardians/guardianship'
 import { guardianSummaryResource } from '#transformers/guardian_summary_transformer'
@@ -26,18 +28,17 @@ export default class GuardianSummaryService {
 
   async build(guardian: User, wardUserId: number, now: DateTime) {
     const link = await this.guardianship.activeLinkOrFail(guardian, wardUserId, now)
-    const ward = { id: link.wardUserId }
-    const since = now.minus({ days: WINDOW_DAYS }).toJSDate()
+    const windowStart = now.minus({ days: WINDOW_DAYS })
+    // Nothing from before this guardian was let in.
+    const since =
+      link.confirmedAt && link.confirmedAt > windowStart ? link.confirmedAt : windowStart
 
-    const recent = await ownedBy(BypassEvent, ward, 'ward_user_id')
-      .where('occurred_at', '>=', since)
+    const recent = await this.visibleEvents(link, since.toJSDate())
       .orderBy('occurred_at', 'desc')
       .orderBy('id', 'desc')
       .limit(RECENT_LIMIT)
-    const inWindow = await ownedBy(BypassEvent, ward, 'ward_user_id')
-      .where('occurred_at', '>=', since)
-      .count('* as total')
-    const openGaps = await ownedBy(BypassEvent, ward, 'ward_user_id')
+    const inWindow = await this.visibleEvents(link, since.toJSDate()).count('* as total')
+    const openGaps = await this.visibleEvents(link, since.toJSDate())
       .where('kind', 'heartbeat_missing')
       .whereNull('resolved_at')
       .count('* as total')
@@ -61,5 +62,22 @@ export default class GuardianSummaryService {
         })),
       },
     })
+  }
+
+  /**
+   * The ward's events since `since` that are this guardian's to see: every
+   * device and dead-man event, but of the guardian-link events only this
+   * link's own (`s:<kind>:<link id>` or `s:<kind>:<link id>:...`), never
+   * another guardian's.
+   */
+  protected visibleEvents(link: GuardianLink, since: Date) {
+    return ownedBy(BypassEvent, { id: link.wardUserId }, 'ward_user_id')
+      .where('occurred_at', '>=', since)
+      .where((visible) =>
+        visible
+          .whereNotIn('kind', [...GUARDIAN_EVENT_KINDS])
+          .orWhereRaw(`dedupe_key = 's:' || kind || ':' || ?`, [String(link.id)])
+          .orWhereRaw(`dedupe_key LIKE 's:' || kind || ':' || ? || ':%'`, [String(link.id)])
+      )
   }
 }

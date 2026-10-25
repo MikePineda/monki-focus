@@ -9,7 +9,11 @@ import { pairingRefusal } from '#domain/guardians/pairing_eligibility'
 import { throttleFailures } from '#services/accounts/failure_throttle'
 import { pairingGuessRules } from '#services/guardians/guardian_throttles'
 import GuardianLinkRegistry from '#services/guardians/guardian_link_registry'
-import PairingCodeReservation from '#services/guardians/pairing_code_reservation'
+import PairingCodeReservation, {
+  invalidPairingCode,
+} from '#services/guardians/pairing_code_reservation'
+import { lockUserRows } from '#services/database/user_row_locks'
+import { retryOnDeadlock } from '#services/database/deadlock_retry'
 
 /**
  * `POST /guardian/pairings`: a signed-in person trades a ward's pairing
@@ -31,23 +35,36 @@ export default class PairingRedemption {
       this.codes.reserve(code, now)
     )
 
-    return db.transaction(async (trx) => {
-      await this.codes.lockForUse(trx, reserved, now)
-      const refusal = pairingRefusal({
-        wardUserId: reserved.wardUserId,
-        guardianUserId: guardian.id,
-        pairAlreadyLinked: await this.links.pairIsLinked(reserved.wardUserId, guardian.id, trx),
-      })
-      if (refusal === 'self') {
-        throw new CodedError('E_PAIRING_WITH_SELF', 409, 'You cannot be your own guardian')
-      }
-      if (refusal === 'already_linked') {
-        throw new CodedError('E_GUARDIAN_LINK_EXISTS', 409, 'Already linked')
-      }
+    return retryOnDeadlock(() =>
+      db.transaction(async (trx) => {
+        // Users first, then the code (user_row_locks.ts): never a cycle with a deletion.
+        const present = await lockUserRows(trx, [
+          { id: reserved.wardUserId, mode: 'key share' },
+          { id: guardian.id, mode: 'key share' },
+        ])
+        if (!present.has(reserved.wardUserId)) throw invalidPairingCode()
+        await this.codes.lockForUse(trx, reserved, now)
+        const refusal = pairingRefusal({
+          wardUserId: reserved.wardUserId,
+          guardianUserId: guardian.id,
+          pairAlreadyLinked: await this.links.pairIsLinked(
+            reserved.wardUserId,
+            guardian.id,
+            now,
+            trx
+          ),
+        })
+        if (refusal === 'self') {
+          throw new CodedError('E_PAIRING_WITH_SELF', 409, 'You cannot be your own guardian')
+        }
+        if (refusal === 'already_linked') {
+          throw new CodedError('E_GUARDIAN_LINK_EXISTS', 409, 'Already linked')
+        }
 
-      const link = await this.links.createPending(trx, reserved.wardUserId, guardian.id)
-      await this.codes.markUsed(trx, reserved, { userId: guardian.id, linkId: link.id }, now)
-      return link
-    })
+        const link = await this.links.createPending(trx, reserved.wardUserId, guardian.id, now)
+        await this.codes.markUsed(trx, reserved, { userId: guardian.id, linkId: link.id }, now)
+        return link
+      })
+    )
   }
 }

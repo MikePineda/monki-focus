@@ -12,6 +12,7 @@ import GuardianLinkEvents from '#services/guardians/guardian_link_events'
 import GuardianLinkRegistry from '#services/guardians/guardian_link_registry'
 import { consumeTopicRotation } from '#services/guardians/guardian_throttles'
 import { drawNtfyTopic } from '#services/guardians/ntfy_topics'
+import { retryOnDeadlock } from '#services/database/deadlock_retry'
 
 /**
  * `POST /guardian/links/:id/rotate-topic`: either side replaces an active
@@ -45,6 +46,15 @@ export default class TopicRotation {
     if (role === 'guardian') this.guardianship.requireTwoFactor(user)
     await consumeTopicRotation(user.id)
 
+    return retryOnDeadlock(() => this.rotateOnce(user, role, linkId, now))
+  }
+
+  protected rotateOnce(
+    user: User,
+    role: LinkRole,
+    linkId: number,
+    now: DateTime
+  ): Promise<{ link: GuardianLink; role: LinkRole }> {
     return db.transaction(async (trx) => {
       const { link } = await this.links.findLiveForParty(user, linkId, now, {
         trx,
