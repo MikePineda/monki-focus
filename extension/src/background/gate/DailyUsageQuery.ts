@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ActivityEvent } from '@monki-focus/analytics'
 import {
+  budgetedRulesFor,
   epochSecondsOf,
   instantOf,
-  isScheduleActive,
   localTimeAt,
-  matchesTarget,
   nextLocalMidnight,
-  normalizeUrl,
   utcInstantOf,
   type RulesCatalog,
 } from '@monki-focus/engine'
-import type { DailyUsage, Rule, Ruleset } from '@monki-focus/rules/pure'
+import type { DailyUsage, Ruleset } from '@monki-focus/rules/pure'
 import type { GateDiagnosticCode } from './GateDiagnostics'
 
 /** A heartbeat run can start well before midnight and spill into today. */
@@ -32,7 +30,6 @@ export interface DailyUsageQueryOptions {
 }
 
 interface TodayWindow {
-  zone: string
   start: number
   end: number
 }
@@ -60,18 +57,18 @@ function todayIn(zone: string, nowSeconds: number): TodayWindow {
     if (next > nowSeconds) break
     start = next
   }
-  return { zone, start, end }
+  return { start, end }
 }
 
 /**
  * Today's active seconds per budgeted rule (`DecisionState.usage`,
  * SEMANTICS.md §5.2.2), from the time E7 tracked. Each web event accrues to
- * **every** enabled rule with a `dailyBudgetMinutes` whose target matches
- * the event's page (the engine's `normalizeUrl` + `matchesTarget`) and whose
- * schedules were active, counting only the part of the event inside today
- * (events are split at local midnight). While a time-zone change waits,
- * today is measured in both zones and the larger count wins, so the move
- * never grants extra time. Incognito time is tracked by domain only (path
+ * the rules the engine's `budgetedRulesFor` names for its page at its start
+ * (every budgeted candidate, scheduled in the pinned zones, not only the
+ * winner; §5.7), counting only the part of the event inside today (events
+ * are split at local midnight). While a time-zone change waits, today is
+ * measured in both zones and the larger count wins, so the move never
+ * grants extra time. Incognito time is tracked by domain only (path
  * `/`, no surface), so it accrues to site budgets but not to path or
  * surface budgets.
  *
@@ -103,10 +100,9 @@ export class DailyUsageQuery {
 
   private async compute(ruleset: Ruleset, nowMs: number): Promise<DailyUsage | null> {
     const { events, catalog } = this.options
-    const budgeted = ruleset.rules.filter(
-      (rule) => rule.enabled && rule.dailyBudgetMinutes !== undefined
-    )
-    if (budgeted.length === 0) return null
+    if (!ruleset.rules.some((rule) => rule.enabled && rule.dailyBudgetMinutes !== undefined)) {
+      return null
+    }
     const nowSeconds = epochSecondsOf(instantOf(nowMs))
     const localDate = localTimeAt(nowSeconds, ruleset.timeZone).localDate
     const windows = zonesOf(ruleset).map((zone) => todayIn(zone, nowSeconds))
@@ -128,20 +124,19 @@ export class DailyUsageQuery {
     const byZone = windows.map(() => new Map<string, number>())
     for (const event of tracked) {
       if (!isWebEvent(event)) continue
-      const normalised = normalizeUrl(`https://${event.data.domain}${event.data.path}`, catalog)
-      if ('rejected' in normalised) continue
-      const observation = { kind: 'site' as const, ...normalised }
-      const matching = budgeted.filter((rule) => matchesTarget(rule.target, observation, catalog))
-      if (matching.length === 0) continue
+      const observation = {
+        kind: 'site' as const,
+        urlText: `https://${event.data.domain}${event.data.path}`,
+      }
       const begin = epochSecondsOf(event.timestamp)
       windows.forEach((window, index) => {
         const overlapStart = Math.max(begin, window.start)
         const seconds = Math.min(begin + event.duration, window.end) - overlapStart
         if (seconds <= 0) return
-        for (const rule of matching) {
-          if (!this.scheduled(rule, ruleset, overlapStart, window.zone)) continue
-          const counts = byZone[index] as Map<string, number>
-          counts.set(rule.id, (counts.get(rule.id) ?? 0) + seconds)
+        const at = utcInstantOf(overlapStart)
+        const counts = byZone[index] as Map<string, number>
+        for (const ruleId of budgetedRulesFor(ruleset, observation, at, catalog)) {
+          counts.set(ruleId, (counts.get(ruleId) ?? 0) + seconds)
         }
       })
     }
@@ -154,9 +149,5 @@ export class DailyUsageQuery {
     const usage = { localDate, secondsByRule: Object.fromEntries(secondsByRule) }
     this.lastGood = usage
     return usage
-  }
-
-  private scheduled(rule: Rule, ruleset: Ruleset, atSeconds: number, zone: string): boolean {
-    return isScheduleActive(rule.schedules, ruleset.workHours, utcInstantOf(atSeconds), zone)
   }
 }

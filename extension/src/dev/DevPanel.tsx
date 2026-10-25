@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { intentionWordCount, MIN_INTENTION_WORDS } from '@monki-focus/engine'
 import { Globe, Settings, X } from 'lucide-preact'
 import { useId, useState } from 'preact/hooks'
 import { formatNumber } from '../i18n/formatNumber'
@@ -19,7 +20,6 @@ import { Segmented } from '../ui/Segmented'
 import { StatNumber } from '../ui/StatNumber'
 import { TextField } from '../ui/TextField'
 import { Toast } from '../ui/Toast'
-import { wordCount } from '../ui/wordCount'
 import { DevSection } from './DevSection'
 import {
   SAMPLE_CLOSES_TODAY,
@@ -110,7 +110,7 @@ function PanelBody({ theme, clock }: { theme: DevTheme; clock: Clock }) {
           onInput={setIntention}
           placeholder={t('dev.sample.intentionPlaceholder')}
           hint={t('dev.sample.intentionHint')}
-          invalid={intention.trim() !== '' && wordCount(intention, locale) < 3}
+          invalid={intention.trim() !== '' && intentionWordCount(intention) < MIN_INTENTION_WORDS}
           countWords
         />
         <TextField
