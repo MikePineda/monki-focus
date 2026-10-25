@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
@@ -35,6 +36,7 @@ import dev.monkifocus.android.feature.onboarding.ui.LIVE_STEPS
 import dev.monkifocus.android.feature.onboarding.ui.OnboardingScreen
 import dev.monkifocus.android.feature.onboarding.ui.StatusUi
 import dev.monkifocus.android.feature.rules.ui.RulesRoute
+import dev.monkifocus.android.feature.stats.ui.StatsRoute
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowState
 import dev.monkifocus.android.service.accessibility.ui.ExitAndUnlinkScreen
 import kotlinx.coroutines.CancellationException
@@ -49,7 +51,7 @@ import dev.monkifocus.android.core.ui.R as CoreUiR
  * Launcher entry point, always visible in the launcher (no hidden mode
  * exists), and the app's only navigation: onboarding until protection is on
  * (or the user chose statistics only), then the Status screen, the rules
- * screen and "Exit and unlink" (opened directly by the protection notice's
+ * screen, the statistics and "Exit and unlink" (opened directly by the protection notice's
  * action, [EXTRA_OPEN_EXIT]).
  *
  * Consent order (plan 04 §2): the accessibility disclosure comes before any
@@ -59,7 +61,7 @@ import dev.monkifocus.android.core.ui.R as CoreUiR
  * again on every resume and every second while a step waits on a switch.
  */
 class MainActivity : ComponentActivity() {
-    private enum class Route { HOME, ONBOARDING, DISCLOSURE_AGAIN, RULES, EXIT }
+    private enum class Route { HOME, ONBOARDING, DISCLOSURE_AGAIN, RULES, EXIT, STATS }
 
     private var route by mutableStateOf(Route.HOME)
     private var snapshot by mutableStateOf(SetupSnapshot.NOTHING)
@@ -70,6 +72,7 @@ class MainActivity : ComponentActivity() {
     private var rulesUnavailable by mutableStateOf(false)
     private var armed by mutableStateOf(false)
     private var askedForNotice = false
+    private var resumes by mutableIntStateOf(0)
 
     private val graph: AppGraph get() = (application as MonkiApplication).graph
 
@@ -90,6 +93,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         progress = graph.onboarding.progress
         storeStarterRules()
+        // Opening the app keeps the periodic jobs, ingests usage now and re-plans the bedtime warning.
+        graph.background.onAppOpen()
         refresh()
         route =
             when {
@@ -123,7 +128,7 @@ class MainActivity : ComponentActivity() {
                         rulesSummary = rules?.let { ActiveRulesSummary.of(it.effective, it.pending?.effectiveFrom) }
                     }
                 }
-                BackHandler(enabled = route == Route.RULES || route == Route.EXIT) { goHome() }
+                BackHandler(enabled = route == Route.RULES || route == Route.EXIT || route == Route.STATS) { goHome() }
                 BackHandler(enabled = route == Route.ONBOARDING && progress.step != OnboardingStep.WELCOME) {
                     onOnboardingEvent(OnboardingEvent.Back)
                 }
@@ -141,6 +146,16 @@ class MainActivity : ComponentActivity() {
                             },
                             // Declining never disarms silently: Exit and unlink explains how protection ends.
                             onNotNow = { route = Route.EXIT },
+                        )
+                    }
+
+                    Route.STATS -> {
+                        StatsRoute(
+                            loader = graph.stats,
+                            clock = { graph.wallClock.millis() },
+                            onBack = ::goHome,
+                            onFixUsageAccess = { fix(OnboardingStep.USAGE_ACCESS) },
+                            refreshKey = resumes,
                         )
                     }
 
@@ -174,6 +189,7 @@ class MainActivity : ComponentActivity() {
                             onTurnOn = ::startSetup,
                             onEditRules = { route = Route.RULES },
                             onExitAndUnlink = { route = Route.EXIT },
+                            onOpenStats = { route = Route.STATS },
                         )
                     }
                 }
@@ -184,6 +200,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refresh()
+        resumes++
     }
 
     override fun onNewIntent(intent: Intent) {
