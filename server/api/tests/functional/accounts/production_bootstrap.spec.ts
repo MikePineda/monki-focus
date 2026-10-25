@@ -2,7 +2,7 @@
 import { test } from '@japa/runner'
 import env from '#start/env'
 import User from '#models/user'
-import { UserFactory } from '#tests/factories/user_factory'
+import { FACTORY_PASSPHRASE, UserFactory } from '#tests/factories/user_factory'
 import ProductionBootstrap from '#services/bootstrap/production_bootstrap'
 import ProductionBootstrapSeeder from '#database/seeders/production_bootstrap_seeder'
 import db from '@adonisjs/lucid/services/db'
@@ -28,27 +28,49 @@ test.group('Production bootstrap', (group) => {
     const plan = { admin: seedUser('admin@example.com'), smoke: seedUser('smoke@example.com') }
 
     const first = await new ProductionBootstrap().run(plan)
-    const again = await new ProductionBootstrap().run({
-      ...plan,
-      admin: { ...plan.admin, password: 'another strong passphrase 8' },
-    })
+    const again = await new ProductionBootstrap().run(plan)
 
     assert.equal(again.admin!.id, first.admin!.id)
     const admin = await User.findByOrFail('email', 'admin@example.com')
     assert.isTrue(admin.isAdmin)
-    assert.isTrue(await admin.verifyPassword(STRONG), 're-running never resets the password')
+    assert.isTrue(await admin.verifyPassword(STRONG))
     const smoke = await User.findByOrFail('email', 'smoke@example.com')
     assert.isFalse(smoke.isAdmin, 'the smoke user is never an admin')
     assert.lengthOf(await User.all(), 2)
   })
 
-  test('test_an_existing_account_with_the_admin_email_is_promoted', async ({ assert }) => {
-    const existing = await UserFactory.merge({ email: 'promote@example.com' }).create()
+  test('test_an_existing_account_with_the_admin_email_and_password_is_promoted', async ({
+    assert,
+  }) => {
+    const existing = await UserFactory.merge({
+      email: 'promote@example.com',
+      password: STRONG,
+    }).create()
 
     await new ProductionBootstrap().run({ admin: seedUser('promote@example.com'), smoke: null })
 
     await existing.refresh()
     assert.isTrue(existing.isAdmin)
+  })
+
+  test('test_an_existing_account_with_another_password_is_never_taken_over', async ({ assert }) => {
+    // Someone registered the admin email first, with their own password.
+    const existing = await UserFactory.merge({ email: 'taken@example.com' }).create()
+
+    try {
+      await new ProductionBootstrap().run({ admin: seedUser('taken@example.com'), smoke: null })
+      assert.fail('a mismatched SEED_ADMIN_PASSWORD must stop the bootstrap')
+    } catch (error) {
+      const message = (error as Error).message
+      assert.include(message, 'SEED_ADMIN_PASSWORD does not match')
+      assert.include(message, 'user:reset-password')
+      assert.notInclude(message, 'taken@example.com')
+      assert.notInclude(message, STRONG)
+    }
+
+    await existing.refresh()
+    assert.isFalse(existing.isAdmin)
+    assert.isTrue(await existing.verifyPassword(FACTORY_PASSPHRASE), 'its password is untouched')
   })
 
   test('test_the_seeder_does_nothing_while_seed_users_is_off', async ({ assert }) => {

@@ -7,6 +7,7 @@ import db from '@adonisjs/lucid/services/db'
 import RecoveryCode from '#models/recovery_code'
 import { CodedError } from '#exceptions/coded_error'
 import encryption from '@adonisjs/core/services/encryption'
+import { revokeSessions } from '#services/accounts/session_revocation'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { otpauthUri } from '#domain/auth/otpauth_uri'
 import { base32Decode, base32Encode } from '#domain/auth/base32'
@@ -76,8 +77,8 @@ export default class TwoFactorService {
     return db.transaction(async (trx) => {
       user.useTransaction(trx)
       user.totpEnabledAt = now
-      user.sessionVersion += 1
       await user.save()
+      await revokeSessions(user, trx)
       return this.issueRecoveryCodes(user, now, trx)
     })
   }

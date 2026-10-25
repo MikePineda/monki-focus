@@ -3,6 +3,7 @@ import { test } from '@japa/runner'
 import User from '#models/user'
 import limiter from '@adonisjs/limiter/services/main'
 import { FACTORY_PASSPHRASE, UserFactory } from '#tests/factories/user_factory'
+import { revokeSessions } from '#services/accounts/session_revocation'
 
 const SESSION_COOKIE = 'mf_session'
 
@@ -199,13 +200,32 @@ test.group('Accounts / login and sessions', (group) => {
     response.assertBodyContains({ code: 'E_UNAUTHORIZED_ACCESS' })
   })
 
-  test('test_logout_ends_the_session', async ({ client, assert }) => {
+  test('test_logout_ends_the_session_and_any_copy_of_its_cookie', async ({ client, assert }) => {
     const user = await UserFactory.create()
+    // A copy of the same cookie (another tab, or a stolen one): same stamp.
+    const copy = await User.findOrFail(user.id)
 
     const response = await client.post('/api/v1/auth/logout').actingAs(user)
 
     response.assertStatus(204)
     assert.isUndefined(response.session().auth_web)
+    await user.refresh()
+    assert.equal(user.sessionVersion, 1)
+    const replayed = await client.get('/api/v1/auth/me').actingAs(copy)
+    replayed.assertStatus(401)
+  })
+
+  test('test_concurrent_revocations_never_lose_a_bump', async ({ assert }) => {
+    const user = await UserFactory.create()
+    // Three requests that each loaded the user at version 0.
+    const copies = await Promise.all([1, 2, 3].map(() => User.findOrFail(user.id)))
+
+    await Promise.all(copies.map((copy) => revokeSessions(copy)))
+
+    await user.refresh()
+    assert.equal(user.sessionVersion, 3)
+    // Each caller reloaded a version at least as new as its own bump.
+    for (const copy of copies) assert.isAtLeast(copy.sessionVersion, 1)
   })
 
   test('test_logout_everywhere_revokes_every_older_session', async ({ client, assert }) => {

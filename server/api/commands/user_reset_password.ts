@@ -33,6 +33,7 @@ export default class UserResetPassword extends BaseCommand {
   async run() {
     const { default: User } = await import('#models/user')
     const { default: TwoFactorService } = await import('#services/accounts/two_factor_service')
+    const { revokeSessions } = await import('#services/accounts/session_revocation')
 
     const user = await User.query().where('email', this.email.trim().toLowerCase()).first()
     if (!user) {
@@ -55,8 +56,8 @@ export default class UserResetPassword extends BaseCommand {
 
     if (this.disableTwoFactor) await new TwoFactorService().disable(user)
     user.password = password
-    user.sessionVersion += 1
     await user.save()
+    await revokeSessions(user)
 
     this.logger.success(`Password reset for user #${user.id}; every session was signed out`)
     if (this.disableTwoFactor) this.logger.info('Two-step verification is now off')
