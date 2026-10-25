@@ -2,11 +2,15 @@
 package dev.monkifocus.android.service.accessibility.gate
 
 import dev.monkifocus.android.core.domain.engine.BEDTIME_GROUP
+import dev.monkifocus.android.core.domain.engine.MIN_INTENTION_WORDS
 import dev.monkifocus.android.core.domain.engine.RulesCatalog
 import dev.monkifocus.android.core.domain.engine.effectiveEscalationState
 import dev.monkifocus.android.core.domain.engine.epochSecondsOf
+import dev.monkifocus.android.core.domain.engine.frictionCandidates
 import dev.monkifocus.android.core.domain.engine.initialEscalationState
 import dev.monkifocus.android.core.domain.engine.instantOf
+import dev.monkifocus.android.core.domain.engine.intentionWordCount
+import dev.monkifocus.android.core.domain.engine.isIntentionAcceptable
 import dev.monkifocus.android.core.domain.engine.nextEscalation
 import dev.monkifocus.android.core.domain.ports.IntentionOutcome
 import dev.monkifocus.android.core.domain.rules.Access
@@ -120,10 +124,12 @@ class GateCoordinator(
         val state = stateOf(group)
         if (state.phase != EscalationPhase.ASKING) return CommitResult.NOT_ASKING
         val text = intention.trim()
-        val words = IntentionWords.count(text)
-        if (state.gate?.requiresTypedIntention == true) {
-            if (words < MIN_TYPED_WORDS) return CommitResult.TOO_FEW_WORDS
-            if (IntentionWords.repeats(text, lastTyped[group]?.text)) return CommitResult.SAME_AS_LAST
+        val words = intentionWordCount(text)
+        val gate = state.gate
+        if (gate?.requiresTypedIntention == true) {
+            // The engine's typed-intention rule (SEMANTICS.md §7.5): three words, not a repeat.
+            if (words < MIN_INTENTION_WORDS) return CommitResult.TOO_FEW_WORDS
+            if (!isIntentionAcceptable(text, lastTyped[group]?.text, gate)) return CommitResult.SAME_AS_LAST
         }
         val next =
             step(group, EscalationEvent.Commit(minutes, words, guardianKeyVerified = false), nowEpochMs) ?: return CommitResult.NOT_ASKING
@@ -240,7 +246,9 @@ class GateCoordinator(
         // A group the snapshot does not list yet (an added rule) starts from stateOf, conservative while unknown.
         val listed = snapshots.snapshot?.escalation.orEmpty()
         val states = if (listed.any { it.targetGroup == group }) listed else listed + stateOf(group)
-        val candidates = FrictionCandidates.of(ruleset, evaluation.observation, now, catalog)
+        // The engine's own friction candidates (SEMANTICS.md §5.7): exactly the rules `decide` combined.
+        val candidateIds = frictionCandidates(ruleset, evaluation.observation, now, catalog).toSet()
+        val candidates = ruleset.rules.filter { it.id in candidateIds }
         val effective = effectiveEscalationState(winner, candidates, states, now)
         val result = nextEscalation(effective, EscalationEvent.Visit, now, guardianLinked)
         if (result.state != effective) store(result.state)
@@ -370,7 +378,6 @@ class GateCoordinator(
             setOf(EscalationPhase.PAUSING, EscalationPhase.ASKING, EscalationPhase.TIMED_OUT, EscalationPhase.OVERRIDE_WAITING)
         val TIMED_PHASES =
             setOf(EscalationPhase.PAUSING, EscalationPhase.OVERRIDE_WAITING, EscalationPhase.ACTIVE, EscalationPhase.OVERRIDE_ACTIVE)
-        const val MIN_TYPED_WORDS = 3
         const val MILLIS_PER_SECOND = 1_000L
         const val MINUTES_PER_HOUR = 60
     }
