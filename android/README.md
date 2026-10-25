@@ -101,9 +101,12 @@ plugin from `gradle/libs.versions.toml` so the compiler version is the catalog's
   and `DetectorPackUpdateWorker` (re-verifies stored packs, no network) run
   through `MonkiWorkerFactory`.
 - Browser pages reach the statistics from the accessibility service's URL
-  bar as the domain plus a plain first path segment only; a segment with
-  `%` or `;`, longer than 64 characters, or read from a domain-only bar is
-  dropped.
+  bar as the domain, plus the first path segment only when a bundled site
+  profile glob or a category path rule names it as a literal (`KnownSections`:
+  `reddit.com/r`, `youtube.com/watch`). Profile names, phone numbers and codes
+  (`x.com/<name>`, `wa.me/<number>`) keep the domain alone, and so does a
+  segment with `%` or `;`, longer than 64 characters, or read from a
+  domain-only bar.
 - **Known gap: private tabs.** No reliable view id for Chrome or Brave
   incognito tabs is known yet, so a private tab's domain is counted like any
   other page on this device (it never leaves the phone). The ids will come

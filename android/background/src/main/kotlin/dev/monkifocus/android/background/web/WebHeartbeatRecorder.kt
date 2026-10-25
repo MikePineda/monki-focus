@@ -16,13 +16,18 @@ import kotlinx.coroutines.sync.withLock
  * Turns the pages the accessibility service reads in a browser's URL bar
  * into `web.tab.current` heartbeats (plan §2.10). Only the normalised domain,
  * the first path segment and the surface ever reach it (docs/threat-model.md
- * B4); never the full URL, the query, the title or any node text. Writes go
- * through [scope] in order; [seen] never blocks the caller.
+ * B4); never the full URL, the query, the title or any node text. The first
+ * segment is stored only when [knownSection] says a rule names it (a site
+ * section such as `/watch`, never a profile name or a code); otherwise only
+ * the domain is. Writes go through [scope] in order; [seen] never blocks the
+ * caller.
  */
 class WebHeartbeatRecorder(
     private val store: ActivityEventRepository,
     private val bucket: ActivityBucket,
     private val scope: CoroutineScope,
+    /** Whether a first segment of a host is a known section ([KnownSections.allows]); nothing is by default. */
+    private val knownSection: (host: String, segment: String) -> Boolean = { _, _ -> false },
     private val buffer: WebHeartbeatBuffer = WebHeartbeatBuffer(),
 ) {
     private val writes = Mutex()
@@ -32,7 +37,8 @@ class WebHeartbeatRecorder(
      * path ([pathKnown] false: a domain-only bar) neither the segment nor the
      * surface is kept. A segment that may carry an encoded path, a session
      * parameter or an identifier (`%`, `;`, `/`, longer than
-     * [MAX_SEGMENT_LENGTH]) is dropped: only the domain is stored.
+     * [MAX_SEGMENT_LENGTH]) or that no rule names is dropped: only the domain
+     * is stored.
      */
     fun seen(
         domain: String,
@@ -42,7 +48,7 @@ class WebHeartbeatRecorder(
         nowEpochMillis: Long,
     ) {
         if (!ACCEPTED_ACTIVITY.matches(domain) || nowEpochMillis < 0) return
-        val segment = firstSegment?.takeIf { pathKnown && isPlainSegment(it) }
+        val segment = firstSegment?.takeIf { pathKnown && isPlainSegment(it) && knownSection(domain, it) }
         val path = segment?.let { "/$it" } ?: "/"
         val beat =
             ActivityEvent(
