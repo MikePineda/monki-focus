@@ -34,6 +34,7 @@ describe('WallClockFloor', () => {
     const floor = new WallClockFloor(failingStorage())
     await floor.rewound(100_000)
 
-    expect(await floor.rewound(90_000)).toBe(true)
+    expect(await floor.rewound(70_000)).toBe(false)
+    expect(await floor.rewound(30_000)).toBe(true)
   })
 })
