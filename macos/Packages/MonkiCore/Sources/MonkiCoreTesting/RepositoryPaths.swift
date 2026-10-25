@@ -22,6 +22,10 @@ public enum RepositoryPaths {
     /// `packages/rules/fixtures`: the cross-platform conformance fixtures.
     public static let rulesFixtures = root.appending(path: "packages/rules/fixtures", directoryHint: .isDirectory)
 
+    /// `packages/protocol/fixtures/bridge`: the native messaging contract fixtures.
+    public static let bridgeFixtures = root.appending(
+        path: "packages/protocol/fixtures/bridge", directoryHint: .isDirectory)
+
     /// The sources of the pure MonkiCore module.
     public static let monkiCoreSources = root.appending(
         path: "macos/Packages/MonkiCore/Sources/MonkiCore",

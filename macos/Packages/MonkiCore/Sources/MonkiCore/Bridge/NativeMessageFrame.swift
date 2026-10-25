@@ -34,4 +34,17 @@ public enum NativeMessageFrame {
         }
         return Int(length)
     }
+
+    /// The first frame of `bytes`: its payload and how many bytes it used, or
+    /// nil when `bytes` is empty (a clean end of stream).
+    public static func decodeFirst(_ bytes: Data) throws(NativeMessageFrameError) -> (payload: Data, byteCount: Int)? {
+        guard !bytes.isEmpty else { return nil }
+        let length = try payloadLength(header: bytes.prefix(headerByteCount))
+        let available = bytes.count - headerByteCount
+        guard available >= length else {
+            throw .truncatedPayload(expected: length, actual: available)
+        }
+        let start = bytes.startIndex + headerByteCount
+        return (Data(bytes[start..<start + length]), headerByteCount + length)
+    }
 }

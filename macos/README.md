@@ -5,8 +5,8 @@ Native menu-bar app: Swift 6, SwiftUI, macOS 14 (Sonoma) or later. Bundle id
 icon is always visible, and **Quit** is always one click away in the panel.
 
 Status: work packages M1 (scaffold), M2 (decision engine), M3 (analytics
-core) and M4 (watchers and storage). The "Today" panel and Settings window are
-placeholders; the bridge relay, sync and blocking arrive in M5-M9.
+core), M4 (watchers and storage) and M5 (browser bridge). The "Today" panel
+and Settings window are placeholders; sync and blocking arrive in M6-M9.
 
 - **M2, decision engine** (`MonkiCore/Sources/MonkiCore/Engine`, `Rules`,
   `Validation`): `decide`, escalation, rule changes, schedules and bedtime,
@@ -30,7 +30,55 @@ placeholders; the bridge relay, sync and blocking arrive in M5-M9.
   one, so consecutive events of a bucket touch and never overlap
   (`StateHeartbeatEmitter`, proven by seeded property tests).
 
-Both run every shared fixture of `packages/rules/fixtures` (all kinds except
+- **M5, browser bridge** (`MonkiCore/Sources/MonkiCore/Bridge`, pure,
+  `MonkiPlatform/Sources/MonkiPlatform/Bridge` and `Bridge/`): the native
+  messaging contract (`packages/protocol/schema/bridge`, docs/CONTRACTS.md),
+  the `monki-bridge` relay, the app's Unix socket server and the host
+  manifest installer, described below.
+
+All of them run every shared fixture of `packages/rules/fixtures` (all kinds except
+`unlock-token`, which the token verifier will run), plus seeded property tests;
+the bridge also runs `packages/protocol/fixtures/bridge`.
+
+## Browser bridge
+
+```
+extension --connectNative("dev.monkifocus.bridge")--> Brave/Chrome
+  --stdio, 4-byte native-order length + JSON--> monki-bridge (Contents/Helpers)
+  --NDJSON over ~/Library/Application Support/monki-focus/bridge.sock--> MonkiFocus.app
+```
+
+- **`monki-bridge`** is a stateless relay: it checks only the envelope
+  (`v`, `id`, a type allowed in the direction it travels, an object payload),
+  caps every message at 1 MiB both ways, relays the original bytes and never
+  logs them. Without the app it answers `app.unavailable` and exits; it exits
+  0 when either side closes and 1 on anything malformed.
+- **The socket** (`BridgeSocketServer`) is 0600 in a 0700 folder owned by the
+  user; a peer whose `getpeereid` uid is not the user's is closed before
+  anything is read; at most 4 connections; a malformed or oversized line
+  closes that connection only. The app accepts only `hello`, `browser.focus`,
+  `browser.activity` and `bypass.event`, so nothing over the bridge changes
+  rules or unlocks anything. It answers `hello` with
+  `hello.ack {aggregator: "mac"}` and feeds `browser.activity` into the capture
+  queue (`BrowserActivityRecorder`, bucket `monki-web-<browser>_<host>`).
+- **The manifest** (`NativeHostManifestInstaller`) goes to the
+  `NativeMessagingHosts` folder of each installed browser (sources in
+  `BrowserHostFolder.swift`):
+  `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/`
+  and `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/`.
+  `allowed_origins` lists exact extension ids only. Until the onboarding step
+  exists, the app writes it at launch when ids are configured:
+
+  ```bash
+  defaults write dev.monkifocus.mac bridge.extensionIds -array <32-letter extension id>
+  ```
+
+  The unpacked id is pinned by `EXTENSION_DEV_PUBLIC_KEY` (see
+  `extension/README.md`, `npm run extension-id -w @monki-focus/extension`).
+- **Tests**: `MonkiCoreTests` run the shared fixtures; `MonkiPlatformTests`
+  drive the real server over real sockets in `/tmp`; the app tests run the
+  built helper end to end against a fake app socket (the Debug helper reads
+  `MONKI_BRIDGE_SOCKET_PATH`; release builds ignore it). of `packages/rules/fixtures` (all kinds except
 `unlock-token`, which the token verifier will run), plus seeded property tests.
 
 ## Requirements
