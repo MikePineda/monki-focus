@@ -84,7 +84,14 @@ requirements on every client:
    the guardian gets a neutral message ("pairing ended"). On Android the
    wait runs on the monotonic clock (a reboot restarts it), and a service
    turned on again after an exit turns itself off unless the user asked the
-   app to bring protection back.
+   app to bring protection back. On the server, leaving a guardian link has
+   two phases: the guardian's **visibility ends at once** (from the
+   request on, the summary and every route with the user's data answer
+   404), while their **unlock approval stays** until the cooldown
+   (`WARD_REVOCATION_COOLDOWN_HOURS`, 24 h) ends, so the commitment holds
+   for the cooldown and nothing more is seen meanwhile. The guardian gets a
+   neutral notice when the request is made and when the link ends; the user
+   may withdraw the request until then. A guardian can leave at once.
 6. Re-consent on the device every 30 days; without it the guardian's access
    lapses.
 7. A "What your guardian sees" screen with a real example of the guardian DTO.

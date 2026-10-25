@@ -28,8 +28,9 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-10-25 macOS: measure whether App Nap delays the 5-second AFK poll of the menu-bar app; if so hold a `ProcessInfo.beginActivity` (only AFK latency suffers, event continuity does not depend on timers).
 - 2026-10-25 macOS: a missed unlock or wake notification keeps the user forced AFK until the next one; cross-check with `CGSessionCopyCurrentDictionary` on each AFK poll.
 - 2026-10-25 macOS: M4's "one real hour without gaps or overlaps" check is manual today; add a debug query or export that reports gaps and overlaps per bucket.
-- 2026-10-25 Server: pending guardian links never expire; drop (or flag) a pending link the ward has not confirmed after some days.
-- 2026-10-25 Server: an account created through a guardian pairing code stays an ordinary account after its link is declined or revoked; consider a "guardian-only" flag that limits what it can do.
 - 2026-10-25 Server: re-consent every 30 days (threat model §2, item 6) is not enforced server-side yet; the guardianship check could require a recent device-side confirmation.
 - 2026-10-25 Server: `GET /device/me` should report the guardian state (pending/active/revoking with the deadline) so clients can show "What your guardian sees" and the leave countdown.
 - 2026-10-25 Server: a cap on live guardian links per ward (the schema allows several; the MVP UI shows one).
+- 2026-10-25 Server: QR pairing with a 128-bit secret in the URL fragment next to the code, so a scanned QR skips the 6-digit guess space (the typed code stays for manual entry).
+- 2026-10-25 Server (S6): the ntfy publisher must claim outbox rows `FOR UPDATE SKIP LOCKED` (and re-read the topic) so a topic rotation never races an in-flight send to the old topic.
+- 2026-10-25 Server (S6): the `BypassAlerts` implementation must skip `guardian_*` kinds; their guardian notices are already queued by the link flows.

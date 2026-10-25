@@ -87,7 +87,9 @@ feature requests:
 - any way to hide the app, its launcher icon or its persistent notification;
 - any way to prevent the monitored person from leaving: unpairing must always
   be possible from the device, with a short waiting period and a neutral
-  notice to the guardian;
+  notice to the guardian (on the server, the guardian stops seeing anything
+  the moment the person asks to leave, and only keeps approving unlocks
+  until the waiting period ends);
 - any way for a guardian to see more than the documented guardian view (focus
   score, unlock requests and bypass events), such as URLs, page titles, app
   content or screen text;
