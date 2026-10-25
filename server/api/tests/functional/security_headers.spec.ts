@@ -28,9 +28,16 @@ test.group('Shield', () => {
     response.assertBody({ jobs: [] })
   })
 
-  test('test_a_get_hands_out_the_xsrf_cookie_for_the_dashboard', async ({ client, assert }) => {
-    const response = await client.get('/api/health/live')
+  test('test_a_dashboard_get_hands_out_the_xsrf_cookie', async ({ client, assert }) => {
+    const response = await client.get('/api/v1/auth/me')
 
     assert.exists(response.cookie('XSRF-TOKEN'))
+  })
+
+  test('test_probes_and_public_routes_hand_out_no_cookie', async ({ client, assert }) => {
+    for (const path of ['/api/health', '/api/health/live', '/api/v1/no-such-route']) {
+      const response = await client.get(path)
+      assert.isUndefined(response.header('set-cookie'), path)
+    }
   })
 })

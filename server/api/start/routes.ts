@@ -19,7 +19,8 @@
 |     export and deletion.
 |   - /api/v1/admin/*: admins only; anyone else gets the 404 of an
 |     unknown route.
-|   Dashboard routes use the cookie session and CSRF; errors answer
+|   Only these dashboard groups get the named `session` and `shield`
+|   (CSRF) middleware, so nothing else sets a cookie; errors answer
 |   `{ message, code }` (validation: 422 `{ errors }`).
 | - /api/test/*: test support, NODE_ENV=test or E2E_MODE only.
 |
@@ -84,6 +85,7 @@ router
           })
           .prefix('auth')
           .as('auth')
+          .use([middleware.session(), middleware.shield()])
 
         router
           .group(() => {
@@ -102,7 +104,12 @@ router
           })
           .prefix('me')
           .as('me')
-          .use([middleware.auth(), middleware.userLocale()])
+          .use([
+            middleware.session(),
+            middleware.shield(),
+            middleware.auth(),
+            middleware.userLocale(),
+          ])
 
         router
           .group(() => {
@@ -117,7 +124,13 @@ router
           })
           .prefix('admin')
           .as('admin')
-          .use([middleware.auth(), middleware.userLocale(), middleware.admin()])
+          .use([
+            middleware.session(),
+            middleware.shield(),
+            middleware.auth(),
+            middleware.userLocale(),
+            middleware.admin(),
+          ])
       })
       .prefix('v1')
       .as('v1')
@@ -132,4 +145,5 @@ if (testSupportEnabled()) {
     })
     .prefix('/api/test')
     .as('test')
+    .use([middleware.session(), middleware.shield()])
 }

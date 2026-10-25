@@ -2,11 +2,19 @@
 import { test } from '@japa/runner'
 import router from '@adonisjs/core/services/router'
 
-/** Routes that carry no session: Bearer device tokens and ntfy capability URLs. */
-const SESSIONLESS_PREFIXES = ['/api/v1/device/', '/api/v1/actions/']
+/** Routes that carry no session: public keys, Bearer device tokens and ntfy capability URLs. */
+const SESSIONLESS_PREFIXES = ['/api/v1/keys', '/api/v1/device/', '/api/v1/actions/']
 
 /** Named middleware that read or require the dashboard session. */
-const SESSION_MIDDLEWARE = new Set(['silentAuth', 'sessionVersion', 'guest', 'admin', 'userLocale'])
+const SESSION_MIDDLEWARE = new Set([
+  'session',
+  'shield',
+  'silentAuth',
+  'sessionVersion',
+  'guest',
+  'admin',
+  'userLocale',
+])
 
 /**
  * Dashboard routes a guest may call: each one does its own throttled check
@@ -15,7 +23,13 @@ const SESSION_MIDDLEWARE = new Set(['silentAuth', 'sessionVersion', 'guest', 'ad
 const GUEST_ROUTES = new Set(['v1.auth.login', 'v1.auth.two_factor', 'v1.auth.register'])
 
 /** Prefixes outside the dashboard: probes, the device API, ntfy actions and test support. */
-const NOT_DASHBOARD = ['/api/health', '/api/v1/device/', '/api/v1/actions/', '/api/test/']
+const NOT_DASHBOARD = [
+  '/api/health',
+  '/api/v1/keys',
+  '/api/v1/device/',
+  '/api/v1/actions/',
+  '/api/test/',
+]
 
 function namesOf(route: { middleware: { all(): unknown } }): string[] {
   return [...(route.middleware.all() as Set<NamedMiddleware>)]
@@ -86,5 +100,24 @@ test.group('Route guards', () => {
       assert.isAbove(names.indexOf('admin'), names.indexOf('auth'), route.pattern)
       assert.isAtLeast(names.indexOf('auth'), 0, route.pattern)
     }
+  })
+  test('test_only_dashboard_and_test_routes_get_the_session_and_csrf_cookies', ({ assert }) => {
+    const violations: string[] = []
+    for (const route of Object.values(router.toJSON()).flat()) {
+      const names = namesOf(route)
+      const label = `${route.methods.join(',')} ${route.pattern}`
+      const cookieFree = NOT_DASHBOARD.some((prefix) => route.pattern.startsWith(prefix))
+      if (cookieFree && !route.pattern.startsWith('/api/test/')) {
+        if (names.includes('session') || names.includes('shield')) violations.push(label)
+        continue
+      }
+      // Dashboard (and test support): session, then CSRF, then everything that reads them.
+      const session = names.indexOf('session')
+      const shield = names.indexOf('shield')
+      const auth = names.indexOf('auth')
+      if (session < 0 || shield < session || (auth >= 0 && auth < shield)) violations.push(label)
+    }
+
+    assert.deepEqual(violations, [])
   })
 })

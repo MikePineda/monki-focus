@@ -16,7 +16,7 @@ headers {
 
 assert {
   res.status: eq 200
-  res.headers.cache-control: eq max-age=300
+  res.headers.cache-control: eq public, max-age=300
   res.body.keys: isArray
 }
 

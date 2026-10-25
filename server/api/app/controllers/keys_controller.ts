@@ -18,7 +18,12 @@ export default class KeysController {
     const etag = keySetEtag(keySet)
 
     response.header('ETag', etag)
-    response.header('Cache-Control', 'max-age=300')
+    // Shared caches may keep it only while nothing personal rides along: a
+    // response that sets a cookie is never public.
+    response.header(
+      'Cache-Control',
+      response.getHeader('set-cookie') === undefined ? 'public, max-age=300' : 'no-store'
+    )
     if (request.header('if-none-match') === etag) {
       return response.notModified()
     }
