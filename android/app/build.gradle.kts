@@ -53,9 +53,58 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+
+    testImplementation(libs.kotlinx.coroutines.core)
 }
 
 // The manifest test reads the source manifest directly.
 tasks.withType<Test>().configureEach {
     inputs.file("src/main/AndroidManifest.xml").withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
+/**
+ * Copies the rules data the app reads at run time from packages/rules into
+ * generated assets under `rules/`: the v1 schemas (validator), the catalog
+ * data and starter preset (engine) and the bundled detector packs. Nothing
+ * else of the package (TypeScript, tests, fixtures) reaches the APK.
+ */
+abstract class RulesAssetsTask : DefaultTask() {
+    @get:Internal
+    abstract val rulesDir: DirectoryProperty
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val sources: FileTree get() = rulesDir.asFileTree.matching { include(*INCLUDES) }
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @get:Inject
+    abstract val files: FileSystemOperations
+
+    @TaskAction
+    fun copy() {
+        files.sync {
+            from(rulesDir) {
+                include(*INCLUDES)
+                into("rules")
+            }
+            into(outputDir)
+        }
+    }
+
+    private companion object {
+        val INCLUDES = arrayOf("schema/v1/*.schema.json", "data/**/*.json", "detectors/android/*.pack.json")
+    }
+}
+
+val rulesAssets =
+    tasks.register<RulesAssetsTask>("rulesAssets") {
+        rulesDir.set(rootProject.layout.projectDirectory.dir("../packages/rules"))
+    }
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(rulesAssets, RulesAssetsTask::outputDir)
+    }
 }
