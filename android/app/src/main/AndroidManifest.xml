@@ -3,9 +3,27 @@
 <!--
   No INTERNET permission: the app is local-first and only talks to a server
   the user configures (phase 3). Nothing is backed up or transferred to
-  another device. The launcher activity is the only exported component.
+  another device.
+
+  Permissions:
+  - POST_NOTIFICATIONS: the persistent "monki-focus is active" notice
+    (anti-stalkerware: protection never runs unseen);
+  - QUERY_ALL_PACKAGES: only to compare installed app labels with ours, so
+    the anti-bypass guard releases when a look-alike app could be trapped
+    (labels are compared in memory, never stored).
+
+  Exported components: the launcher activity, and the device-admin receiver
+  guarded by BIND_DEVICE_ADMIN (only the system holds it). The accessibility
+  service comes from :service-accessibility, guarded by
+  BIND_ACCESSIBILITY_SERVICE. Nothing else is exported.
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
 
     <application
         android:name=".MonkiApplication"
@@ -17,12 +35,31 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".MonkiDeviceAdminReceiver"
+            android:description="@string/device_admin_description"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".NoticeDismissedReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

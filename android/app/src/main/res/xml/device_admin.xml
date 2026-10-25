@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!--
+  Uninstall friction only: no policies at all, so device admin can neither
+  lock, wipe nor watch anything. While active, Android asks to deactivate
+  it before the app can be uninstalled; "Exit and unlink" removes it.
+-->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies />
+</device-admin>

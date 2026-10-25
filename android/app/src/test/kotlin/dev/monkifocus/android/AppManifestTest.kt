@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 package dev.monkifocus.android
 
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -37,7 +39,20 @@ class AppManifestTest {
     }
 
     @Test
-    fun only_the_launcher_activity_is_exported() {
+    fun the_protection_notice_can_be_posted() {
+        @Suppress("DEPRECATION")
+        val requested =
+            application.packageManager
+                .getPackageInfo(application.packageName, PackageManager.GET_PERMISSIONS)
+                .requestedPermissions
+                .orEmpty()
+                .toList()
+
+        assertTrue("android.permission.POST_NOTIFICATIONS" in requested)
+    }
+
+    @Test
+    fun only_the_launcher_and_the_system_guarded_device_admin_are_exported() {
         val moduleDir = File(requireNotNull(System.getProperty("monki.projectDir")) { "monki.projectDir is not set" })
         val manifest =
             DocumentBuilderFactory
@@ -52,9 +67,23 @@ class AppManifestTest {
                     val nodes = manifest.getElementsByTagName(tag)
                     (0 until nodes.length).map { nodes.item(it) as Element }
                 }.filter { it.getAttributeNS(ANDROID_NS, "exported") == "true" }
-                .map { it.getAttributeNS(ANDROID_NS, "name") }
+                .associate { it.getAttributeNS(ANDROID_NS, "name") to it.getAttributeNS(ANDROID_NS, "permission") }
 
-        assertEquals(listOf(".MainActivity"), exported)
+        assertEquals(
+            mapOf(".MainActivity" to "", ".MonkiDeviceAdminReceiver" to "android.permission.BIND_DEVICE_ADMIN"),
+            exported,
+        )
+    }
+
+    @Test
+    fun the_launcher_icon_is_always_there() {
+        val launcher =
+            application.packageManager.queryIntentActivities(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(application.packageName),
+                0,
+            )
+
+        assertEquals("no hidden mode: the app is always in the launcher", 1, launcher.size)
     }
 
     private companion object {
