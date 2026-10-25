@@ -60,8 +60,10 @@ Bearer tokens) is a separate contract in `packages/protocol/openapi.yaml`.
   `__Host-mf_session` in production (Secure, `Path=/`, no `Domain`),
   HttpOnly, SameSite=Lax, 30 days. Nothing auth-related lives in
   `localStorage`. Each session is stamped with `users.session_version`;
-  bumping it ("log out everywhere", a password change, enabling two-step
-  verification, `user:reset-password`) ends every session stamped before.
+  bumping it (logout, "log out everywhere", a password change, enabling
+  two-step verification, `user:reset-password`) ends every session stamped
+  before. Because the cookie is stateless, plain logout bumps it too: a copy
+  of the cookie dies with it, and so do the account's other sessions.
 - **CSRF**: any GET sets the `XSRF-TOKEN` cookie; every POST, PUT, PATCH and
   DELETE sends it back as `X-XSRF-TOKEN`. Missing or wrong: 403
   `E_BAD_CSRF_TOKEN`.
@@ -97,7 +99,7 @@ Bearer tokens) is a separate contract in `packages/protocol/openapi.yaml`.
 | POST   | `/auth/two-factor`              | `{ code }` or `{ recoveryCode }`                                             | `{ user }`                                                            |
 | POST   | `/auth/register`                | `{ invitation?, email, fullName, password, locale?, timeZone?, weekStart? }` | 201 `{ user }`, signed in                                             |
 | GET    | `/auth/me`                      |                                                                              | `{ user }`                                                            |
-| POST   | `/auth/logout`                  |                                                                              | 204                                                                   |
+| POST   | `/auth/logout`                  |                                                                              | 204, every session ends (copies too)                                  |
 | POST   | `/auth/logout-everywhere`       |                                                                              | 204, every session ends                                               |
 | PATCH  | `/me`                           | `{ fullName?, locale?, timeZone?, weekStart? }`                              | `{ user }`                                                            |
 | PUT    | `/me/password`                  | `{ currentPassword, password }`                                              | 204; other sessions end, this one stays                               |
@@ -115,7 +117,8 @@ Bearer tokens) is a separate contract in `packages/protocol/openapi.yaml`.
   digits or symbols (`passwordTooCommon`), at least 5 distinct characters
   (`passwordTooRepetitive`), not containing the email's local part
   (`passwordContainsEmail`). Hashed with scrypt.
-- **Login throttles** (only failures count): 5 per minute per email and IP,
+- **Login throttles** (only failures count; each attempt is charged before
+  it is checked, so a concurrent burst never evaluates more than the limit): 5 per minute per email and IP,
   then 20 minutes blocked; 30 per 15 minutes per IP. Codes: 5 per minute per
   user. Password re-checks: 5 per minute per user. Refused sign-ups: 10 per
   hour per IP. Invitations: 20 per hour per admin.

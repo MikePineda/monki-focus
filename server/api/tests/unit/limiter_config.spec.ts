@@ -7,4 +7,8 @@ test.group('Limiter config', () => {
     assert.equal(databaseStoreOptions.tableName, 'rate_limits')
     assert.isTrue(databaseStoreOptions.clearExpiredByTimeout)
   })
+
+  test('test_the_database_store_has_its_own_connection_outside_any_transaction', ({ assert }) => {
+    assert.equal(databaseStoreOptions.connectionName, 'limiter')
+  })
 })

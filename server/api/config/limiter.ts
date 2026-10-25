@@ -5,8 +5,11 @@ import { defineConfig, stores } from '@adonisjs/limiter'
 /**
  * The Postgres store (`rate_limits`). `clearExpiredByTimeout` deletes
  * expired rows every 5 minutes, so keys from one-off IPs never pile up.
+ * Its own connection (config/database.ts `limiter`): a charge is committed
+ * the moment it is made, whatever transaction the request is in.
  */
 export const databaseStoreOptions = {
+  connectionName: 'limiter',
   tableName: 'rate_limits',
   clearExpiredByTimeout: true,
 }

@@ -7,9 +7,9 @@ import { clientIp } from '#http/client_ip'
 import { CodedError } from '#exceptions/coded_error'
 import { userResource } from '#transformers/user_transformer'
 import LoginService from '#services/accounts/login_service'
-import ProfileService from '#services/accounts/profile_service'
 import TwoFactorService from '#services/accounts/two_factor_service'
 import { startWebSession } from '#services/accounts/web_session'
+import { revokeSessions } from '#services/accounts/session_revocation'
 import { twoFactorRules } from '#services/accounts/account_throttles'
 import { throttleFailures } from '#services/accounts/failure_throttle'
 import { loginValidator, twoFactorLoginValidator } from '#validators/auth'
@@ -23,7 +23,6 @@ import {
 export default class SessionsController {
   constructor(
     protected login: LoginService,
-    protected profile: ProfileService,
     protected twoFactor: TwoFactorService,
     protected clock: Clock
   ) {}
@@ -73,16 +72,20 @@ export default class SessionsController {
     return { user: userResource(auth.getUserOrFail()) }
   }
 
-  /** POST /auth/logout: ends this session only. */
+  /**
+   * POST /auth/logout. Cookie sessions are stateless, so clearing this
+   * browser's cookie would leave any copy of it valid: logging out bumps
+   * session_version, which ends every session of the account (copies and
+   * other devices included).
+   */
   async destroy({ auth, response }: HttpContext) {
+    await revokeSessions(auth.getUserOrFail())
     await auth.use('web').logout()
     return response.noContent()
   }
 
-  /** POST /auth/logout-everywhere: bumps session_version, ending every session, this one too. */
-  async destroyEverywhere({ auth, response }: HttpContext) {
-    await this.profile.revokeAllSessions(auth.getUserOrFail())
-    await auth.use('web').logout()
-    return response.noContent()
+  /** POST /auth/logout-everywhere: the same revocation, named for the settings page. */
+  async destroyEverywhere(ctx: HttpContext) {
+    return this.destroy(ctx)
   }
 }

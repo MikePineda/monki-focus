@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type User from '#models/user'
+import { revokeSessions } from '#services/accounts/session_revocation'
 import type { SupportedLocale } from '#http/supported_locales'
 
 export interface ProfileChanges {
@@ -24,18 +25,10 @@ export default class ProfileService {
     return user
   }
 
-  /** Sets a new password (hashed on save) and ends every other session. */
+  /** Sets a new password (hashed on save) and ends every session; the caller re-stamps its own. */
   async changePassword(user: User, password: string) {
     user.password = password
-    user.sessionVersion += 1
     await user.save()
-    return user
-  }
-
-  /** "Log out everywhere": every session stamped with an older version dies, this one too. */
-  async revokeAllSessions(user: User) {
-    user.sessionVersion += 1
-    await user.save()
-    return user
+    return revokeSessions(user)
   }
 }

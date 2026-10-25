@@ -4,7 +4,8 @@ import { stdSerializers } from '@adonisjs/core/logger'
 /**
  * What never reaches a log line. The repo rule: never log tokens, pairing
  * or enrolment codes, capabilities, credentials, signing keys or personal
- * data. Three layers, all wired by `LOG_PRIVACY` into config/logger.ts:
+ * data (account seeds, recovery codes and invitation links included).
+ * Three layers, all wired by `LOG_PRIVACY` into config/logger.ts:
  *
  * 1. `scrubLogObject` (pino `formatters.log`): walks every logged plain
  *    object and array at any depth and censors keys whose name, compared
@@ -53,6 +54,20 @@ const SENSITIVE_KEYS = new Set([
   // Signing keys
   'privatekey',
   'signingkey',
+  // Accounts: second factors, invitation links, password hashes
+  'recoverycode',
+  'recoverycodes',
+  'otpauthurl',
+  'otpauthuri',
+  'totpsecret',
+  'totpseed',
+  'totpsecretencrypted',
+  'invitation',
+  'invitationurl',
+  'invitationlink',
+  'tokenhash',
+  'codehash',
+  'passwordhash',
   // Personal data
   'email',
   'fullname',
@@ -163,6 +178,23 @@ const CAMEL_AND_SNAKE_FIELDS = [
   'private_key',
   'signingKey',
   'signing_key',
+  'recoveryCode',
+  'recovery_code',
+  'recoveryCodes',
+  'recovery_codes',
+  'otpauthUrl',
+  'otpauth_url',
+  'totpSecret',
+  'totp_secret',
+  'totpSecretEncrypted',
+  'totp_secret_encrypted',
+  'invitation',
+  'invitationUrl',
+  'invitation_url',
+  'tokenHash',
+  'token_hash',
+  'codeHash',
+  'code_hash',
   'email',
   'fullName',
   'full_name',

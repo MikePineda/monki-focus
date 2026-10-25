@@ -50,6 +50,29 @@ test.group('Log redaction', () => {
     assert.include(output(), 'request handled')
   })
 
+  test('test_second_factors_invitation_links_and_hashes_never_reach_the_log', ({ assert }) => {
+    const { logger, output } = capturingLogger()
+
+    logger.info(
+      {
+        recoveryCode: SECRET,
+        recovery_codes: [SECRET],
+        otpauthUrl: SECRET,
+        secret: SECRET,
+        totp_secret_encrypted: SECRET,
+        invitation: SECRET,
+        url: { invitationUrl: SECRET },
+        token_hash: SECRET,
+        codeHash: SECRET,
+        body: { 'recoveryCodes': [SECRET], 'otpauth-url': SECRET },
+      },
+      'account event'
+    )
+
+    assert.notInclude(output(), SECRET)
+    assert.include(output(), LOG_REDACT_CENSOR)
+  })
+
   test('test_snake_case_and_other_spellings_are_redacted', ({ assert }) => {
     const { logger, output } = capturingLogger()
 
