@@ -17,6 +17,7 @@ const SHOW: Decision = {
   ruleId: null,
   reason: 'no_rule',
   explanationKey: 'decision.no_rule',
+  validUntil: '2026-01-06T09:00:00Z',
 }
 
 function shown(surface: string | null): FeedDecision {
