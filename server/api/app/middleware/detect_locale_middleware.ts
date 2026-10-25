@@ -6,9 +6,10 @@ import { type HttpContext, RequestValidator } from '@adonisjs/core/http'
 
 /**
  * Shares a request-scoped `ctx.i18n`. A server middleware (runs before
- * routing), so even a 404 for an unknown route is translated. Today the
- * locale comes from Accept-Language, then APP_DEFAULT_LOCALE; the user's own
- * preference joins in front of both once accounts exist (S2).
+ * routing), so even a 404 for an unknown route is translated. The locale
+ * comes from Accept-Language, then APP_DEFAULT_LOCALE; on signed-in
+ * dashboard routes the `userLocale` middleware then switches to the user's
+ * own preference.
  */
 export default class DetectLocaleMiddleware {
   /** VineJS messages come from resources/lang/<locale>/validator.json. */

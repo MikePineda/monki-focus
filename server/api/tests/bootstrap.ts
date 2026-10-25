@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { assert } from '@japa/assert'
-import { apiClient } from '@japa/api-client'
+import type User from '#models/user'
+import { apiClient, ApiRequest } from '@japa/api-client'
+import { authApiClient } from '@adonisjs/auth/plugins/api_client'
 import app from '@adonisjs/core/services/app'
 import type { Config } from '@japa/runner/types'
 import { pluginAdonisJS } from '@japa/plugin-adonisjs'
@@ -9,10 +11,24 @@ import testUtils from '@adonisjs/core/services/test_utils'
 import { shieldApiClient } from '@adonisjs/shield/plugins/api_client'
 import { sessionApiClient } from '@adonisjs/session/plugins/api_client'
 
+declare module '@japa/api-client' {
+  interface ApiRequest {
+    /**
+     * Laravel's `actingAs`: a signed-in session exactly like the login flow
+     * leaves it (user id + session_version stamp) plus a valid CSRF token.
+     */
+    actingAs(user: User): this
+  }
+}
+
+ApiRequest.macro('actingAs', function (this: ApiRequest, user: User) {
+  return this.loginAs(user).withSession({ sv: user.sessionVersion }).withCsrfToken()
+})
+
 /**
  * Imported by bin/test.ts. Plugins: `client.get(...)` (api client), session
- * and `withCsrfToken()` (shield), `db.assertHas(...)` (Lucid). `loginAs`
- * (auth) joins with the users package (S2).
+ * and `withCsrfToken()` (shield), `db.assertHas(...)` (Lucid), `loginAs`
+ * (auth) and the `actingAs` macro above.
  */
 export const plugins: Config['plugins'] = [
   assert(),
@@ -21,6 +37,7 @@ export const plugins: Config['plugins'] = [
   apiClient(),
   sessionApiClient(app),
   shieldApiClient(),
+  authApiClient(app),
 ]
 
 /** Runner-wide hooks. Empty, so the unit suite never needs a database. */

@@ -3,8 +3,16 @@ import app from '@adonisjs/core/services/app'
 import type { I18n } from '@adonisjs/i18n'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 
-/** Self-rendering framework errors whose own rendering does not fit a JSON API. */
-const JSON_RENDERED_CODES = new Set(['E_BAD_CSRF_TOKEN'])
+/**
+ * Self-rendering framework errors whose own rendering does not fit a JSON
+ * API (CSRF redirects back; auth answers `{ errors }`): they answer the
+ * `{ message, code }` envelope instead.
+ */
+const JSON_RENDERED_CODES = new Set([
+  'E_BAD_CSRF_TOKEN',
+  'E_UNAUTHORIZED_ACCESS',
+  'E_INVALID_CREDENTIALS',
+])
 
 /** Postgres unique_violation: a race lost against a concurrent insert. */
 const PG_UNIQUE_VIOLATION = '23505'
@@ -18,7 +26,8 @@ function hasPgCode(error: unknown, code: string): error is Error & { status?: nu
  *
  * - Exceptions that render themselves (validation, throttle) keep their
  *   shape: 422 `{ errors: [{ field, rule, message }] }`, 429 `{ errors }`.
- *   CSRF failures answer 403 `{ message, code }` (Shield would redirect back).
+ *   CSRF failures answer 403 `{ message, code }` (Shield would redirect back),
+ *   auth failures 401/400 `{ message, code }`.
  * - Any other 4xx answers `{ message, code }`, the message translated from
  *   `errors.<code>` in the request's locale. Never the debug page.
  * - Unique violations answer 409 `E_CONFLICT`, never the constraint name.

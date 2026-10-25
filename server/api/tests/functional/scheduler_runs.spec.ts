@@ -10,9 +10,23 @@ import SchedulerRuns, {
 } from '#scheduler/scheduler_runs'
 
 const T0 = DateTime.fromISO('2026-01-05T09:00:00Z', { zone: 'utc' })
+/** Per-user runs reference `users` (ON DELETE CASCADE): these ids exist in every test. */
+const USER_IDS = [1, 7]
 const KEY = { job: 'weekly_report', periodKey: '2026-W02', userId: 7 }
 
-test.group('Scheduler run claims', () => {
+test.group('Scheduler run claims', (group) => {
+  group.each.setup(async () => {
+    await db.table('users').insert(
+      USER_IDS.map((id) => ({
+        id,
+        email: `scheduler-${id}@example.com`,
+        password: 'not-a-real-hash',
+        created_at: new Date(),
+        updated_at: new Date(),
+      }))
+    )
+  })
+
   test('test_exactly_one_claim_wins_a_run', async ({ assert }) => {
     const runs = new SchedulerRuns()
 

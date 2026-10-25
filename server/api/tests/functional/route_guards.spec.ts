@@ -6,7 +6,22 @@ import router from '@adonisjs/core/services/router'
 const SESSIONLESS_PREFIXES = ['/api/v1/device/', '/api/v1/actions/']
 
 /** Named middleware that read or require the dashboard session. */
-const SESSION_MIDDLEWARE = new Set(['silentAuth', 'sessionVersion', 'guest'])
+const SESSION_MIDDLEWARE = new Set(['silentAuth', 'sessionVersion', 'guest', 'admin', 'userLocale'])
+
+/**
+ * Dashboard routes a guest may call: each one does its own throttled check
+ * (credentials, the pending second factor, an invitation).
+ */
+const GUEST_ROUTES = new Set(['v1.auth.login', 'v1.auth.two_factor', 'v1.auth.register'])
+
+/** Prefixes outside the dashboard: probes, the device API, ntfy actions and test support. */
+const NOT_DASHBOARD = ['/api/health', '/api/v1/device/', '/api/v1/actions/', '/api/test/']
+
+function namesOf(route: { middleware: { all(): unknown } }): string[] {
+  return [...(route.middleware.all() as Set<NamedMiddleware>)]
+    .map((entry) => (typeof entry === 'object' ? entry.name : undefined))
+    .filter((name): name is string => Boolean(name))
+}
 
 type NamedMiddleware = { name?: string; args?: unknown }
 
@@ -40,5 +55,36 @@ test.group('Route guards', () => {
     }
 
     assert.deepEqual(violations, [])
+  })
+
+  test('test_every_dashboard_route_needs_a_session_unless_it_is_a_guest_route', ({ assert }) => {
+    const unguarded: string[] = []
+    const routes = Object.values(router.toJSON()).flat()
+    for (const route of routes) {
+      if (NOT_DASHBOARD.some((prefix) => route.pattern.startsWith(prefix))) continue
+      if (GUEST_ROUTES.has(route.name ?? '')) continue
+      if (!namesOf(route).includes('auth'))
+        unguarded.push(`${route.methods.join(',')} ${route.pattern}`)
+    }
+
+    assert.deepEqual(unguarded, [])
+    for (const name of GUEST_ROUTES) {
+      assert.isTrue(
+        routes.some((route) => route.name === name),
+        `${name} is a route`
+      )
+    }
+  })
+
+  test('test_admin_routes_check_the_role_after_the_session', ({ assert }) => {
+    const routes = Object.values(router.toJSON()).flat()
+    const admin = routes.filter((route) => route.pattern.startsWith('/api/v1/admin/'))
+
+    assert.isNotEmpty(admin)
+    for (const route of admin) {
+      const names = namesOf(route)
+      assert.isAbove(names.indexOf('admin'), names.indexOf('auth'), route.pattern)
+      assert.isAtLeast(names.indexOf('auth'), 0, route.pattern)
+    }
   })
 })

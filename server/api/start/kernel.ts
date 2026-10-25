@@ -25,6 +25,7 @@ router.use([
   () => import('@adonisjs/core/bodyparser_middleware'),
   () => import('@adonisjs/session/session_middleware'),
   () => import('@adonisjs/shield/shield_middleware'),
+  () => import('@adonisjs/auth/initialize_auth_middleware'),
 ])
 
 /**
@@ -32,4 +33,10 @@ router.use([
  */
 export const middleware = router.named({
   clientVersion: () => import('#middleware/client_version_middleware'),
+  /** Session (`web`) by default, with the session-version check; S4 adds `device`. */
+  auth: () => import('#middleware/auth_middleware'),
+  /** After `auth`: admins only, 404 for anyone else. */
+  admin: () => import('#middleware/admin_middleware'),
+  /** After `auth`: the user's own language wins over Accept-Language. */
+  userLocale: () => import('#middleware/user_locale_middleware'),
 })
