@@ -56,9 +56,8 @@ object ForegroundSessionizer {
                     close(at)
                 }
 
-                UsageEventKind.SCREEN_INTERACTIVE, UsageEventKind.KEYGUARD_HIDDEN -> {
-                    Unit
-                }
+                // The screen turning on opens nothing by itself.
+                UsageEventKind.SCREEN_INTERACTIVE, UsageEventKind.KEYGUARD_HIDDEN -> {}
             }
         }
         current?.let { (pkg, start) -> if (toMillis > start) sessions += ForegroundSession(pkg, start, toMillis, open = true) }
