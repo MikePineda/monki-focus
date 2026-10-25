@@ -18,6 +18,13 @@ import android.provider.Settings
 object SetupIntents {
     private const val PACKAGE_SCHEME = "package"
 
+    /**
+     * Settings' page of one accessibility service (API 30+). Not a public
+     * SDK constant, so the action is spelled out; a device without it gets
+     * the Accessibility list ([startFirst] skips what does not resolve).
+     */
+    const val ACCESSIBILITY_DETAILS_SETTINGS = "android.settings.ACCESSIBILITY_DETAILS_SETTINGS"
+
     private fun packageUri(packageName: String): Uri = Uri.fromParts(PACKAGE_SCHEME, packageName, null)
 
     /** Our App info: where "Allow restricted settings" lives (⋮ menu, Android 13+). */
@@ -30,7 +37,7 @@ object SetupIntents {
     fun accessibility(service: ComponentName): List<Intent> {
         val list = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return listOf(list)
-        val details = Intent(Settings.ACTION_ACCESSIBILITY_DETAILS_SETTINGS)
+        val details = Intent(ACCESSIBILITY_DETAILS_SETTINGS)
         details.putExtra(Intent.EXTRA_COMPONENT_NAME, service.flattenToString())
         return listOf(details, list)
     }
