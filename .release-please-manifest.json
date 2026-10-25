@@ -1,7 +1,7 @@
 {
   "packages/rules": "0.0.0",
   "packages/engine": "0.0.0",
-  "packages/analytics": "0.0.0",
+  "packages/analytics": "1.0.0",
   "packages/protocol": "0.0.0",
   "extension": "0.0.0",
   "server": "0.0.0",
