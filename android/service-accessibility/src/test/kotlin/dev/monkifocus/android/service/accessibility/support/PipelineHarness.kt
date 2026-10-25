@@ -15,6 +15,7 @@ import dev.monkifocus.android.service.accessibility.gate.GateCoordinator
 import dev.monkifocus.android.service.accessibility.guard.AntiBypassGuard
 import dev.monkifocus.android.service.accessibility.pipeline.EventPipeline
 import dev.monkifocus.android.service.accessibility.pipeline.ScreenObserver
+import dev.monkifocus.android.service.accessibility.pipeline.UrlKey
 import dev.monkifocus.android.service.accessibility.pipeline.UserAction
 import dev.monkifocus.android.service.accessibility.pipeline.WindowEvent
 import dev.monkifocus.android.service.accessibility.pipeline.WindowEventType
@@ -37,6 +38,7 @@ internal class PipelineHarness(
     val escalationWrites = mutableListOf<EscalationState>()
     val bypassEvents = mutableListOf<BypassEvent>()
     val intentions = RecordingIntentionLog()
+    val sitesSeen = mutableListOf<UrlKey>()
     val exitStore = MemoryExitFlowStore()
     val disarmer = RecordingDisarmer()
     var collisionChecks = 0
@@ -76,6 +78,7 @@ internal class PipelineHarness(
             unsupportedBrowsers = { unsupportedBrowsers },
             armedByUser = { armedByUser },
             noticePermitted = { noticePermitted },
+            siteSeen = { key, _ -> sitesSeen += key },
         )
 
     var mono = 100_000L

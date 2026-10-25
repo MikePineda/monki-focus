@@ -11,6 +11,12 @@ android {
 dependencies {
     implementation(project(":core-domain"))
     implementation(project(":core-data"))
+    implementation(project(":detectors"))
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 // The manifest test reads the source manifest directly.

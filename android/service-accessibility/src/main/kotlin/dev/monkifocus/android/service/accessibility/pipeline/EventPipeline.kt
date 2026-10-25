@@ -69,6 +69,8 @@ class EventPipeline(
     private val armedByUser: () -> Boolean,
     /** Whether the persistent notice can be posted (notification permission). */
     private val noticePermitted: () -> Boolean,
+    /** A URL bar reading for the local statistics (key and wall time only, never the URL text). */
+    private val siteSeen: (key: UrlKey, nowEpochMs: Long) -> Unit = { _, _ -> },
     private val readThrottle: ReadThrottle = ReadThrottle(),
     private val decisionThrottle: DecisionThrottle = DecisionThrottle(),
     private val backGuard: BackLoopGuard = BackLoopGuard(),
@@ -381,6 +383,7 @@ class EventPipeline(
 
             is ScreenObservation.Site -> {
                 feedCap(pkg, classified = true, nowMonotonicMs)
+                if (observation.key != UrlKey.REJECTED) siteSeen(observation.key, nowEpochMs)
                 val key = observation.observationKey
                 if (!decisionThrottle.admit(key, nowMonotonicMs)) return
                 val label = observation.key.host.ifEmpty { labels.appLabel(pkg) }

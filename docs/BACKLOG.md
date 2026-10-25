@@ -20,3 +20,6 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-10-25 Self-hosting docs: release issuers are `https://host` only (no port, no IP literal); LAN setups need a hostname and a reverse proxy on 443.
 - 2026-10-25 macOS release: `release-please.yml` re-signs with `codesign --force --deep --sign -`, which drops the hardened-runtime flag the Release build sets; add `--options runtime` (and sign the helper before the app instead of `--deep`).
 - 2026-10-25 macOS: stable self-signed signing certificate (plan M1) so Accessibility survives rebuilds; M1 ships ad-hoc only.
+- 2026-10-25 Android: `HeartbeatWorker` (plan §2.9: heartbeat rows, `BypassDetector`, dead-man POST to the server) once server pairing exists; WP 2.8/2.9 shipped only the local workers.
+- 2026-10-25 Android: real `DetectorPackUpdateWorker` download once a server and a pinned `rules-signing` key exist (today it only re-verifies stored packs).
+- 2026-10-25 Android: a user-chosen device name for the ActivityWatch buckets (today the neutral `phone`), and an ActivityWatch/CSV export of the local data on the stats screen like the extension's.

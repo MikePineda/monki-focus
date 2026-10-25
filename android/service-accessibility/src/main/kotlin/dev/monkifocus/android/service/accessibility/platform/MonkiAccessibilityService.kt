@@ -156,6 +156,7 @@ class MonkiAccessibilityService : AccessibilityService() {
                 unsupportedBrowsers = { unsupportedBrowsers },
                 armedByUser = { shared.preferences.armedByUser },
                 noticePermitted = { shared.inputs.notifier.permitted() },
+                siteSeen = inputs::siteSeen,
             )
         reader = screenReader
         performer = androidPerformer
