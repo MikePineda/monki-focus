@@ -4,9 +4,23 @@ Native menu-bar app: Swift 6, SwiftUI, macOS 14 (Sonoma) or later. Bundle id
 `dev.monkifocus.mac`. It has no Dock icon (`LSUIElement`) but its menu-bar
 icon is always visible, and **Quit** is always one click away in the panel.
 
-Status: work package M1 (scaffold). The "Today" panel and Settings window are
-placeholders; the engine, analytics, watchers, bridge relay and blocking
-arrive in M2-M9.
+Status: work packages M1 (scaffold), M2 (decision engine) and M3 (analytics
+core). The "Today" panel and Settings window are placeholders; the watchers,
+storage, bridge relay and blocking arrive in M4-M9.
+
+- **M2, decision engine** (`MonkiCore/Sources/MonkiCore/Engine`, `Rules`,
+  `Validation`): `decide`, escalation, rule changes, schedules and bedtime,
+  URL normalisation and rules validation, a port of `packages/engine`.
+- **M3, analytics core** (`MonkiCore/Sources/MonkiCore/Analytics`): heartbeat
+  merging, active time (AFK), tab probing, categorisation, the focus pulse,
+  5-minute sync blocks, daily totals, browser dedupe, the cross-device cap
+  and ActivityWatch export, a port of `packages/analytics` (one file per
+  TypeScript file). It reuses the engine's URL normalisation, target
+  matching, specificity and category ranking (`mostSpecificAssignment`, also
+  behind `decide`'s bedtime level), zoned time and strict instants.
+
+Both run every shared fixture of `packages/rules/fixtures` (all kinds except
+`unlock-token`, which the token verifier will run), plus seeded property tests.
 
 ## Requirements
 
@@ -60,7 +74,7 @@ Tests use Swift Testing
 | `App/Resources/Localizable.xcstrings` | The only string catalog (`en`, `es`).                                          |
 | `Bridge/`                    | `monki-bridge`, the native messaging host, embedded at `MonkiFocus.app/Contents/Helpers/`. |
 | `AppTests/`                  | App tests: string-catalog parity, design-token colours, the embedded bridge binary.      |
-| `Packages/MonkiCore`         | Pure domain: no AppKit, no SwiftUI, no I/O, no implicit clock. `MonkiCoreTesting` holds fakes (`FixedClock`, `FakeMonotonicClock`) and shared-fixture access. |
+| `Packages/MonkiCore`         | Pure domain (decision engine and analytics core): no AppKit, no SwiftUI, no I/O, no implicit clock. `MonkiCoreTesting` holds fakes (`FixedClock`, `FakeMonotonicClock`) and shared-fixture access. |
 | `Packages/MonkiPlatform`     | Adapters: system clocks, GRDB storage (GRDB 7.11.1, pinned exactly; `Package.resolved` committed). |
 
 ## Conventions

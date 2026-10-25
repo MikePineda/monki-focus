@@ -14,4 +14,14 @@ enum CodeUnitOrder {
         if less(lhs, rhs) { return -1 }
         return less(rhs, lhs) ? 1 : 0
     }
+
+    /// `compare` where `nil` sorts before every string.
+    static func compareNullable(_ lhs: String?, _ rhs: String?) -> Int {
+        switch (lhs, rhs) {
+        case (nil, nil): 0
+        case (nil, _): -1
+        case (_, nil): 1
+        case (let lhs?, let rhs?): compare(lhs, rhs)
+        }
+    }
 }

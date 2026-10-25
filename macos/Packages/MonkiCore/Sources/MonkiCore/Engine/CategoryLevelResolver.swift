@@ -4,7 +4,8 @@
 // always with the default categories. Uncategorised is 50.
 //
 // - Known path: the most specific assignment by §4 steps 1–4; on a full tie a
-//   user assignment beats a default, then the lower level, then list order.
+//   user assignment beats a default, then the lower level, then list order
+//   (`mostSpecificAssignment`, shared with the analytics `categorise`).
 // - Unknown path (§5.5): the minimum level over every assignment of the
 //   domain: site targets of the domain with any path and surface targets of
 //   its profile (`youtube.com` counts as 0 because of Shorts).
@@ -26,24 +27,41 @@ private func compareAssignments(_ lhs: RankedAssignment, _ rhs: RankedAssignment
     return lhs.order - rhs.order
 }
 
+/// The user assignments followed by the defaults, ranked by list order.
+private func rankedAssignments(_ userAssignments: [CategoryAssignment], _ defaults: [CategoryAssignment])
+    -> [RankedAssignment]
+{
+    let entries = userAssignments.map { ($0, true) } + defaults.map { ($0, false) }
+    return entries.enumerated().map { RankedAssignment(assignment: $1.0, isUser: $1.1, order: $0) }
+}
+
+/// The assignment matching the observation (§3) that wins by §4 steps 1–4,
+/// then user over default, the lower level and list order; nil without a match.
+func mostSpecificAssignment(
+    _ observation: ResolvedObservation,
+    userAssignments: [CategoryAssignment],
+    defaults: [CategoryAssignment],
+    _ catalog: RulesCatalog
+) -> CategoryAssignment? {
+    rankedAssignments(userAssignments, defaults)
+        .filter { matchesTarget($0.assignment.target, observation, catalog) }
+        .min { compareAssignments($0, $1, catalog) < 0 }?
+        .assignment
+}
+
 func categoryLevelOf(
     _ observation: ResolvedObservation,
     userAssignments: [CategoryAssignment],
     _ catalog: RulesCatalog
 ) -> Int {
     if observation == .rejected { return uncategorisedLevel }
-    let entries = userAssignments.map { ($0, true) } + catalog.defaultCategories.map { ($0, false) }
-    let ranked = entries.enumerated().map { RankedAssignment(assignment: $1.0, isUser: $1.1, order: $0) }
     if let host = observation.hostOfUnknownPath {
-        let levels =
-            ranked
+        let levels = rankedAssignments(userAssignments, catalog.defaultCategories)
             .filter { matchesHostOfUnknownPath($0.assignment.target, host: host, catalog) }
             .map(\.assignment.level)
         return levels.min() ?? uncategorisedLevel
     }
-    let best =
-        ranked
-        .filter { matchesTarget($0.assignment.target, observation, catalog) }
-        .min { compareAssignments($0, $1, catalog) < 0 }
-    return best?.assignment.level ?? uncategorisedLevel
+    let best = mostSpecificAssignment(
+        observation, userAssignments: userAssignments, defaults: catalog.defaultCategories, catalog)
+    return best?.level ?? uncategorisedLevel
 }
