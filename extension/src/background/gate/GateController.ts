@@ -2,8 +2,12 @@
 import {
   effectiveEscalationState,
   epochSecondsOf,
+  frictionCandidates,
   initialEscalationState,
   instantOf,
+  intentionRequirements,
+  intentionWordCount,
+  isIntentionAcceptable,
   nextEscalation,
   normalizeUrl,
   type RulesCatalog,
@@ -18,6 +22,7 @@ import type {
 import type { Clock } from '../../shared/clock'
 import type {
   ActiveSession,
+  CommitRejection,
   CommitResult,
   GateBlockReason,
   GateContext,
@@ -26,20 +31,16 @@ import type {
 } from '../../shared/GateContract'
 import type { ClosedAnswer, GateHandoff } from '../../shared/messages'
 import { siteFeedProfileFor } from '../../sites'
-import { wordCount } from '../../ui/wordCount'
 import type { IntentionDay } from '../stats/IntentionStatsQuery'
 import type { BypassEventPayload, IntentionEntryKind } from '../storage/db'
 import type { BypassRecord } from './BypassRecorder'
 import type { EscalationStore } from './EscalationStore'
-import { frictionCandidates } from './FrictionCandidates'
 import type { GateDiagnosticCode } from './GateDiagnostics'
 import { groupOf } from './GateGroup'
 import type { GateTabs } from './GateTabs'
 import type { GateTicket } from './GateTicket'
 import type { IntentionNotes } from './IntentionNotes'
 
-/** A typed intention needs this many words (the engine checks the count it gets too). */
-const MIN_TYPED_WORDS = 3
 /** Sites whose gate offers a search box (`/search?q=`, never gated). */
 const GATE_SEARCH_SITES: ReadonlySet<string> = new Set(['reddit.com', 'youtube.com'])
 /** The group logged for a Close on a gate without a destination. */
@@ -137,14 +138,9 @@ export class GateController {
       if (target === null) return { accepted: true, view: await this.viewOf(tabId) }
       const state = await this.options.escalation.get(target.group)
       const text = intention.trim()
-      const typedWords = wordCount(text, 'en')
-      if (state.gate?.requiresTypedIntention === true) {
-        if (typedWords < MIN_TYPED_WORDS)
-          return { accepted: false, rejection: 'intention.tooFewWords' }
-        if (await this.options.notes.repeatsLast(text)) {
-          return { accepted: false, rejection: 'intention.sameAsLast' }
-        }
-      }
+      const typedWords = intentionWordCount(text)
+      const rejection = await this.rejectionOf(text, typedWords, state)
+      if (rejection !== null) return { accepted: false, rejection }
       const changed = await this.step(target.group, {
         type: 'commit',
         minutes,
@@ -570,6 +566,22 @@ export class GateController {
     return url.href
   }
 
+  /**
+   * The engine's typed-intention rule (SEMANTICS.md §7.5) for the gate on
+   * screen: enough words, and different from the group's previous intention.
+   */
+  private async rejectionOf(
+    text: string,
+    typedWords: number,
+    state: EscalationState
+  ): Promise<CommitRejection | null> {
+    const { gate } = state
+    if (gate === null) return null
+    if (typedWords < intentionRequirements(gate).minWords) return 'intention.tooFewWords'
+    const previous = (await this.options.notes.of(state.targetGroup))?.text ?? null
+    return isIntentionAcceptable(text, previous, gate) ? null : 'intention.sameAsLast'
+  }
+
   /** The pause the engine's `extend` would cost from `state`. */
   private extendPauseOf(state: EscalationState): number {
     return (
@@ -591,10 +603,12 @@ export class GateController {
     const winner = ruleset.rules.find((rule) => rule.id === group)
     const own = await this.options.escalation.get(group)
     if (!winner) return own
-    const candidates = frictionCandidates(ruleset, destination, now, this.options.catalog)
+    const ids = new Set(
+      frictionCandidates(ruleset, { kind: 'site', urlText: destination }, now, this.options.catalog)
+    )
     const effective = effectiveEscalationState(
       winner,
-      candidates,
+      ruleset.rules.filter((rule) => ids.has(rule.id)),
       await this.options.escalation.all(),
       epochSecondsOf(now)
     )

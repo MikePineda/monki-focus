@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ActivityEvent } from '@monki-focus/analytics'
+import type { Ruleset } from '@monki-focus/rules/pure'
 import { describe, expect, it } from 'vitest'
 import { DailyUsageQuery } from '../../../../src/background/gate/DailyUsageQuery'
-import { frictionCandidates } from '../../../../src/background/gate/FrictionCandidates'
 import { bundledRulesCatalog } from '../../../../src/shared/bundledRulesCatalog'
 import { makeEvent } from '../../../factories/makeEvent'
 import { gatedRuleset } from '../../../support/gateHarness'
@@ -78,6 +78,54 @@ describe('DailyUsageQuery', () => {
     })
   })
 
+  it('time_accrues_to_every_budgeted_candidate_the_engine_names_while_scheduled', async () => {
+    const base = budgetedRuleset()
+    const ruleset: Ruleset = {
+      ...base,
+      rules: [
+        ...base.rules,
+        {
+          id: 'reddit-sub-budget',
+          target: { kind: 'site' as const, domain: 'reddit.com', path: '/r/examplesub/**' },
+          mode: 'friction' as const,
+          schedules: [],
+          enabled: true,
+          dailyBudgetMinutes: 10,
+        },
+        {
+          id: 'reddit-evening-budget',
+          target: { kind: 'site' as const, domain: 'reddit.com' },
+          mode: 'friction' as const,
+          schedules: [
+            {
+              days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
+              start: '18:00',
+              end: '23:00',
+            },
+          ],
+          enabled: true,
+          dailyBudgetMinutes: 20,
+        },
+      ],
+    }
+
+    const usage = await query(
+      [
+        makeEvent({
+          timestamp: '2026-01-05T08:00:00Z',
+          duration: 120,
+          data: { domain: 'reddit.com', path: '/r/examplesub/' },
+        }),
+      ],
+      ruleset
+    ).usageAt(NOW)
+
+    expect(usage?.secondsByRule).toEqual({
+      'reddit-sub-budget': 120,
+      'starter-reddit-friction': 120,
+    })
+  })
+
   it('an_event_that_spans_local_midnight_counts_only_its_part_inside_today', async () => {
     const usage = await query([redditEvent('2026-01-04T23:50:00Z', 1200)]).usageAt(NOW)
 
@@ -119,28 +167,5 @@ describe('DailyUsageQuery', () => {
 
   it('without_a_budgeted_rule_there_is_no_usage', async () => {
     expect(await query([], gatedRuleset()).usageAt(NOW)).toBeNull()
-  })
-})
-
-describe('frictionCandidates', () => {
-  it('finds_the_friction_rules_the_engine_applies_to_a_page', () => {
-    const ruleset = gatedRuleset()
-    const extra = {
-      id: 'reddit-sub-friction',
-      target: { kind: 'site' as const, domain: 'reddit.com', path: '/r/examplesub/**' },
-      mode: 'friction' as const,
-      schedules: [],
-      enabled: true,
-    }
-    const withExtra = { ...ruleset, rules: [...ruleset.rules, extra] }
-
-    const ids = frictionCandidates(
-      withExtra,
-      'https://www.reddit.com/r/examplesub/',
-      '2026-01-05T09:00:00Z',
-      bundledRulesCatalog()
-    ).map((rule) => rule.id)
-
-    expect(ids).toEqual(['starter-reddit-friction', 'reddit-sub-friction'])
   })
 })

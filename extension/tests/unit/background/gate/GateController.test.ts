@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, describe, expect, it } from 'vitest'
 import { fakeBrowser } from 'wxt/testing/fake-browser'
+import { IntentionNotes } from '../../../../src/background/gate/IntentionNotes'
 import type { GateView } from '../../../../src/shared/GateContract'
 import {
   GATE_URL,
@@ -155,6 +156,44 @@ describe('GateController', () => {
 
     expect(view.gate).toMatchObject({ level: 1, pauseSeconds: 15 })
     expect(view.context.visitsToday).toBe(2)
+  })
+
+  it('a_more_specific_friction_rule_inherits_the_escalation_of_the_pages_friction_candidates', async () => {
+    const harness = gateHarness()
+    await arrive(harness)
+    await harness.controller.close(TAB)
+    const subRule = {
+      id: 'reddit-sub-friction',
+      target: { kind: 'site' as const, domain: 'reddit.com', path: '/r/examplesub/**' },
+      mode: 'friction' as const,
+      schedules: [],
+      enabled: true,
+    }
+    harness.state.ruleset = {
+      ...harness.state.ruleset,
+      rules: [...harness.state.ruleset.rules, subRule],
+    }
+
+    const view = friction(await arrive(harness))
+
+    expect(view.gate).toMatchObject({ level: 1, pauseSeconds: 15 })
+    expect((await harness.escalation.get('reddit-sub-friction')).attemptCount).toBe(2)
+  })
+
+  it('a_typed_intention_only_has_to_differ_from_its_own_groups_last_one', async () => {
+    const harness = gateHarness()
+    for (const intention of ['check one thing now', 'look up a recipe']) {
+      await arriveAndAsk(harness)
+      await harness.controller.commit(TAB, 5, intention)
+      await harness.controller.leave(TAB)
+    }
+    await arriveAndAsk(harness)
+    await new IntentionNotes(fakeBrowser.storage.session).save('starter-x-friction', {
+      text: 'reply to one message',
+      minutes: 5,
+    })
+
+    expect((await harness.controller.commit(TAB, 5, 'Reply to one message')).accepted).toBe(true)
   })
 
   it('the_level_line_announces_the_next_pause_from_the_engine', async () => {

@@ -58,14 +58,17 @@ describe('gate stores', () => {
     expect(await tabs.get(7)).toEqual({ destination: null, searchPass: null })
   })
 
-  it('an_intention_repeats_the_last_one_regardless_of_case_and_spacing', async () => {
+  it('each_group_keeps_its_own_last_intention', async () => {
     const notes = new IntentionNotes(fakeBrowser.storage.session)
     await notes.save('rule-a', { text: 'Reply to  one message', minutes: 5 })
+    await notes.save('rule-b', { text: 'look up a recipe', minutes: 10 })
 
-    expect(await notes.repeatsLast('reply to one MESSAGE ')).toBe(true)
-    expect(await notes.repeatsLast('reply to two messages')).toBe(false)
-    expect(await notes.repeatsLast('')).toBe(false)
-    expect(await notes.of('rule-a')).toEqual({ text: 'Reply to  one message', minutes: 5 })
+    expect(await new IntentionNotes(fakeBrowser.storage.session).of('rule-a')).toEqual({
+      text: 'Reply to  one message',
+      minutes: 5,
+    })
+    expect(await notes.of('rule-b')).toEqual({ text: 'look up a recipe', minutes: 10 })
+    expect(await notes.of('rule-c')).toBeNull()
   })
 
   it('the_timer_alarm_follows_the_earliest_end_on_the_browser_clock', async () => {

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { intentionRequirements, intentionWordCount } from '@monki-focus/engine'
 import type { Gate } from '@monki-focus/rules/pure'
 import { useState } from 'preact/hooks'
 import { useI18n } from '../i18n/I18nContext'
@@ -12,7 +13,6 @@ import {
 import { Button } from '../ui/Button'
 import { Segmented } from '../ui/Segmented'
 import { TextField } from '../ui/TextField'
-import { wordCount } from '../ui/wordCount'
 
 export interface IntentionFormProps {
   gate: Gate
@@ -28,8 +28,6 @@ const EXAMPLES: readonly SimpleKey[] = [
   'gate.intentionExample.2',
   'gate.intentionExample.3',
 ]
-/** The word count the page shows; the service worker and the engine check it again. */
-const MIN_TYPED_WORDS = 3
 
 /**
  * After the pause: "What are you here for?" (optional at L0/L1, at least 3
@@ -39,13 +37,14 @@ const MIN_TYPED_WORDS = 3
  * the text field.
  */
 export function IntentionForm({ gate, site, exampleIndex, onCommit }: IntentionFormProps) {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const [text, setText] = useState('')
   const [minutes, setMinutes] = useState<IntentionMinutes | null>(null)
   const [rejection, setRejection] = useState<CommitRejection | null>(null)
   const [busy, setBusy] = useState(false)
   const required = gate.requiresTypedIntention
-  const wordsMissing = required && wordCount(text, locale) < MIN_TYPED_WORDS
+  // The engine's rule (§7.5); the service worker checks it again with the previous text.
+  const wordsMissing = intentionWordCount(text) < intentionRequirements(gate).minWords
   const valid = minutes !== null && !wordsMissing
   const example = EXAMPLES[exampleIndex % EXAMPLES.length] ?? 'gate.intentionExample.0'
 

@@ -5,7 +5,7 @@ import { useEffect, useId, useRef } from 'preact/hooks'
 import { useI18n } from '../i18n/I18nContext'
 import { Icon } from './Icon'
 import './TextField.css'
-import { wordCount } from './wordCount'
+import { intentionWordCount } from '@monki-focus/engine'
 
 export interface TextFieldProps {
   /** Already translated label, shown above the field. */
@@ -41,7 +41,7 @@ export function TextField({
   onSubmit,
   autoFocus = false,
 }: TextFieldProps) {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const id = useId()
   const ref = useRef<HTMLInputElement>(null)
   const hintId = `${id}-hint`
@@ -103,7 +103,7 @@ export function TextField({
           ) : null}
           {countWords ? (
             <p id={counterId} class="mf-text-field__counter">
-              {t('textField.wordCount', { count: wordCount(value, locale) })}
+              {t('textField.wordCount', { count: intentionWordCount(value) })}
             </p>
           ) : null}
         </div>
