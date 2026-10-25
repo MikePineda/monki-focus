@@ -37,6 +37,8 @@ export default defineConfig({
     () => import('@adonisjs/cors/cors_provider'),
     () => import('@adonisjs/i18n/i18n_provider'),
     () => import('@adonisjs/limiter/limiter_provider'),
+    // Signing keys, the unlock-token ledger and token issuance; checks the keys on web boot.
+    () => import('#providers/signing_keys_provider'),
     {
       // The HTTP server only (production, unless SCHEDULER=off): never ace or tests.
       file: () => import('#providers/scheduler_provider'),

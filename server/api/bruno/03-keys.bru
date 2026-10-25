@@ -1,0 +1,42 @@
+meta {
+  name: Keys
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/keys
+  body: none
+  auth: none
+}
+
+headers {
+  X-Client-Version: other/0.0.0
+}
+
+assert {
+  res.status: eq 200
+  res.headers.cache-control: eq max-age=300
+  res.body.keys: isArray
+}
+
+tests {
+  test("one active key per purpose, public material only", function () {
+    const keys = res.getBody().keys;
+    for (const purpose of ["unlock", "policy"]) {
+      const active = keys.filter((key) => key.purpose === purpose && key.status === "active");
+      expect(active.length).to.equal(1);
+    }
+    for (const key of keys) {
+      expect(Object.keys(key)).to.not.include("d");
+      expect(key.kid).to.match(/^[A-Za-z0-9_-]{16}$/);
+      expect(key.x).to.match(/^[A-Za-z0-9_-]{43}$/);
+    }
+  });
+}
+
+docs {
+  `v1.keys.index`: the public signing keys (openapi.yaml `getKeys`). Devices
+  pin them at enrolment and adopt a rotated key only through its
+  endorsement. Never a private key.
+}

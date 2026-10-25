@@ -20,6 +20,7 @@
 import { Env } from '@adonisjs/core/env'
 import { parseAddressRanges } from '#http/address_ranges'
 import { isLoopbackHost, isLoopbackUrl } from '#http/loopback_address'
+import { parseEnvSigningKey } from '#domain/keys/env_signing_key'
 
 /** `1.2.3` or `1.2.3-beta.1`: what clients send after `<platform>/`. */
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/
@@ -190,6 +191,9 @@ export function crossFieldProblems(values: {
   E2E_MODE?: boolean
   HOST: string
   APP_URL: string
+  /** Released secret: only checked here, never printed. */
+  UNLOCK_SIGNING_KEY?: string
+  UNLOCK_SIGNING_KEY_ID?: string
 }): string[] {
   const problems: string[] = []
   // Test-support routes (fake clock, scheduler tick) and test-grade settings
@@ -198,6 +202,17 @@ export function crossFieldProblems(values: {
   if (testGrade && !(isLoopbackHost(values.HOST) && isLoopbackUrl(values.APP_URL))) {
     problems.push(
       'NODE_ENV=test and E2E_MODE need a loopback HOST and APP_URL (127.0.0.0/8, ::1 or localhost)'
+    )
+  }
+  // The operator's unlock key: both variables or neither, a valid Ed25519
+  // PKCS#8 key and its own kid. The problem names the reason, never the key.
+  const signingKey = parseEnvSigningKey({
+    key: values.UNLOCK_SIGNING_KEY,
+    kid: values.UNLOCK_SIGNING_KEY_ID,
+  })
+  if (!signingKey.ok) {
+    problems.push(
+      `UNLOCK_SIGNING_KEY and UNLOCK_SIGNING_KEY_ID must be set together: an Ed25519 private key as unpadded base64url PKCS#8 DER and its kid (${signingKey.reason})`
     )
   }
   return problems

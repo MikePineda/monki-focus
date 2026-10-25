@@ -9,9 +9,11 @@
 | - /api/health, /api/health/live: infrastructure probes, outside /v1 on
 |   purpose (Docker, Swarm and uptime monitors depend on them).
 | - /api/v1: the versioned API, per-IP throttle.
+|   - /api/v1/keys: public signing keys (openapi.yaml `getKeys`), no auth,
+|     `X-Client-Version` gate.
 |   - /api/v1/device/*: device API (packages/protocol openapi.yaml), Bearer
 |     device tokens, `X-Client-Version` gate (426 for old clients), no CSRF.
-|     Routes land with S3 (keys) and S4 (devices).
+|     Routes land with S4 (devices), S6 (unlocks) and S7.
 |   - /api/v1/auth/*: login (two steps with TOTP), register, logout, me.
 |   - /api/v1/me/*: the signed-in user's profile, password, two-factor,
 |     export and deletion.
@@ -34,6 +36,7 @@ import { apiThrottle } from '#start/limiter'
 import { testSupportEnabled } from '#services/test_support'
 
 const HealthChecksController = () => import('#controllers/health_checks_controller')
+const KeysController = () => import('#controllers/keys_controller')
 const TestSupportController = () => import('#controllers/test_support_controller')
 const SessionsController = () => import('#controllers/sessions_controller')
 const RegistrationsController = () => import('#controllers/registrations_controller')
@@ -50,8 +53,13 @@ router
     router
       .group(() => {
         router
+          .get('keys', [KeysController, 'index'])
+          .as('keys.index')
+          .use(middleware.clientVersion())
+
+        router
           .group(() => {
-            // Device API routes (S3, S4, S6, S7).
+            // Device API routes (S4, S6, S7).
           })
           .prefix('device')
           .as('device')
