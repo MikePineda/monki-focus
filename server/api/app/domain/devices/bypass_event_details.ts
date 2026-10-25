@@ -57,10 +57,22 @@ export function checkBypassDetails(
   kind: ClientBypassKind,
   value: unknown
 ): Outcome<BypassDetails, DetailsProblem> {
+  return checkDetails(BYPASS_DETAIL_RULES[kind], value)
+}
+
+/**
+ * The allowlist check itself, for any table of per-key rules (the client
+ * kinds above, the server's guardian-link kinds in
+ * app/domain/guardians/guardian_event_details.ts): only listed keys, each
+ * an enum value or a bounded integer.
+ */
+export function checkDetails(
+  rules: Readonly<Record<string, DetailRule>>,
+  value: unknown
+): Outcome<BypassDetails, DetailsProblem> {
   if (value === undefined || value === null) return succeed({})
   if (typeof value !== 'object' || Array.isArray(value)) return refuse('not_an_object')
 
-  const rules = BYPASS_DETAIL_RULES[kind]
   const details: Record<string, DetailValue> = {}
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
     const rule = Object.hasOwn(rules, key) ? rules[key] : undefined
