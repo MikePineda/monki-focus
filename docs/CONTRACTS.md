@@ -16,6 +16,7 @@ a contract is a change to its fixtures first.
 | Native messaging bridge         | `macos` bridge contract (length-prefixed JSON, five methods)                                | M5           | planned |
 | Dashboard API: accounts         | `server/api/start/routes.ts`, this file ([Dashboard API](#dashboard-api-server))            | S2           | active  |
 | Dashboard API: devices          | `server/api/start/routes.ts`, this file ([Devices](#devices-dashboard))                     | S4           | active  |
+| Dashboard API: guardians        | `server/api/start/routes.ts`, this file ([Guardians](#guardians-dashboard))                 | S5           | active  |
 | Rules feed signature            | detached Ed25519 signature, offline `rules-signing` key                                     | 0.2          | planned |
 
 ## Rules
@@ -76,7 +77,8 @@ later package. Implemented (S3, S4): `GET /keys`, `POST /device/enroll`,
   idempotent per device and `dedupeKey`. Client kinds only (the schema's
   enum); the server raises `heartbeat_missing`, `heartbeat_resumed`,
   `key_pin_mismatch`, `protection_disabled`, `deadman_threshold_raised`,
-  `device_enrolled` and `device_revoked` itself, under dedupe keys a device
+  `device_enrolled`, `device_revoked` and the guardian link events
+  ([Guardians](#guardians-dashboard)) itself, under dedupe keys a device
   cannot write. `details` are a strict allowlist per kind, enum values and
   bounded integers only, never a free string (so no domain, path, title or
   slug fits): `emergency_override` takes `scope` (`rule`, `bedtime`),
@@ -200,8 +202,10 @@ Bearer tokens) is a separate contract in `packages/protocol/openapi.yaml`.
 - **Export** (`format: "monki-focus.export"`, `version: 1`): `exportedAt`,
   `user` (plus `updatedAt`), `twoFactor { enabled, enabledAt, recoveryCodesRemaining }`,
   `invitationsCreated`, `devices` (`device[]`), `bypassEvents`
-  (`{ id, kind, source, deviceUuid, details, occurredAt, resolvedAt, createdAt }`).
-  Never a hash, seed, token, code or link. Later packages add their
+  (`{ id, kind, source, deviceUuid, details, occurredAt, resolvedAt, createdAt }`),
+  `guardianLinks` (`link` plus `revokedAt`, both sides, revoked ones too;
+  see [Guardians](#guardians-dashboard)).
+  Never a hash, seed, token, code, link or ntfy topic. Later packages add their
   sections; `?format=aw` (ActivityWatch) arrives with analytics.
 - **Operators**: `node ace user:reset-password <email>` (prompts twice, or
   `--generate`; `--disable-two-factor` for a lost authenticator) signs the
@@ -236,3 +240,124 @@ revokedAt, createdAt }`. Never a token, hash or boot id. `enrolledKids`
 | Code                     | Status | When                               |
 | ------------------------ | ------ | ---------------------------------- |
 | `E_DEVICE_LIMIT_REACHED` | 409    | A code while 20 devices are active |
+
+### Guardians (dashboard)
+
+A ward invites a trusted person (the guardian) who approves unlocks and
+sees only aggregates. Session and CSRF like every dashboard route, under
+`/guardian` (plus `/auth/register-guardian`). Every `:id` is looked up
+through the signed-in user, and a route meant for one side through that
+side only: a stranger, a revoked or lapsed link, and the other side of a
+one-sided route all answer 404 `E_ROW_NOT_FOUND`.
+
+| Method | Path                                    | Who      | Body                                                                  | Answer                                                                    |
+| ------ | --------------------------------------- | -------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| POST   | `/guardian/pairing-codes`               | ward     |                                                                       | 201 `{ code, expiresAt, qrPayload }` (`Cache-Control: no-store`)          |
+| POST   | `/guardian/pairings`                    | guardian | `{ code }`                                                            | 201 `{ link }`, pending                                                   |
+| POST   | `/auth/register-guardian`               | guest    | `{ code, email, fullName, password, locale?, timeZone?, weekStart? }` | 201 `{ user, link }`, signed in, link pending                             |
+| GET    | `/guardian/links`                       | both     |                                                                       | `{ links: link[] }`: pending and active, both directions, newest first    |
+| POST   | `/guardian/links/:id/confirm`           | ward     | `{ password }`                                                        | `{ link }`, active                                                        |
+| PATCH  | `/guardian/links/:id`                   | guardian | `{ maxUnlockMinutes?, allowNotificationActions? }`                    | `{ link }`                                                                |
+| POST   | `/guardian/links/:id/revoke`            | both     |                                                                       | 204 when it ended; 200 `{ link }` (status `revoking`) when the ward waits |
+| POST   | `/guardian/links/:id/cancel-revocation` | ward     |                                                                       | `{ link }`, active again                                                  |
+| POST   | `/guardian/links/:id/rotate-topic`      | both     |                                                                       | `{ link }`; the guardian also gets `{ subscription }` (`no-store`)        |
+| GET    | `/guardian/links/:id/subscribe`         | guardian |                                                                       | `{ subscription: { topic, url, deepLink, qrPayload } }` (`no-store`)      |
+| GET    | `/guardian/wards/:wardUserId/summary`   | guardian |                                                                       | the guardian summary (below), `no-store`                                  |
+
+- `link` is `{ id, role: ward|guardian, status: pending|active|revoking,
+wardUserId, counterpart: { email, fullName }, guardianTwoFactorEnabled,
+maxUnlockMinutes, allowNotificationActions, confirmedAt,
+revocationRequestedAt, revocationEffectiveAt, createdAt }`, never the
+  ntfy topic. `counterpart` is the other person, so the ward confirms
+  exactly whom they let in. The export adds `guardianLinks` (both sides,
+  revoked ones too, plus `revokedAt`), never a topic.
+- **Pairing codes**: 6 digits, `PAIRING_CODE_TTL_MINUTES` (10), single use,
+  one pending per ward (a new code replaces it; unique index and a lock on
+  the ward's row), 10 per hour per ward. The first 3 digits find the code,
+  all 6 prove it, both stored as HMACs keyed with `APP_KEY`. Each guess is
+  charged before it is checked: 10 failures per hour per IP (shared by both
+  redeeming routes), 10 per hour per account (signed in), and the code's
+  own counter (the fifth wrong guess kills it, whatever the IP). Wrong,
+  expired, used and locked codes answer the same 400
+  `E_INVALID_PAIRING_CODE`. A typed space or dash (`123 456`) is fine.
+- **QR payload**: `<APP_URL>/pair#<code>`, the server URL and the code only
+  (the fragment never reaches a server log); the dashboard reads it and
+  posts the code.
+- **Guardian sign-up**: the only sign-up open while `REGISTRATION_OPEN` is
+  off. A valid code creates an ordinary (never admin) account and its
+  pending link in one transaction, consuming the code. Every refusal (any
+  code problem, an email already registered) is the same 400
+  `E_GUARDIAN_REGISTRATION_REJECTED`, the password hashed either way.
+- **Activation**: a link stays `pending` (it grants nothing) until the ward
+  confirms it with their password, and only once the guardian has two-step
+  verification on (`/me/two-factor`, the regular flow); before that, 409
+  `E_GUARDIAN_TWO_FACTOR_REQUIRED`. A guardian cannot turn two-step
+  verification off while guarding (409 on `DELETE /me/two-factor`); if an
+  operator does, the guardian reaches nothing until it is back on.
+  Guardian-side settings, subscription and rotation need it too (409).
+- **Rules**: never oneself (409 `E_PAIRING_WITH_SELF`), at most one live
+  (pending or active) link per pair (409 `E_GUARDIAN_LINK_EXISTS`); a ward
+  may have several guardians. `maxUnlockMinutes` starts at 30 (or the
+  instance cap if lower) and takes whole minutes from 1 to
+  `min(UNLOCK_TOKEN_MAX_MINUTES, 240)`; `allowNotificationActions` (default
+  true) off means unlocks are decided in the dashboard only.
+- **Leaving**: the guardian leaves at once (204). The ward of an active
+  link asks and waits `WARD_REVOCATION_COOLDOWN_HOURS` (24; 0 means at
+  once): 200 with `revocationEffectiveAt`; asking again keeps the first
+  deadline, and `cancel-revocation` withdraws it (409
+  `E_NO_REVOCATION_PENDING` otherwise). The guardian keeps the link until
+  the deadline and loses it exactly then (every lookup reads the
+  deadline); the `ward_revocation_effective` job stores the final state on
+  its next tick. A pending link ends at once, whoever asks. Revoking
+  changes only the link: devices, events and every other row of the ward
+  stay. Deleting either account ends its links the same way first.
+- **ntfy topic**: each link has its own capability topic,
+  `NTFY_TOPIC_PREFIX` (`mf-`) plus 26 lowercase base32 characters (128
+  random bits), told only to the guardian (`subscribe`, `rotate-topic`).
+  `url` and `qrPayload` are the topic on `NTFY_PUBLIC_URL` (else
+  `NTFY_BASE_URL`; 409 `E_NOTIFICATIONS_UNAVAILABLE` without either),
+  `deepLink` the `ntfy://` link (`?secure=false` on plain http). Rotating
+  (active links, 10 per hour per user) moves every unsent queued notice to
+  the new topic; when the ward rotates, one neutral `topic_rotated` notice
+  goes to the old topic (the last message it ever gets) so the guardian
+  knows to subscribe again. A link not active yet has no subscription (409
+  `E_GUARDIAN_LINK_NOT_ACTIVE`).
+- **Notices to the guardian** are rows of `notification_outbox` (channel
+  `ntfy`, the link's topic, a payload of reason codes and ids only:
+  `{ type: "guardian_notice", kind, linkId, effectiveAt? }`), queued in the
+  transaction of the change: `revocation_requested`, `revocation_cancelled`,
+  `pairing_ended` (the ward's cooldown ran out, the ward left with no
+  cooldown, or the ward deleted the account) and `topic_rotated`. The ntfy
+  notifier (S6) publishes them in the guardian's language, neutrally
+  ("pairing ended").
+- **Ward's log**: link changes are server bypass events (`source:
+"server"`, keys `s:<kind>:<link id>[:<instant>]`, details allowlisted to
+  enums and bounded integers): `guardian_linked`,
+  `guardian_revocation_requested` (`cooldownHours` 0-168),
+  `guardian_revocation_cancelled`, `guardian_unlinked` (`endedBy`
+  `ward|guardian`, `reason` `revoked|account_deleted`) and
+  `guardian_topic_rotated` (by the ward). The notices above announce them;
+  S6's `BypassAlerts` must not notify `guardian_*` kinds a second time.
+- **Guardian summary**, an allowlist (never a URL, title, domain, app,
+  device name or id, dedupe key or free text): `{ wardUserId, generatedAt,
+score: { today, last7Days }, unlocks: { last7Days: { requested, approved,
+denied } }, bypasses: { last7Days, openGaps, recent: [{ id, kind, source,
+details, occurredAt, resolvedAt, acknowledgedAt }] } }`. `score` is null
+  until activity sync exists (phase 4) and `unlocks` 0 until unlock
+  requests exist (S6); `recent` covers the last 7 days, newest first, 50
+  at most; `openGaps` counts open dead-man gaps. `details` keep only keys
+  some kind's allowlist knows, each a boolean, a safe integer or a short
+  code. Only through an active link whose guardian has two-step
+  verification on; anything else is 404.
+
+| Code                               | Status | When                                                         |
+| ---------------------------------- | ------ | ------------------------------------------------------------ |
+| `E_INVALID_PAIRING_CODE`           | 400    | Wrong, expired, used or locked pairing code                  |
+| `E_GUARDIAN_REGISTRATION_REJECTED` | 400    | Any refused guardian sign-up (identical whatever the reason) |
+| `E_PAIRING_WITH_SELF`              | 409    | Redeeming one's own code                                     |
+| `E_GUARDIAN_LINK_EXISTS`           | 409    | The pair already has a pending or active link                |
+| `E_GUARDIAN_TWO_FACTOR_REQUIRED`   | 409    | The guardian has no second factor (or wants to turn it off)  |
+| `E_GUARDIAN_LINK_NOT_PENDING`      | 409    | Confirming a link that is already active                     |
+| `E_GUARDIAN_LINK_NOT_ACTIVE`       | 409    | Subscribing or rotating before the ward confirmed            |
+| `E_NO_REVOCATION_PENDING`          | 409    | Cancelling when the ward has not asked to leave              |
+| `E_NOTIFICATIONS_UNAVAILABLE`      | 409    | Neither `NTFY_PUBLIC_URL` nor `NTFY_BASE_URL` is set         |
