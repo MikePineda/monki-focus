@@ -81,7 +81,7 @@
     <string name="bedtime_body_until">Apps you limited stay closed until %1$s.</string>
 
     <!-- Accessibility service (Settings → Accessibility → monki-focus). -->
-    <string name="accessibility_service_description">monki-focus reads the screen of the apps and browsers you set rules for, to recognise feeds such as Reels and Shorts, and the address bar of supported browsers. It also watches its own pages in Settings so protection is not turned off by accident. It never stores or sends what is on screen: only the app, the site and which kind of screen it is, on this phone.</string>
+    <string name="accessibility_service_description">monki-focus reads the screen of the apps and browsers you set rules for, to recognise feeds such as Reels and Shorts, and the address bar of supported browsers. It also watches its own pages in Settings so protection is not turned off by accident. It never stores or sends what is on screen. For statistics it keeps, on this phone only, the app, the website’s domain and, for known sites only, which section (such as reddit.com/r). Private (incognito) tabs cannot be told apart, so their domains are counted too.</string>
 
     <!-- Bounce card over our own Settings screens. -->
     <string name="bounce_title">This screen can turn off monki-focus</string>
@@ -150,7 +150,7 @@
     <string name="onboarding_disclosure_intro">monki-focus uses Android’s Accessibility service to enforce the rules you set. Before you turn it on, here is exactly what it does.</string>
     <string name="onboarding_disclosure_reads_title">What it reads</string>
     <string name="onboarding_disclosure_reads_apps">The structure of the screen (which kind of screen is open) in Instagram, YouTube, your browsers and Android Settings: to tell Reels and Shorts apart and to protect its own settings.</string>
-    <string name="onboarding_disclosure_reads_url">In browsers, only the text of the address bar, reduced at once to the site and the first part of the path (for example reddit.com/r).</string>
+    <string name="onboarding_disclosure_reads_url">In browsers, only the text of the address bar, reduced at once to the website’s domain and, for known sites only, the section (for example reddit.com/r); nothing else of the address is kept. Private (incognito) tabs cannot be told apart, so their domains are counted in your statistics too, on this phone only.</string>
     <string name="onboarding_disclosure_never_title">What it never does</string>
     <string name="onboarding_disclosure_never_store">It never reads or keeps your messages, posts or what you type, and stores no screen text.</string>
     <string name="onboarding_disclosure_never_send">It sends nothing anywhere: the app has no internet permission. Everything stays on this phone.</string>

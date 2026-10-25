@@ -9,8 +9,8 @@ package dev.monkifocus.android.feature.onboarding.flow
  * starts from the beginning.
  */
 object OnboardingProgressCodec {
-    /** Bump when the disclosure says something new. */
-    const val DISCLOSURE_VERSION = 1
+    /** Bump when the disclosure says something new (2: what statistics keep of browser pages; private tabs). */
+    const val DISCLOSURE_VERSION = 2
 
     private const val FORMAT = "v1"
     private const val SEPARATOR = "|"
