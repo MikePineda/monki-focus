@@ -669,7 +669,8 @@ decisions are folded into the sections above):
     `reddit.feed`; YouTube subscriptions (`youtube.subscriptions`) and
     explore/trending/hashtags (`youtube.explore`) are feeds, while the You
     page (`/feed/you`: history, playlists, watch later) is `youtube.library`
-    (utility), so hiding YouTube's feeds never empties it; Instagram Explore
+    (utility, default category `video` at level 50, neutral like a watch
+    page), so hiding YouTube's feeds never empties it; Instagram Explore
     search is `instagram.search` (utility). The starter preset hides
     `youtube.explore` but not subscriptions or user pages.
 

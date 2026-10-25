@@ -156,6 +156,14 @@
     {
       "target": {
         "kind": "surface",
+        "surface": "youtube.library"
+      },
+      "level": 50,
+      "category": "video"
+    },
+    {
+      "target": {
+        "kind": "surface",
         "surface": "reddit.user_feed"
       },
       "level": 0,
