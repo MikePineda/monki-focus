@@ -33,7 +33,7 @@ class ActionSelectorTest {
         content: Content = Content.SHOW,
         ruleId: String? = null,
         reason: ReasonCode = ReasonCode.RULE_MATCH,
-    ) = Decision(access, content, ruleId, reason, gate = null, explanationKey = ExplanationKey.BLOCKED_BY_RULE)
+    ) = Decision(access, content, ruleId, reason, gate = null, explanationKey = ExplanationKey.BLOCKED_BY_RULE, validUntil = null)
 
     private fun select(
         decision: Decision,
