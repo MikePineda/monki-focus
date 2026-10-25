@@ -6,6 +6,8 @@ import SwiftUI
 /// item. There is no hidden mode; quitting is one click away in the panel.
 @main
 struct MonkiFocusApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         MenuBarExtra("menubar.title", systemImage: "leaf") {
             TodayPanel()

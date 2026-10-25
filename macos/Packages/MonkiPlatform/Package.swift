@@ -3,8 +3,8 @@
 
 import PackageDescription
 
-// Thin adapters between MonkiCore and macOS: system clocks, GRDB storage and,
-// in later work packages, watchers, notifications and app blocking.
+// Thin adapters between MonkiCore and macOS: system clocks, GRDB storage,
+// the activity watchers and, in later work packages, notifications and app blocking.
 let package = Package(
     name: "MonkiPlatform",
     platforms: [.macOS(.v14)],
@@ -31,6 +31,7 @@ let package = Package(
             dependencies: [
                 "MonkiPlatform",
                 .product(name: "MonkiCore", package: "MonkiCore"),
+                .product(name: "MonkiCoreTesting", package: "MonkiCore"),
                 .product(name: "GRDB", package: "GRDB.swift"),
             ]
         ),

@@ -2,6 +2,7 @@
 
 import Foundation
 import MonkiCore
+import MonkiCoreTesting
 
 /// Synthetic analytics inputs (generic domains, app ids and categories), the
 /// Swift twin of the arbitraries in

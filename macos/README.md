@@ -4,9 +4,9 @@ Native menu-bar app: Swift 6, SwiftUI, macOS 14 (Sonoma) or later. Bundle id
 `dev.monkifocus.mac`. It has no Dock icon (`LSUIElement`) but its menu-bar
 icon is always visible, and **Quit** is always one click away in the panel.
 
-Status: work packages M1 (scaffold), M2 (decision engine) and M3 (analytics
-core). The "Today" panel and Settings window are placeholders; the watchers,
-storage, bridge relay and blocking arrive in M4-M9.
+Status: work packages M1 (scaffold), M2 (decision engine), M3 (analytics
+core) and M4 (watchers and storage). The "Today" panel and Settings window are
+placeholders; the bridge relay, sync and blocking arrive in M5-M9.
 
 - **M2, decision engine** (`MonkiCore/Sources/MonkiCore/Engine`, `Rules`,
   `Validation`): `decide`, escalation, rule changes, schedules and bedtime,
@@ -18,6 +18,17 @@ storage, bridge relay and blocking arrive in M4-M9.
   TypeScript file). It reuses the engine's URL normalisation, target
   matching, specificity and category ranking (`mostSpecificAssignment`, also
   behind `decide`'s bedtime level), zoned time and strict instants.
+
+- **M4, activity capture** (`MonkiCore/Sources/MonkiCore/Capture`, pure, and
+  `MonkiPlatform/Sources/MonkiPlatform/Capture` + `Storage`): the window
+  watcher (frontmost app; the focused window title only when the user turned
+  titles on, off by default, and granted Accessibility), the AFK watcher (idle
+  time every 5 s, 180 s threshold; sleep, display sleep, lock and session
+  switches force AFK), the heartbeat queue (ActivityWatch pulsetime merge,
+  batch writes every 10 s and at sleep, AFK and quit) and the GRDB buckets and
+  events tables. Each observation is a heartbeat that starts at the previous
+  one, so consecutive events of a bucket touch and never overlap
+  (`StateHeartbeatEmitter`, proven by seeded property tests).
 
 Both run every shared fixture of `packages/rules/fixtures` (all kinds except
 `unlock-token`, which the token verifier will run), plus seeded property tests.
@@ -75,7 +86,7 @@ Tests use Swift Testing
 | `Bridge/`                    | `monki-bridge`, the native messaging host, embedded at `MonkiFocus.app/Contents/Helpers/`. |
 | `AppTests/`                  | App tests: string-catalog parity, design-token colours, the embedded bridge binary.      |
 | `Packages/MonkiCore`         | Pure domain (decision engine and analytics core): no AppKit, no SwiftUI, no I/O, no implicit clock. `MonkiCoreTesting` holds fakes (`FixedClock`, `FakeMonotonicClock`) and shared-fixture access. |
-| `Packages/MonkiPlatform`     | Adapters: system clocks, GRDB storage (GRDB 7.11.1, pinned exactly; `Package.resolved` committed). |
+| `Packages/MonkiPlatform`     | Adapters: system clocks, activity watchers behind protocols (`SessionEventSource`, `ApplicationActivationSource`, `IdleTimeSource`, `RepeatingTimerScheduler`, ...), GRDB storage (GRDB 7.11.1, pinned exactly; `Package.resolved` committed) in `~/Library/Application Support/monki-focus/activity.sqlite` (0600, WAL). |
 
 ## Conventions
 
