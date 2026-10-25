@@ -3,7 +3,8 @@
   "extends": ["//"],
   "tasks": {
     "prepare:wxt": {
-      "outputs": [".wxt/**"]
+      "outputs": [".wxt/**"],
+      "dependsOn": ["^build"]
     },
     "typecheck": {
       "dependsOn": ["^build", "prepare:wxt"]
