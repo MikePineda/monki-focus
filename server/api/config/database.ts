@@ -12,7 +12,15 @@ const connection = {
 }
 
 /** Pool of the limiter's own connection (see `limiter` below). */
-export const LIMITER_POOL_MAX = 2
+export const LIMITER_POOL_MAX = 4
+
+/**
+ * How long a throttled request waits for a limiter connection. Under a
+ * flood or a slow Postgres the charge fails after 5 s (and the request is
+ * refused, never let through) instead of stalling `/api/v1` for knex's
+ * default 60 s.
+ */
+export const LIMITER_ACQUIRE_TIMEOUT_MS = 5000
 
 const dbConfig = defineConfig({
   connection: 'postgres',
@@ -41,12 +49,14 @@ const dbConfig = defineConfig({
      * The same database for the limiter store only (`rate_limits`), so its
      * counters are always committed on their own and never join (or roll
      * back with) another query's transaction, the test suite's global one
-     * included. Small pool: one upsert per throttled request.
+     * included. Small pool: one upsert per throttled request, and a short
+     * wait for a free connection (fail fast, still closed).
      */
     limiter: {
       client: 'pg',
       connection,
-      pool: { min: 0, max: LIMITER_POOL_MAX },
+      // knex waits min(acquireConnectionTimeout, pool.acquireTimeoutMillis), else 60 s.
+      pool: { min: 0, max: LIMITER_POOL_MAX, acquireTimeoutMillis: LIMITER_ACQUIRE_TIMEOUT_MS },
       schemaGeneration: { enabled: false },
     },
   },
