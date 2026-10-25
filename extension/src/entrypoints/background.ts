@@ -85,6 +85,7 @@ export default defineBackground(() => {
   const bridge = createNativeBridgeModule({
     connectNative: (hostName) => browser.runtime.connectNative(hostName),
     readLastError: () => browser.runtime.lastError,
+    permissions: browser.permissions,
     extensionVersion: extensionVersion(browser.runtime),
     browserKind: browserKind(navigator),
     session: browser.storage.session,

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { useI18n } from '../i18n/I18nContext'
 import type { DownloadFile } from '../pages/FileDownload'
 import type { CommandClient } from '../shared/CommandClient'
+import type { OptionalPermissionsApi } from '../shared/NativeMessagingPermission'
 import type { PermissionsApi } from '../shared/SiteOrigins'
 import { Icon, type LucideIcon } from '../ui/Icon'
 import { AboutSection } from './about/AboutSection'
@@ -31,6 +32,8 @@ const ICONS: Record<OptionsSection, LucideIcon> = {
 export interface OptionsAppProps {
   client: CommandClient
   permissions: PermissionsApi
+  /** API permissions: the optional `nativeMessaging` of the Mac app bridge. */
+  optionalPermissions: OptionalPermissionsApi
   download: DownloadFile
   version: string
   /** Seam for tests; the page reads and follows `location.hash`. */
@@ -41,6 +44,7 @@ export interface OptionsAppProps {
 export function OptionsApp({
   client,
   permissions,
+  optionalPermissions,
   download,
   version,
   initialHash,
@@ -82,7 +86,9 @@ export function OptionsApp({
         {section === 'rules' ? (
           <RulesSection client={client} permissions={permissions} download={download} />
         ) : null}
-        {section === 'preferences' ? <PreferencesSection client={client} /> : null}
+        {section === 'preferences' ? (
+          <PreferencesSection client={client} optionalPermissions={optionalPermissions} />
+        ) : null}
         {section === 'stats' ? <StatsSection client={client} download={download} /> : null}
         {section === 'about' ? <AboutSection version={version} /> : null}
       </section>

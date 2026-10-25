@@ -16,10 +16,13 @@ function stubEvent() {
 
 /**
  * Fills the APIs `fakeBrowser` leaves unimplemented (they throw) but the real
- * service worker calls on start: `idle` and
- * `extension.isAllowedIncognitoAccess`. Call after `fakeBrowser.reset()`.
+ * service worker calls on start: `idle`, `extension.isAllowedIncognitoAccess`
+ * and the `permissions` the Mac app bridge checks (`nativeMessaging` is not
+ * granted unless `nativeMessaging` is set). Call after `fakeBrowser.reset()`.
  */
-export function stubTrackingApis(options: { idleState?: string; incognito?: boolean } = {}): void {
+export function stubTrackingApis(
+  options: { idleState?: string; incognito?: boolean; nativeMessaging?: boolean } = {}
+): void {
   Object.assign(fakeBrowser.idle, {
     queryState: async () => options.idleState ?? 'active',
     setDetectionInterval: () => undefined,
@@ -27,5 +30,10 @@ export function stubTrackingApis(options: { idleState?: string; incognito?: bool
   })
   Object.assign(fakeBrowser.extension, {
     isAllowedIncognitoAccess: async () => options.incognito ?? false,
+  })
+  Object.assign(fakeBrowser.permissions, {
+    contains: async () => options.nativeMessaging ?? false,
+    onAdded: stubEvent(),
+    onRemoved: stubEvent(),
   })
 }

@@ -3,18 +3,21 @@ import { useEffect, useState } from 'preact/hooks'
 import { useI18n } from '../../i18n/I18nContext'
 import type { LanguagePreference } from '../../i18n/LanguagePreference'
 import type { CommandClient } from '../../shared/CommandClient'
+import type { OptionalPermissionsApi } from '../../shared/NativeMessagingPermission'
 import type { PreferenceChange, Preferences } from '../../shared/PreferenceContract'
 import type { ThemePreference } from '../../theme/ThemePreference'
 import { Banner } from '../../ui/Banner'
 import { Checkbox } from '../../ui/Checkbox'
 import { SelectField } from '../../ui/SelectField'
+import { MacAppConnection } from './MacAppConnection'
 
 export interface PreferencesSectionProps {
   client: CommandClient
+  optionalPermissions: OptionalPermissionsApi
 }
 
-/** Language, theme and the two tracking choices; each change saves at once. */
-export function PreferencesSection({ client }: PreferencesSectionProps) {
+/** Language, theme, the two tracking choices and the Mac app connection; each change saves at once. */
+export function PreferencesSection({ client, optionalPermissions }: PreferencesSectionProps) {
   const { t } = useI18n()
   const [preferences, setPreferences] = useState<Preferences | null>(null)
   const [failed, setFailed] = useState(false)
@@ -91,6 +94,7 @@ export function PreferencesSection({ client }: PreferencesSectionProps) {
           onChange={(value) => change({ key: 'tracking.countAudibleWhileIdle', value })}
         />
       </section>
+      <MacAppConnection permissions={optionalPermissions} />
     </div>
   )
 }
