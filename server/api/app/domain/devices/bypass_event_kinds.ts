@@ -58,6 +58,16 @@ export const SERVER_BYPASS_KINDS = [
   'device_enrolled',
   /** The user revoked a device from the dashboard. */
   'device_revoked',
+  /**
+   * Guardian links (app/domain/guardians/guardian_event_details.ts lists
+   * them with their details allowlist): confirmed, the ward asked to
+   * leave or changed their mind, ended, topic rotated by the ward.
+   */
+  'guardian_linked',
+  'guardian_revocation_requested',
+  'guardian_revocation_cancelled',
+  'guardian_unlinked',
+  'guardian_topic_rotated',
 ] as const
 
 export type ClientBypassKind = (typeof CLIENT_BYPASS_KINDS)[number]
