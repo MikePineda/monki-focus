@@ -8,7 +8,8 @@ import dev.monkifocus.android.core.domain.rules.CategoryAssignment
  * always with the default categories. Uncategorised is 50.
  *
  * - Known path: the most specific assignment by §4 steps 1–4; on a full tie a
- *   user assignment beats a default, then the lower level, then list order.
+ *   user assignment beats a default, then the lower level, then list order
+ *   ([mostSpecificAssignment], shared with the analytics `categorise`).
  * - Unknown path (§5.5): the minimum level over every assignment of the
  *   domain: site targets of the domain with any path and surface targets of
  *   its profile (`youtube.com` counts as 0 because of Shorts).
@@ -35,10 +36,25 @@ private fun compareAssignments(
 
 private fun rankedAssignments(
     userAssignments: List<CategoryAssignment>,
-    catalog: RulesCatalog,
+    defaults: List<CategoryAssignment>,
 ): List<RankedAssignment> =
-    (userAssignments.map { it to true } + catalog.defaultCategories.map { it to false })
+    (userAssignments.map { it to true } + defaults.map { it to false })
         .mapIndexed { order, (assignment, isUser) -> RankedAssignment(assignment, isUser, order) }
+
+/**
+ * The assignment matching the observation (§3) that wins by §4 steps 1–4,
+ * then user over default, the lower level and list order; null without a match.
+ */
+internal fun mostSpecificAssignment(
+    observation: ResolvedObservation,
+    userAssignments: List<CategoryAssignment>,
+    defaults: List<CategoryAssignment>,
+    catalog: RulesCatalog,
+): CategoryAssignment? =
+    rankedAssignments(userAssignments, defaults)
+        .filter { matchesTarget(it.assignment.target, observation, catalog) }
+        .minWithOrNull { a, b -> compareAssignments(a, b, catalog) }
+        ?.assignment
 
 internal fun categoryLevelOf(
     observation: ResolvedObservation,
@@ -46,15 +62,10 @@ internal fun categoryLevelOf(
     catalog: RulesCatalog,
 ): Int {
     if (observation is ResolvedObservation.Rejected) return UNCATEGORISED_LEVEL
-    val ranked = rankedAssignments(userAssignments, catalog)
     if (observation is ResolvedObservation.Site && !observation.pathKnown) {
-        return ranked
+        return rankedAssignments(userAssignments, catalog.defaultCategories)
             .filter { matchesHostOfUnknownPath(it.assignment.target, observation.host, catalog) }
             .minOfOrNull { it.assignment.level } ?: UNCATEGORISED_LEVEL
     }
-    return ranked
-        .filter { matchesTarget(it.assignment.target, observation, catalog) }
-        .minWithOrNull { a, b -> compareAssignments(a, b, catalog) }
-        ?.assignment
-        ?.level ?: UNCATEGORISED_LEVEL
+    return mostSpecificAssignment(observation, userAssignments, catalog.defaultCategories, catalog)?.level ?: UNCATEGORISED_LEVEL
 }
