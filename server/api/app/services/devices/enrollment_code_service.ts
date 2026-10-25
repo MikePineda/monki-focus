@@ -62,7 +62,9 @@ export default class EnrollmentCodeService {
         await db.transaction(async (trx) => {
           // Serialised per user; the previous pending code stops working
           // (also enforced: device_enrollment_codes_pending_user).
-          await trx.from('users').where('id', user.id).forUpdate().select('id')
+          // NO KEY UPDATE, not UPDATE: an enrolment inserting a device (FOR KEY
+          // SHARE on this row, for the devices foreign key) never waits on it.
+          await trx.rawQuery('SELECT id FROM users WHERE id = ? FOR NO KEY UPDATE', [user.id])
           await trx
             .from(ENROLLMENT_CODES_TABLE)
             .where('user_id', user.id)

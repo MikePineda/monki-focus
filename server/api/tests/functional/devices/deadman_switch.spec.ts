@@ -282,6 +282,20 @@ test.group('Dead-man switch', (group) => {
     assert.deepEqual(alerts.kinds(), [])
   })
 
+  test('test_a_last_seen_time_with_microseconds_still_alerts', async ({ assert }) => {
+    const clock = freezeTime(T0)
+    const { user, device } = await enrolledDevice(undefined, { protectionActive: true })
+    // As an SQL now() write would store it: finer than JavaScript's milliseconds.
+    await db.rawQuery(`UPDATE devices SET last_seen_at = ?::timestamptz WHERE id = ?`, [
+      '2026-01-05T01:00:00.123456Z',
+      device.id,
+    ])
+
+    await new DeadmanSwitchJob().raise(clock.now())
+
+    assert.lengthOf(await events(user.id, 'heartbeat_missing'), 1)
+  })
+
   test('test_the_claim_window_is_five_minutes', ({ assert }) => {
     const at = (iso: string) => deadmanPeriodKey(DateTime.fromISO(iso, { zone: 'utc' }))
 
