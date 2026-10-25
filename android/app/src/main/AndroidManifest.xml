@@ -19,14 +19,19 @@
     permission is allowed; a Play build would have to drop it (Play limits it
     to a few app categories) and keep only the optimisation-list link.
 
-  Background work (WorkManager) uses no network constraint and no exact
-  alarm, so the network-state permission WorkManager's library manifest
-  declares is removed: the merged manifest holds no network permission.
+  Background work (WorkManager) uses no network constraint, no foreground
+  work and no exact alarm. From WorkManager's library manifest the merged
+  manifest keeps only WAKE_LOCK and RECEIVE_BOOT_COMPLETED (jobs survive a
+  reboot); ACCESS_NETWORK_STATE and FOREGROUND_SERVICE are removed, and so
+  are its DUMP-guarded DiagnosticsReceiver and the profile installer's
+  ProfileInstallReceiver (debugging hooks reachable with adb only). The
+  merged manifest holds no network permission (AppManifestTest).
 
-  Exported components: the launcher activity, and the device-admin receiver
-  guarded by BIND_DEVICE_ADMIN (only the system holds it). The accessibility
-  service comes from :service-accessibility, guarded by
-  BIND_ACCESSIBILITY_SERVICE. Nothing else is exported.
+  Exported components: the launcher activity, the device-admin receiver
+  guarded by BIND_DEVICE_ADMIN (only the system holds it), the accessibility
+  service from :service-accessibility, guarded by BIND_ACCESSIBILITY_SERVICE,
+  and WorkManager's SystemJobService, guarded by BIND_JOB_SERVICE. Nothing
+  else is exported.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
@@ -40,6 +45,9 @@
         tools:ignore="BatteryLife" />
     <uses-permission
         android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
         tools:node="remove" />
 
     <application
@@ -92,6 +100,14 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+
+        <receiver
+            android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver"
+            tools:node="remove" />
+        <receiver
+            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+            tools:ignore="MissingClass"
+            tools:node="remove" />
     </application>
 
 </manifest>
