@@ -155,20 +155,36 @@ code each, `frames/`), run by the protocol package (Ajv), the extension
   malformed message ends `monki-bridge` (status 1) or closes that one app
   connection; an invalid message from the app is ignored by the extension,
   and the extension never sends one.
-- **Dedupe** (plan §3.4): after `hello.ack { aggregator: "mac" }` the
-  extension stops queueing its own blocks for sync and keeps its local
-  stats; a disconnect or `app.unavailable` turns its sync back on. The app
-  merges `browser.activity` into its `web.tab.current` bucket
-  `monki-web-<browser>_<host>` (pulsetime 45 s) and drops heartbeats more
-  than 5 minutes off its own clock.
+- **Dedupe** (plan §3.4): the extension records `hello.ack { aggregator:
+"mac" }` (cleared on a disconnect or `app.unavailable`) but keeps queueing
+  its own blocks for sync until M6 ships the Mac uploader and an aggregator
+  claim it can check: a forged ack must never silence accountability data.
+  The app merges `browser.activity` into its `web.tab.current` bucket
+  `monki-web-<browser>_<host>` (pulsetime 45 s) and drops heartbeats longer
+  than the pulsetime or more than 5 minutes off its own clock.
+- **Pushes are unauthenticated**: any process of the user can serve the
+  socket, so `rules.snapshot` may only reach the rules as a signed policy
+  (with `ver` anti-rollback) or through the extension's rule-change policy,
+  and `unlock.token` only through the PASETO verifier (threat model §3a).
 - **Who may connect**: the host manifest's `allowed_origins` lists exact
   extension ids (the store id and the development id pinned by
   `EXTENSION_DEV_PUBLIC_KEY`); there is no `externally_connectable`. The
-  socket is 0600 in a 0700 folder owned by the user, the app closes any peer
-  whose `getpeereid` uid differs, accepts at most 4 connections and
-  `monki-bridge` checks the app's uid the same way.
-- **Client**: the extension reconnects after every disconnect with a
-  1-60 s jittered exponential backoff, and works on its own without the host.
+  socket is 0600 in a 0700, ACL-free folder owned by the user (checked
+  through an `O_NOFOLLOW` descriptor); a socket a running app answers on is
+  never replaced. The app closes any peer whose `getpeereid` uid differs,
+  closes a connection without a valid `hello` after 5 s and an idle one after
+  10 min, rate-limits each connection (10 messages/s, burst 40; the excess is
+  dropped) and accepts at most 4 connections, evicting the oldest one that
+  never said `hello` when full. Broadcasts reach only connections that said
+  `hello`. `monki-bridge` checks the app's uid the same way.
+- **Client**: `nativeMessaging` is an optional permission the user grants
+  from "Connect the Mac app" in the options; without it the extension never
+  calls `connectNative`. It reconnects after every disconnect with a 1-60 s
+  jittered exponential backoff, slowing to one attempt every 10 minutes after
+  three "host not found / forbidden" disconnects in a row, and works on its
+  own without the host.
+- **Host manifest**: written only when the app runs from an installed
+  location (not translocated, not from a disk image or a temporary folder).
 - **Manifest locations** (user level): Brave
   `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/`,
   Chrome `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/`
