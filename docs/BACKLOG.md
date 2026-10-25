@@ -25,3 +25,6 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-10-25 Android: a user-chosen device name for the ActivityWatch buckets (today the neutral `phone`), and an ActivityWatch/CSV export of the local data on the stats screen like the extension's.
 - 2026-10-25 Android: detect private (incognito) tabs in Chrome and Brave from device-validated view ids (data-only predicate in the browser pack, marked unverified until captured) and skip `siteSeen` on them; today their domains are counted locally.
 - 2026-10-25 Android: a Settings toggle "Record websites" (default on) so the user can turn web-domain statistics off entirely (no `web.tab.current` heartbeats at all).
+- 2026-10-25 macOS: measure whether App Nap delays the 5-second AFK poll of the menu-bar app; if so hold a `ProcessInfo.beginActivity` (only AFK latency suffers, event continuity does not depend on timers).
+- 2026-10-25 macOS: a missed unlock or wake notification keeps the user forced AFK until the next one; cross-check with `CGSessionCopyCurrentDictionary` on each AFK poll.
+- 2026-10-25 macOS: M4's "one real hour without gaps or overlaps" check is manual today; add a debug query or export that reports gaps and overlaps per bucket.
