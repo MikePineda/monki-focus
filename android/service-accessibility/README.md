@@ -63,6 +63,10 @@ active window is polled once a second while an overlay is up).
   unreadable before they ever loaded → fail closed. Until the stored
   escalation is read, and if it keeps failing after retries, friction groups
   start at level 2 (a typed intention), never from scratch.
+- **Local statistics**: every readable URL bar hands only its `UrlKey`
+  (normalised host, first path segment, surface) and the wall time to
+  `ProtectionInputs.siteSeen`; the app turns it into `web.tab.current`
+  heartbeats (`:background`). The URL text never leaves the event.
 - **Downloaded packs** are re-verified on every start from
   `noBackupFilesDir/detector-packs/`; no `rules-signing` key is pinned yet, so
   every download is refused and the bundled packs stay active.

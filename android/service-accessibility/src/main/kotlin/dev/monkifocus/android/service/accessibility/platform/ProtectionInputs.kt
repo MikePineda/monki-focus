@@ -9,6 +9,7 @@ import dev.monkifocus.android.core.domain.ports.IntentionRepository
 import dev.monkifocus.android.core.domain.rules.Ruleset
 import dev.monkifocus.android.detectors.DetectorPackLoader
 import dev.monkifocus.android.service.accessibility.notice.ProtectionNotifier
+import dev.monkifocus.android.service.accessibility.pipeline.UrlKey
 
 /**
  * What the app's composition root (`AppGraph`) hands the protection: the
@@ -39,4 +40,15 @@ interface ProtectionInputs {
 
     /** Our app and service names as the user sees them (the guard looks for them). */
     val ownLabels: Set<String>
+
+    /**
+     * A browser page the service read in the URL bar, for the local
+     * statistics: only the [UrlKey] (normalised host, first path segment,
+     * surface) and the wall time, never the URL text. Called on the main
+     * thread; must not block. Nothing is recorded by default.
+     */
+    fun siteSeen(
+        key: UrlKey,
+        nowEpochMs: Long,
+    ) = Unit
 }

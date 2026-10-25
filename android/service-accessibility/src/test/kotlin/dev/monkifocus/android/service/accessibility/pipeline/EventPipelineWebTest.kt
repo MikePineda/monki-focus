@@ -82,6 +82,19 @@ class EventPipelineWebTest {
     }
 
     @Test
+    fun a_page_read_in_the_url_bar_reaches_the_statistics_as_host_and_first_segment_only() {
+        val h = PipelineHarness(hideRedditFeed)
+
+        h.opened(browserScreen("https://www.reddit.com/r/sample/comments/abc/a_title?ref=x#top"))
+        h.opened(browserScreen(url = ""))
+
+        val seen = h.sitesSeen.single()
+        assertEquals("reddit.com", seen.host)
+        assertEquals("r", seen.firstSegment)
+        assertEquals("reddit.permalink", seen.surface)
+    }
+
+    @Test
     fun page_content_is_never_read() {
         val h = PipelineHarness(redditFriction)
         val reads = mutableListOf<String>()
