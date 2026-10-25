@@ -5,7 +5,13 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import dev.monkifocus.android.core.ui.MonkiTheme
+import dev.monkifocus.android.feature.onboarding.flow.SetupSnapshot
+import dev.monkifocus.android.feature.onboarding.status.ProtectionState
+import dev.monkifocus.android.feature.onboarding.status.StatusChecklist
+import dev.monkifocus.android.feature.onboarding.ui.StatusTestTags
+import dev.monkifocus.android.feature.onboarding.ui.StatusUi
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowState
 import dev.monkifocus.android.service.accessibility.ui.OverlayTestTags
 import org.junit.Assert.assertEquals
@@ -14,15 +20,27 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-/** The home screen never lets protection run unseen (plan 04 §2, rule 2). */
+/** The home (Status) screen never lets protection run unseen (plan 04 §2, rule 2). */
 @RunWith(RobolectricTestRunner::class)
 class HomeScreenTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun show(status: HomeStatus) {
+    private fun show(home: HomeStatus) {
+        val snapshot = SetupSnapshot.NOTHING.copy(notifications = home.noticePermitted, accessibilityService = true)
+        val status = StatusUi(ProtectionState.ACTIVE, StatusChecklist.of(snapshot, protectionWanted = true), null, home.noticePermitted)
         compose.setContent {
-            MonkiTheme { ScaffoldHomeScreen(status = status, onRequestNotice = {}, onTurnOnProtection = {}, onExitAndUnlink = {}) }
+            MonkiTheme {
+                StatusHome(
+                    home = home,
+                    status = status,
+                    onFix = {},
+                    onRequestNotice = {},
+                    onTurnOn = {},
+                    onEditRules = {},
+                    onExitAndUnlink = {},
+                )
+            }
         }
     }
 
@@ -32,7 +50,7 @@ class HomeScreenTest {
 
         compose.onNodeWithTag(OverlayTestTags.NOTICE_OFF).assertIsDisplayed()
         compose.onNodeWithText("Protection notice: off").assertIsDisplayed()
-        compose.onNodeWithTag(HomeTestTags.REQUEST_NOTICE).assertIsDisplayed()
+        compose.onNodeWithTag(StatusTestTags.REQUEST_NOTICE).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -41,6 +59,13 @@ class HomeScreenTest {
 
         compose.onNodeWithText("Protection notice: on").assertIsDisplayed()
         compose.onNodeWithTag(OverlayTestTags.NOTICE_OFF).assertDoesNotExist()
+    }
+
+    @Test
+    fun exit_and_unlink_is_always_on_the_home_screen() {
+        show(HomeStatus.of(serviceEnabled = true, armedByUser = true, exit = ExitFlowState.Armed, noticePermitted = true))
+
+        compose.onNodeWithTag(StatusTestTags.EXIT).performScrollTo().assertIsDisplayed()
     }
 
     @Test

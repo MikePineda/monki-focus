@@ -10,7 +10,14 @@
     (anti-stalkerware: protection never runs unseen);
   - QUERY_ALL_PACKAGES: only to compare installed app labels with ours, so
     the anti-bypass guard releases when a look-alike app could be trapped
-    (labels are compared in memory, never stored).
+    (labels are compared in memory, never stored);
+  - REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: onboarding's optional battery step
+    shows the system "Let app always run in background?" dialog, so OEM and
+    Doze battery savers do not stop the service. A normal permission that
+    grants nothing by itself; the user answers the dialog. This build is
+    distributed outside Google Play (GitHub releases, Obtainium), where the
+    permission is allowed; a Play build would have to drop it (Play limits it
+    to a few app categories) and keep only the optimisation-list link.
 
   Exported components: the launcher activity, and the device-admin receiver
   guarded by BIND_DEVICE_ADMIN (only the system holds it). The accessibility
@@ -24,6 +31,9 @@
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission
+        android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+        tools:ignore="BatteryLife" />
 
     <application
         android:name=".MonkiApplication"

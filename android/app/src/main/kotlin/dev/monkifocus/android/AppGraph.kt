@@ -13,6 +13,10 @@ import dev.monkifocus.android.core.domain.ports.IntentionRepository
 import dev.monkifocus.android.core.domain.rules.Ruleset
 import dev.monkifocus.android.core.domain.signing.SignatureVerifier
 import dev.monkifocus.android.detectors.DetectorPackLoader
+import dev.monkifocus.android.feature.onboarding.flow.OnboardingController
+import dev.monkifocus.android.feature.onboarding.platform.SharedPreferencesOnboardingStore
+import dev.monkifocus.android.feature.rules.change.RuleChangeService
+import dev.monkifocus.android.feature.rules.change.RulesetCheck
 import dev.monkifocus.android.service.accessibility.notice.ProtectionNotifier
 import dev.monkifocus.android.service.accessibility.platform.MonkiAccessibilityService
 import dev.monkifocus.android.service.accessibility.platform.ProtectionGraph
@@ -47,10 +51,24 @@ class AppGraph(
 
     val protection: ProtectionGraph by lazy { ProtectionGraph(application, Inputs()) }
 
+    /** The only way the app changes the rule set: tighten now, loosen later (SEMANTICS.md §8). */
+    val ruleChanges: RuleChangeService by lazy {
+        RuleChangeService(data.rulesets, rules.catalog, RulesetCheck.of(rules.validator), { rules.starter }, wallClock)
+    }
+
+    /** Onboarding progress, resumed across process deaths. */
+    val onboarding: OnboardingController by lazy { OnboardingController(SharedPreferencesOnboardingStore(application)) }
+
+    /** Our accessibility service, as Settings names it. */
+    val accessibilityService: ComponentName get() = ComponentName(application, MonkiAccessibilityService::class.java)
+
+    /** Our device-admin receiver (uninstall friction only). */
+    val deviceAdminReceiver: ComponentName get() = ComponentName(application, MonkiDeviceAdminReceiver::class.java)
+
     /** Whether the user has our accessibility service turned on in Settings. */
     fun accessibilityServiceEnabled(): Boolean {
         val manager = application.getSystemService(AccessibilityManager::class.java) ?: return false
-        val ours = ComponentName(application, MonkiAccessibilityService::class.java)
+        val ours = accessibilityService
         return manager
             .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
             .any { ComponentName.unflattenFromString(it.id) == ours }
@@ -73,7 +91,7 @@ class AppGraph(
         override val intentions: IntentionRepository get() = data.intentions
         override val bypassOutbox: BypassEventOutbox get() = data.bypassEvents
         override val notifier: ProtectionNotifier get() = systemNotifier
-        override val deviceAdmin: ComponentName get() = ComponentName(application, MonkiDeviceAdminReceiver::class.java)
+        override val deviceAdmin: ComponentName get() = deviceAdminReceiver
         override val ownLabels: Set<String> get() = setOf(application.getString(CoreUiR.string.app_name))
     }
 }
