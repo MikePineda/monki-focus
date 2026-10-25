@@ -97,11 +97,12 @@ export class DeadmanSwitchJob implements ScheduledJob {
   }
 
   /**
-   * One conditional insert per device: the event is stored only while the
-   * device row still reads as scanned (same `last_seen_at`, still
-   * protected, not revoked), under the row's lock. A heartbeat that landed
-   * after the scan (it takes the same lock first) therefore never gets a
-   * false `heartbeat_missing`.
+   * One conditional insert per device: under the row's lock the device must
+   * still be overdue (the scan's condition, re-checked), protected and not
+   * revoked. A heartbeat that landed after the scan (it takes the same lock
+   * first) moved `last_seen_at` forward, so it never gets a false
+   * `heartbeat_missing`. No equality on timestamps: a write with a finer
+   * precision than the scan read can never make a device fail open.
    */
   async alert(rows: readonly OverdueRow[], now: DateTime): Promise<number> {
     const raised: RaisedBypassEvent[] = []
@@ -119,7 +120,8 @@ export class DeadmanSwitchJob implements ScheduledJob {
            (ward_user_id, device_id, kind, source, dedupe_key, occurred_at, details, created_at)
          SELECT d.user_id, d.id, 'heartbeat_missing', 'server', ?, ?, ?::jsonb, ?
            FROM devices d
-          WHERE d.id = ? AND d.last_seen_at = ? AND d.revoked_at IS NULL AND d.protection_active
+          WHERE d.id = ? AND d.revoked_at IS NULL AND d.protection_active
+            AND d.last_seen_at <= ?::timestamptz - make_interval(hours => d.deadman_hours)
             FOR UPDATE
          ON CONFLICT (ward_user_id, dedupe_key) DO NOTHING
          RETURNING id, ward_user_id, occurred_at`,
@@ -129,7 +131,7 @@ export class DeadmanSwitchJob implements ScheduledJob {
           JSON.stringify(details),
           now.toJSDate(),
           row.id,
-          row.last_seen_at,
+          now.toJSDate(),
         ]
       )
       for (const stored of inserted.rows) {
