@@ -13,5 +13,6 @@
   "E_INVALID_TWO_FACTOR_CODE": "The code is not valid. Try the current code from your app",
   "E_TWO_FACTOR_ALREADY_ENABLED": "Two-step verification is already on",
   "E_TWO_FACTOR_NOT_ENABLED": "Two-step verification is off",
-  "E_TWO_FACTOR_NOT_PENDING": "Start the two-step verification setup first"
+  "E_TWO_FACTOR_NOT_PENDING": "Start the two-step verification setup first",
+  "E_DEVICE_LIMIT_REACHED": "You already have 20 devices. Remove one before adding another"
 }

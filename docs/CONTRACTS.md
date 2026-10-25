@@ -12,9 +12,10 @@ a contract is a change to its fixtures first.
 | Analytics fixtures              | `packages/rules/fixtures/analytics/*.json`                                                  | 0.2, E3      | planned |
 | Unlock token (PASETO v4.public) | `packages/protocol` schemas and `fixtures/unlock-tokens/`, `docs/protocol/unlock-tokens.md` | 0.3          | planned |
 | Signed policy token             | `packages/protocol` (separate `typ` and key)                                                | 0.3, S3      | planned |
-| Device API                      | `packages/protocol/openapi.yaml` (`/api/v1`, `X-Client-Version`)                            | 0.3          | planned |
+| Device API                      | `packages/protocol/openapi.yaml` (`/api/v1`, `X-Client-Version`)                            | 0.3, S4      | active  |
 | Native messaging bridge         | `macos` bridge contract (length-prefixed JSON, five methods)                                | M5           | planned |
 | Dashboard API: accounts         | `server/api/start/routes.ts`, this file ([Dashboard API](#dashboard-api-server))            | S2           | active  |
+| Dashboard API: devices          | `server/api/start/routes.ts`, this file ([Devices](#devices-dashboard))                     | S4           | active  |
 | Rules feed signature            | detached Ed25519 signature, offline `rules-signing` key                                     | 0.2          | planned |
 
 ## Rules
@@ -38,9 +39,61 @@ assertion, clock and replay rules, key pinning and rotation. See
 
 ## Device API
 
-To be written by work package 0.3: enrolment, heartbeat, activity blocks,
-bypass events, unlock requests and long-poll, keys, versioning (`426` for
-outdated clients).
+The source of truth is `packages/protocol/openapi.yaml`; the server's
+contract test (`server/api/tests/functional/devices/device_api_contract.spec.ts`)
+fails when an implemented `/api/v1/keys` or `/api/v1/device/*` route is not
+an operation of it, or an operation is neither implemented nor owned by a
+later package. Implemented (S3, S4): `GET /keys`, `POST /device/enroll`,
+`POST /device/heartbeat`, `POST /device/bypass-events`,
+`POST /device/token/rotate`. Unlock requests land with S6.
+
+- **Auth**: Bearer device tokens `mfd_<id>.<secret>` (`@adonisjs/auth`
+  access tokens whose tokenable is a device), about 288 random bits, stored
+  as SHA-256 only, returned once (enrolment, rotation), ability `device:*`.
+  No session, no cookie, no CSRF; a session cookie is ignored (401) and the
+  dashboard refuses a device token (401). Revoking a device deletes its
+  tokens and the guard also refuses a revoked device.
+- **Errors**: always `{ code, fields? }` with snake_case codes, never text:
+  `validation_failed` (422, `fields: { <path>: <rule> }`), `unauthorized`
+  (401), `not_found` (404), `too_many_requests` (429, `Retry-After`),
+  `client_upgrade_required` (426), `invalid_enrollment_code` (400),
+  `device_limit_reached` (409), `internal_error` (5xx).
+- **Enrolment**: the dashboard's code is 8 base32 characters, 10 minutes,
+  single use, one pending per user, 20 active devices per user. The first 3
+  characters find the code, all 8 prove it; both are stored as HMACs keyed
+  with `APP_KEY`. Each guess is charged before it is checked, twice: 10
+  failures per 15 minutes per IP, and the code's own counter (the fifth
+  wrong guess kills it, whatever the IP). Wrong, expired, used and locked
+  codes answer the same 400. The response carries the key set the device
+  pins (only if every kid equals one the dashboard showed).
+- **Heartbeat**: every 15 minutes and on wake, at most 60 per hour per
+  device. Answers a signed time token bound to the device, the request's
+  nonce and boot id (with the device's pending revocations), the key-set
+  ETag, `rulesVersion` (0 until rule sets exist) and `tokenRotationDue`
+  (the token is 30 days old). Pinned kids the instance does not publish
+  raise one `key_pin_mismatch` per distinct set. The nonce is never stored.
+- **Bypass events**: batches of 1 to 100, 120 batches per hour per device,
+  idempotent per device and `dedupeKey`. Client kinds only (the schema's
+  enum); the server raises `heartbeat_missing`, `heartbeat_resumed`,
+  `key_pin_mismatch`, `protection_disabled`, `device_enrolled` and `device_revoked` itself, under
+  dedupe keys a device cannot write. `details`: at most 16 members, keys
+  are identifiers, strings at most 64 characters of `A-Z a-z 0-9 . _ : -`
+  (no URL, title or sentence fits), finite numbers, booleans.
+- **Token rotation**: `POST /device/token/rotate` (10 per hour) returns a
+  new token; every other token is deleted and the calling one works 10
+  more minutes (a retry never extends it).
+- **Dead-man switch**: every 5-minute window (one claim per window), a
+  protected, unrevoked device silent for its `deadmanHours` (default
+  `DEADMAN_DEFAULT_HOURS`, 6) gets one `heartbeat_missing` per gap; the next
+  heartbeat resolves it and stores `heartbeat_resumed` with `gapSeconds`. An
+  announced shutdown (`goingOffline`) labels the alert (`announced: true`),
+  never suppresses it. A heartbeat that turns protection off raises
+  `protection_disabled` instead, since the switch only watches protected
+  devices. New events go to the `BypassAlerts` port (guardian
+  notifications arrive with S6).
+- **Retention**: a daily job prunes heartbeats older than
+  `HEARTBEAT_RETENTION_DAYS` (30), enrolment codes a day after expiry and
+  expired tokens. Bypass events are kept.
 
 ## Native messaging
 
@@ -134,8 +187,39 @@ Bearer tokens) is a separate contract in `packages/protocol/openapi.yaml`.
   or spaces optional) are stored as SHA-256 and work once.
 - **Export** (`format: "monki-focus.export"`, `version: 1`): `exportedAt`,
   `user` (plus `updatedAt`), `twoFactor { enabled, enabledAt, recoveryCodesRemaining }`,
-  `invitationsCreated`. Never a hash, seed or link. Later packages add their
+  `invitationsCreated`, `devices` (`device[]`), `bypassEvents`
+  (`{ id, kind, source, deviceUuid, details, occurredAt, resolvedAt, createdAt }`).
+  Never a hash, seed, token, code or link. Later packages add their
   sections; `?format=aw` (ActivityWatch) arrives with analytics.
 - **Operators**: `node ace user:reset-password <email>` (prompts twice, or
   `--generate`; `--disable-two-factor` for a lost authenticator) signs the
   account out everywhere.
+
+### Devices (dashboard)
+
+Session and CSRF like every dashboard route; a device token is refused.
+Another user's or a revoked device's `:uuid` answers 404 `E_ROW_NOT_FOUND`.
+
+| Method | Path                        | Body                       | Answer                                                      |
+| ------ | --------------------------- | -------------------------- | ----------------------------------------------------------- |
+| GET    | `/devices`                  |                            | `{ devices: device[] }`, active first, then revoked         |
+| POST   | `/devices/enrollment-codes` |                            | 201 `{ code, expiresAt, issuer, kids: { unlock, policy } }` |
+| PATCH  | `/devices/:uuid`            | `{ name?, deadmanHours? }` | `{ device }`                                                |
+| DELETE | `/devices/:uuid`            |                            | 204; tokens deleted, `device_revoked` stored                |
+
+- `device` is `{ uuid, name, platform, clientVersion, status: active|revoked,
+protectionActive, a11yEnabled, riskState, deadmanHours, enrolledKids,
+pinnedKids, keyPinMismatch, clockOffsetMs, lastSeenAt, announcedOfflineAt,
+revokedAt, createdAt }`. Never a token, hash or boot id. `enrolledKids`
+  and `pinnedKids` are shown so the user (and later the guardian) can
+  compare them with the instance's keys.
+- The code is shown once (`Cache-Control: no-store`) with the issuer and
+  the kid of every published key; the dashboard displays them and encodes
+  `{ code, issuer, kids }` in the QR code. 10 codes per hour per user; a new
+  code replaces the pending one; 409 `E_DEVICE_LIMIT_REACHED` at 20 active
+  devices. `name`: 1 to 64 characters, no control characters;
+  `deadmanHours`: whole hours from 1 to 48.
+
+| Code                     | Status | When                               |
+| ------------------------ | ------ | ---------------------------------- |
+| `E_DEVICE_LIMIT_REACHED` | 409    | A code while 20 devices are active |

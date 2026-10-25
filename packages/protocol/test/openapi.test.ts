@@ -59,6 +59,7 @@ describe('openapi.yaml', () => {
         'POST /device/enroll',
         'POST /device/heartbeat',
         'POST /device/bypass-events',
+        'POST /device/token/rotate',
         'POST /device/unlock-requests',
         'GET /device/unlock-requests/{uuid}',
         'DELETE /device/unlock-requests/{uuid}',
@@ -136,6 +137,35 @@ describe('openapi.yaml', () => {
   it('test_enrolment_codes_lock_after_five_failed_attempts', () => {
     const enroll = spec.paths['/device/enroll']?.post as unknown as { description: string }
     expect(enroll.description).toMatch(/at most 5 failed\s+attempts/)
+  })
+
+  it('test_device_tokens_are_returned_only_by_enrolment_and_rotation', () => {
+    const schemas = spec.components.schemas as Record<
+      string,
+      { properties?: Record<string, { $ref?: string }> }
+    >
+    const carriers = Object.entries(schemas)
+      .filter(([, schema]) =>
+        Object.values(schema.properties ?? {}).some(
+          (property) => property.$ref === '#/components/schemas/DeviceToken'
+        )
+      )
+      .map(([name]) => name)
+    expect(carriers.sort()).toEqual(['EnrollResponse', 'TokenRotation'])
+    const token = spec.components.schemas.DeviceToken as { pattern: string }
+    expect(new RegExp(token.pattern).test('mfd_MQ.' + 'a'.repeat(40))).toBe(true)
+    expect(new RegExp(token.pattern).test('oat_MQ.' + 'a'.repeat(40))).toBe(false)
+  })
+
+  it('test_bypass_details_cannot_carry_a_url_or_free_text', () => {
+    const event = spec.components.schemas.BypassEvent as {
+      properties: { details: { additionalProperties: { pattern: string } } }
+    }
+    const value = new RegExp(event.properties.details.additionalProperties.pattern)
+    expect(value.test('social.video')).toBe(true)
+    for (const leak of ['https://example.com/a', 'a title with spaces', 'user@example.com']) {
+      expect(value.test(leak)).toBe(false)
+    }
   })
 
   it('test_nonce_boot_and_issuer_formats_match_the_tokens', () => {

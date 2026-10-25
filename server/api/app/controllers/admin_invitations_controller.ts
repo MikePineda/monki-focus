@@ -17,7 +17,7 @@ export default class AdminInvitationsController {
   /** GET /admin/invitations: newest first, with their status; never the links. */
   async index({ auth }: HttpContext) {
     const now = this.clock.now()
-    const invitations = await this.invitations.list(auth.getUserOrFail())
+    const invitations = await this.invitations.list(auth.use('web').getUserOrFail())
     return { invitations: invitations.map((invitation) => invitationResource(invitation, now)) }
   }
 
@@ -26,7 +26,7 @@ export default class AdminInvitationsController {
     const { email } = await request.validateUsing(createInvitationValidator)
     const now = this.clock.now()
     const { invitation, url } = await this.invitations.create(
-      auth.getUserOrFail(),
+      auth.use('web').getUserOrFail(),
       email ?? null,
       now
     )
@@ -36,7 +36,7 @@ export default class AdminInvitationsController {
 
   /** DELETE /admin/invitations/:id: revokes one of the admin's own (anyone else's is 404). */
   async destroy({ auth, params, response }: HttpContext) {
-    await this.invitations.revoke(auth.getUserOrFail(), Number(params.id))
+    await this.invitations.revoke(auth.use('web').getUserOrFail(), Number(params.id))
     return response.noContent()
   }
 }

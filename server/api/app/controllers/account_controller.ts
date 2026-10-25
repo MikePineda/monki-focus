@@ -20,7 +20,7 @@ export default class AccountController {
   async export({ auth, request, response }: HttpContext) {
     await request.validateUsing(exportValidator, { data: request.qs() })
     const now = this.clock.now()
-    const document = await this.exporter.build(auth.getUserOrFail(), now)
+    const document = await this.exporter.build(auth.use('web').getUserOrFail(), now)
 
     response.header('Cache-Control', 'no-store')
     response.header(
@@ -33,7 +33,7 @@ export default class AccountController {
   /** DELETE /me: the password again, then the account and everything under it are gone. */
   async destroy({ auth, request, response }: HttpContext) {
     const { password } = await request.validateUsing(reauthValidator)
-    const user = auth.getUserOrFail()
+    const user = auth.use('web').getUserOrFail()
 
     await this.reauth.confirm(user, password)
     await auth.use('web').logout()

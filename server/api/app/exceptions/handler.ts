@@ -2,6 +2,7 @@
 import app from '@adonisjs/core/services/app'
 import type { I18n } from '@adonisjs/i18n'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
+import { deviceApiErrorResponse, isDeviceApiPath } from '#http/device_api_error_response'
 
 /**
  * Self-rendering framework errors whose own rendering does not fit a JSON
@@ -22,7 +23,9 @@ function hasPgCode(error: unknown, code: string): error is Error & { status?: nu
 }
 
 /**
- * JSON-only error rendering:
+ * JSON-only error rendering. The device API (`/api/v1/device/*`) answers
+ * its contract's `{ code, fields? }` instead, always
+ * (app/http/device_api_error_response.ts). Everything else:
  *
  * - Exceptions that render themselves (validation, throttle) keep their
  *   shape: 422 `{ errors: [{ field, rule, message }] }`, 429 `{ errors }`.
@@ -39,6 +42,12 @@ export default class HttpExceptionHandler extends ExceptionHandler {
   protected override debug = !app.inProduction
 
   override async handle(error: unknown, ctx: HttpContext) {
+    if (isDeviceApiPath(ctx.request.url())) {
+      const answer = deviceApiErrorResponse(error, hasPgCode(error, PG_UNIQUE_VIOLATION))
+      for (const [name, value] of Object.entries(answer.headers)) ctx.response.header(name, value)
+      return ctx.response.status(answer.status).send(answer.body)
+    }
+
     const i18n = 'i18n' in ctx ? (ctx.i18n as I18n | undefined) : undefined
     const translate = (code: string, fallback: string) =>
       i18n ? i18n.t(`errors.${code}`, {}, fallback) : fallback

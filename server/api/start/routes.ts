@@ -12,11 +12,14 @@
 |   - /api/v1/keys: public signing keys (openapi.yaml `getKeys`), no auth,
 |     `X-Client-Version` gate.
 |   - /api/v1/device/*: device API (packages/protocol openapi.yaml), Bearer
-|     device tokens, `X-Client-Version` gate (426 for old clients), no CSRF.
-|     Routes land with S4 (devices), S6 (unlocks) and S7.
+|     device tokens (`auth` with the `device` guard only), `X-Client-Version`
+|     gate (426 for old clients), no session, no CSRF, contract errors
+|     `{ code, fields? }`. Enrolment, heartbeat, bypass events and token
+|     rotation (S4); unlock requests land with S6.
 |   - /api/v1/auth/*: login (two steps with TOTP), register, logout, me.
 |   - /api/v1/me/*: the signed-in user's profile, password, two-factor,
 |     export and deletion.
+|   - /api/v1/devices/*: the signed-in user's devices and enrolment codes.
 |   - /api/v1/admin/*: admins only; anyone else gets the 404 of an
 |     unknown route.
 |   Only these dashboard groups get the named `session` and `shield`
@@ -45,6 +48,8 @@ const ProfileController = () => import('#controllers/profile_controller')
 const AccountController = () => import('#controllers/account_controller')
 const TwoFactorController = () => import('#controllers/two_factor_controller')
 const AdminInvitationsController = () => import('#controllers/admin_invitations_controller')
+const DevicesController = () => import('#controllers/devices_controller')
+const DeviceApiController = () => import('#controllers/device_api_controller')
 
 router
   .group(() => {
@@ -60,7 +65,19 @@ router
 
         router
           .group(() => {
-            // Device API routes (S4, S6, S7).
+            // Guests: the one-time code is the credential (throttled per IP and per code).
+            router.post('enroll', [DeviceApiController, 'enroll']).as('enroll')
+
+            router
+              .group(() => {
+                router.post('heartbeat', [DeviceApiController, 'heartbeat']).as('heartbeat')
+                router
+                  .post('bypass-events', [DeviceApiController, 'bypassEvents'])
+                  .as('bypass_events')
+                router.post('token/rotate', [DeviceApiController, 'rotateToken']).as('token.rotate')
+                // Unlock requests land with S6.
+              })
+              .use(middleware.auth({ guards: ['device'] }))
           })
           .prefix('device')
           .as('device')
@@ -104,6 +121,30 @@ router
           })
           .prefix('me')
           .as('me')
+          .use([
+            middleware.session(),
+            middleware.shield(),
+            middleware.auth(),
+            middleware.userLocale(),
+          ])
+
+        router
+          .group(() => {
+            router.get('/', [DevicesController, 'index']).as('index')
+            router
+              .post('enrollment-codes', [DevicesController, 'storeEnrollmentCode'])
+              .as('enrollment_codes.store')
+            router
+              .patch(':uuid', [DevicesController, 'update'])
+              .where('uuid', router.matchers.uuid())
+              .as('update')
+            router
+              .delete(':uuid', [DevicesController, 'destroy'])
+              .where('uuid', router.matchers.uuid())
+              .as('destroy')
+          })
+          .prefix('devices')
+          .as('devices')
           .use([
             middleware.session(),
             middleware.shield(),

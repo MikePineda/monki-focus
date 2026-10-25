@@ -29,7 +29,9 @@ test.group('Database schema', () => {
   test('test_timestamps_are_timestamptz', async ({ assert }) => {
     const result = await db.rawQuery<{ rows: Array<{ column_name: string; data_type: string }> }>(
       `SELECT column_name, data_type FROM information_schema.columns
-        WHERE table_name IN ('scheduler_runs', 'users', 'invitations', 'user_recovery_codes')
+        WHERE table_name IN ('scheduler_runs', 'users', 'invitations', 'user_recovery_codes',
+                             'devices', 'device_enrollment_codes', 'auth_access_tokens',
+                             'device_heartbeats', 'bypass_events')
           AND column_name LIKE '%_at'`
     )
 
@@ -70,11 +72,47 @@ test.group('Database schema', () => {
     assert.deepEqual(
       result.rows.map((row) => row.definition),
       [
+        'bypass_events.FOREIGN KEY (ward_user_id) REFERENCES users(id) ON DELETE CASCADE',
+        'device_enrollment_codes.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
+        'devices.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
         'invitations.FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE CASCADE',
         'invitations.FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL',
         'scheduler_runs.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
         'user_recovery_codes.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
       ]
+    )
+  })
+
+  test('test_device_rows_go_with_their_device_and_codes_and_events_outlive_it', async ({
+    assert,
+  }) => {
+    const result = await db.rawQuery<{ rows: Array<{ definition: string }> }>(
+      `SELECT conrelid::regclass || '.' || pg_get_constraintdef(oid) AS definition
+         FROM pg_constraint WHERE contype = 'f' AND confrelid = 'devices'::regclass
+        ORDER BY 1`
+    )
+
+    assert.deepEqual(
+      result.rows.map((row) => row.definition),
+      [
+        'auth_access_tokens.FOREIGN KEY (tokenable_id) REFERENCES devices(id) ON DELETE CASCADE',
+        'bypass_events.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL',
+        'device_enrollment_codes.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL',
+        'device_heartbeats.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE',
+        'unlock_tokens.FOREIGN KEY (device_uuid) REFERENCES devices(uuid) ON DELETE CASCADE',
+      ]
+    )
+  })
+
+  test('test_bypass_events_are_unique_per_user_and_dedupe_key', async ({ assert }) => {
+    const result = await db.rawQuery<{ rows: Array<{ definition: string }> }>(
+      `SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+        WHERE conrelid = 'bypass_events'::regclass AND contype = 'u'`
+    )
+
+    assert.deepEqual(
+      result.rows.map((row) => row.definition),
+      ['UNIQUE (ward_user_id, dedupe_key)']
     )
   })
 })

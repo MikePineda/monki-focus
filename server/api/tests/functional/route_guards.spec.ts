@@ -22,6 +22,9 @@ const SESSION_MIDDLEWARE = new Set([
  */
 const GUEST_ROUTES = new Set(['v1.auth.login', 'v1.auth.two_factor', 'v1.auth.register'])
 
+/** Device routes without a token: enrolment trades a one-time code for one. */
+const DEVICE_GUEST_ROUTES = new Set(['v1.device.enroll'])
+
 /** Prefixes outside the dashboard: probes, the device API, ntfy actions and test support. */
 const NOT_DASHBOARD = [
   '/api/health',
@@ -48,10 +51,9 @@ function guardsOf(entry: NamedMiddleware): string[] {
 
 test.group('Route guards', () => {
   /*
-   * Placeholder for the device API (S3-S7): passes vacuously while no such
-   * route exists, and fails the moment one is added behind the session or
-   * cookie guard. Those routes authenticate with the `device` guard only;
-   * CSRF exemptions (app/http/csrf_exempt_routes.ts) rely on it.
+   * The device API authenticates with the `device` guard only (Bearer
+   * tokens) and never runs the session or CSRF middleware; the CSRF
+   * exemptions (app/http/csrf_exempt_routes.ts) rely on it.
    */
   test('test_device_and_action_routes_never_use_the_session_guard', ({ assert }) => {
     const violations: string[] = []
@@ -116,6 +118,43 @@ test.group('Route guards', () => {
       const shield = names.indexOf('shield')
       const auth = names.indexOf('auth')
       if (session < 0 || shield < session || (auth >= 0 && auth < shield)) violations.push(label)
+    }
+
+    assert.deepEqual(violations, [])
+  })
+
+  test('test_every_device_route_but_enrolment_needs_a_device_token', ({ assert }) => {
+    const routes = Object.values(router.toJSON())
+      .flat()
+      .filter((route) => route.pattern.startsWith('/api/v1/device/'))
+    const unguarded: string[] = []
+    for (const route of routes) {
+      if (DEVICE_GUEST_ROUTES.has(route.name ?? '')) continue
+      const auth = [...(route.middleware.all() as Set<NamedMiddleware>)].find(
+        (entry) => typeof entry === 'object' && entry.name === 'auth'
+      )
+      if (!auth || guardsOf(auth).join(',') !== 'device') {
+        unguarded.push(`${route.methods.join(',')} ${route.pattern}`)
+      }
+    }
+
+    assert.isAtLeast(routes.length, 4)
+    assert.deepEqual(unguarded, [])
+    assert.isTrue(routes.some((route) => route.name === 'v1.device.enroll'))
+  })
+
+  test('test_dashboard_routes_never_accept_a_device_token', ({ assert }) => {
+    const violations: string[] = []
+    for (const route of Object.values(router.toJSON()).flat()) {
+      if (NOT_DASHBOARD.some((prefix) => route.pattern.startsWith(prefix))) continue
+      for (const entry of route.middleware.all() as Set<NamedMiddleware>) {
+        if (typeof entry === 'object' && entry.name === 'auth') {
+          const guards = guardsOf(entry)
+          if (guards.some((guard) => guard !== '<default>' && guard !== 'web')) {
+            violations.push(`${route.pattern}: auth(${guards.join(', ')})`)
+          }
+        }
+      }
     }
 
     assert.deepEqual(violations, [])
