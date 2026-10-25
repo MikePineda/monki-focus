@@ -156,9 +156,10 @@ Bearer tokens) is a separate contract in `packages/protocol/openapi.yaml`.
 
 ### Routes
 
-`user` is `{ id, email, fullName, locale, timeZone, weekStart, isAdmin, twoFactorEnabled, createdAt }`
+`user` is `{ id, email, fullName, locale, timeZone, weekStart, isAdmin, guardianOnly, twoFactorEnabled, createdAt }`
 (`locale` `en`/`es`; `timeZone` an IANA name; `weekStart` an ISO weekday,
-1 = Monday ... 7 = Sunday; timestamps ISO 8601 UTC).
+1 = Monday ... 7 = Sunday; timestamps ISO 8601 UTC; `guardianOnly`: made
+through a guardian pairing code, see [Guardians](#guardians-dashboard)).
 
 | Method | Path                            | Body / query                                                                 | Answer                                                                |
 | ------ | ------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------- |
@@ -172,6 +173,7 @@ Bearer tokens) is a separate contract in `packages/protocol/openapi.yaml`.
 | PUT    | `/me/password`                  | `{ currentPassword, password }`                                              | 204; other sessions end, this one stays                               |
 | GET    | `/me/export`                    | `?format=native` (default)                                                   | JSON download (below)                                                 |
 | DELETE | `/me`                           | `{ password }`                                                               | 204; the account and its rows are gone                                |
+| POST   | `/me/invitation`                | `{ invitation }`                                                             | `{ user }`; a guardian-only account becomes an ordinary one           |
 | POST   | `/me/two-factor`                | `{ password }`                                                               | `{ secret, otpauthUrl }` (not active yet)                             |
 | POST   | `/me/two-factor/confirm`        | `{ code }`                                                                   | `{ recoveryCodes: string[10] }`, shown once                           |
 | POST   | `/me/two-factor/recovery-codes` | `{ password, code }` or `{ password, recoveryCode }`                         | `{ recoveryCodes }`; the old ones stop working                        |
@@ -265,12 +267,16 @@ one-sided route all answer 404 `E_ROW_NOT_FOUND`.
 | GET    | `/guardian/wards/:wardUserId/summary`   | guardian |                                                                       | the guardian summary (below), `no-store`                                  |
 
 - `link` is `{ id, role: ward|guardian, status: pending|active|revoking,
-wardUserId, counterpart: { email, fullName }, guardianTwoFactorEnabled,
-maxUnlockMinutes, allowNotificationActions, confirmedAt,
-revocationRequestedAt, revocationEffectiveAt, createdAt }`, never the
-  ntfy topic. `counterpart` is the other person, so the ward confirms
-  exactly whom they let in. The export adds `guardianLinks` (both sides,
-  revoked ones too, plus `revokedAt`), never a topic.
+wardUserId?, counterpart: { email, fullName } | null,
+guardianTwoFactorEnabled, maxUnlockMinutes, allowNotificationActions,
+confirmedAt, revocationRequestedAt, revocationEffectiveAt, createdAt }`,
+  never the ntfy topic. `counterpart` is the other person, so the ward
+  confirms exactly whom they let in. The guardian side of a link the ward
+  never confirmed (pending, or declined in the export) gets
+  `counterpart: null` and no `wardUserId`: whoever redeemed a code (or
+  guessed one) learns nothing about whose it was. The export adds
+  `guardianLinks` (both sides, revoked ones too, plus `revokedAt`), never
+  a topic.
 - **Pairing codes**: 6 digits, `PAIRING_CODE_TTL_MINUTES` (10), single use,
   one pending per ward (a new code replaces it; unique index and a lock on
   the ward's row), 10 per hour per ward. The first 3 digits find the code,
@@ -284,17 +290,29 @@ revocationRequestedAt, revocationEffectiveAt, createdAt }`, never the
   (the fragment never reaches a server log); the dashboard reads it and
   posts the code.
 - **Guardian sign-up**: the only sign-up open while `REGISTRATION_OPEN` is
-  off. A valid code creates an ordinary (never admin) account and its
-  pending link in one transaction, consuming the code. Every refusal (any
-  code problem, an email already registered) is the same 400
+  off. A valid code creates a **guardian-only** (never admin) account and
+  its pending link in one transaction, consuming the code. Every refusal
+  (any code problem, an email already registered) is the same 400
   `E_GUARDIAN_REGISTRATION_REJECTED`, the password hashed either way.
+- **Guardian-only accounts** (`user.guardianOnly`) may guard others but,
+  while `REGISTRATION_OPEN` is off, not become a ward: minting pairing
+  codes and enrolment codes answers 403 `E_GUARDIAN_ONLY_ACCOUNT`, so a
+  code never chains into more sign-ups. Opening registration lifts it
+  while open; an admin's invitation lifts it for good (`POST
+/me/invitation` with the link's fragment, checked and consumed like at
+  sign-up, refusals 400 `E_REGISTRATION_REJECTED` throttled per IP; an
+  ordinary account's call changes nothing and spends no invitation).
 - **Activation**: a link stays `pending` (it grants nothing) until the ward
   confirms it with their password, and only once the guardian has two-step
   verification on (`/me/two-factor`, the regular flow); before that, 409
-  `E_GUARDIAN_TWO_FACTOR_REQUIRED`. A guardian cannot turn two-step
-  verification off while guarding (409 on `DELETE /me/two-factor`); if an
-  operator does, the guardian reaches nothing until it is back on.
-  Guardian-side settings, subscription and rotation need it too (409).
+  `E_GUARDIAN_TWO_FACTOR_REQUIRED`. A pending link the ward does not
+  confirm within 24 hours lapses by itself (declined; the job stores it,
+  every lookup already treats it as gone, and the pair may pair again). A
+  guardian cannot turn two-step verification off while guarding, revoking
+  links included (409 on `DELETE /me/two-factor`, checked under a lock on
+  the user's row that link confirmation also takes); if an operator does,
+  the guardian reaches nothing until it is back on. Guardian-side
+  settings, subscription and rotation need it too (409).
 - **Rules**: never oneself (409 `E_PAIRING_WITH_SELF`), at most one live
   (pending or active) link per pair (409 `E_GUARDIAN_LINK_EXISTS`); a ward
   may have several guardians. `maxUnlockMinutes` starts at 30 (or the
@@ -305,10 +323,14 @@ revocationRequestedAt, revocationEffectiveAt, createdAt }`, never the
   link asks and waits `WARD_REVOCATION_COOLDOWN_HOURS` (24; 0 means at
   once): 200 with `revocationEffectiveAt`; asking again keeps the first
   deadline, and `cancel-revocation` withdraws it (409
-  `E_NO_REVOCATION_PENDING` otherwise). The guardian keeps the link until
-  the deadline and loses it exactly then (every lookup reads the
-  deadline); the `ward_revocation_effective` job stores the final state on
-  its next tick. A pending link ends at once, whoever asks. Revoking
+  `E_NO_REVOCATION_PENDING` otherwise). Two phases: **visibility ends at
+  once** (from the request on, the guardian summary and any route with the
+  ward's data answer 404), while **unlock approval stays** until the
+  deadline (the link still carries the guardian's decisions, its
+  subscription and rotation), so the ward's commitment holds through the
+  cooldown. The link ends exactly at the deadline (every lookup reads it);
+  the `ward_revocation_effective` job stores the final state on its next
+  tick. A pending link ends at once, whoever asks. Revoking
   changes only the link: devices, events and every other row of the ward
   stay. Deleting either account ends its links the same way first.
 - **ntfy topic**: each link has its own capability topic,
@@ -345,10 +367,16 @@ denied } }, bypasses: { last7Days, openGaps, recent: [{ id, kind, source,
 details, occurredAt, resolvedAt, acknowledgedAt }] } }`. `score` is null
   until activity sync exists (phase 4) and `unlocks` 0 until unlock
   requests exist (S6); `recent` covers the last 7 days, newest first, 50
-  at most; `openGaps` counts open dead-man gaps. `details` keep only keys
-  some kind's allowlist knows, each a boolean, a safe integer or a short
-  code. Only through an active link whose guardian has two-step
-  verification on; anything else is 404.
+  at most; `openGaps` counts open dead-man gaps. Everything is scoped to
+  this guardian's link: nothing that happened before the ward confirmed
+  it, and of the `guardian_*` events only this link's own (another
+  guardian's link events never show). `details` keep only keys some kind's
+  allowlist knows, each a boolean, a safe integer or a short code. Only
+  through an active link nobody asked to leave, whose guardian has
+  two-step verification on; anything else is 404.
+- **Lock order**: every guardian flow locks the users rows involved first
+  (ascending id), then links, then pairing codes, the order an account
+  deletion's cascade follows; a deadlock is still retried once.
 
 | Code                               | Status | When                                                         |
 | ---------------------------------- | ------ | ------------------------------------------------------------ |
@@ -361,3 +389,4 @@ details, occurredAt, resolvedAt, acknowledgedAt }] } }`. `score` is null
 | `E_GUARDIAN_LINK_NOT_ACTIVE`       | 409    | Subscribing or rotating before the ward confirmed            |
 | `E_NO_REVOCATION_PENDING`          | 409    | Cancelling when the ward has not asked to leave              |
 | `E_NOTIFICATIONS_UNAVAILABLE`      | 409    | Neither `NTFY_PUBLIC_URL` nor `NTFY_BASE_URL` is set         |
+| `E_GUARDIAN_ONLY_ACCOUNT`          | 403    | A guardian-only account starting its own protection (closed) |
