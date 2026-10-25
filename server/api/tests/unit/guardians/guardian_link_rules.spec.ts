@@ -2,7 +2,12 @@
 import { test } from '@japa/runner'
 import { pairingRefusal } from '#domain/guardians/pairing_eligibility'
 import { activationRefusal } from '#domain/guardians/link_activation'
-import { linkState, grantsGuardianship } from '#domain/guardians/link_state'
+import {
+  PENDING_LINK_TTL_HOURS,
+  grantsGuardianship,
+  grantsVisibility,
+  linkState,
+} from '#domain/guardians/link_state'
 import {
   DEFAULT_WARD_REVOCATION_COOLDOWN_HOURS,
   canCancelRevocation,
@@ -18,8 +23,8 @@ import {
 const T0 = new Date('2026-01-05T09:00:00Z')
 const hours = (count: number) => new Date(T0.getTime() + count * 3_600_000)
 
-const active = { status: 'active' as const, revocationEffectiveAt: null }
-const pending = { status: 'pending' as const, revocationEffectiveAt: null }
+const active = { status: 'active' as const, revocationEffectiveAt: null, createdAt: T0 }
+const pending = { status: 'pending' as const, revocationEffectiveAt: null, createdAt: T0 }
 
 test.group('Pairing eligibility', () => {
   test('test_ward_cannot_pair_with_self', ({ assert }) => {
@@ -47,7 +52,7 @@ test.group('Link state', () => {
   test('test_an_active_link_grants_guardianship_until_its_revocation_takes_effect', ({
     assert,
   }) => {
-    const revoking = { status: 'active' as const, revocationEffectiveAt: hours(24) }
+    const revoking = { status: 'active' as const, revocationEffectiveAt: hours(24), createdAt: T0 }
 
     assert.isTrue(grantsGuardianship(linkState(active, T0)))
     assert.equal(linkState(revoking, hours(23)), 'revoking')
@@ -55,11 +60,32 @@ test.group('Link state', () => {
   })
 
   test('test_a_link_past_its_revocation_time_is_revoked_even_before_the_job_runs', ({ assert }) => {
-    const revoking = { status: 'active' as const, revocationEffectiveAt: hours(24) }
+    const revoking = { status: 'active' as const, revocationEffectiveAt: hours(24), createdAt: T0 }
 
     assert.equal(linkState(revoking, hours(24)), 'revoked')
     assert.isFalse(grantsGuardianship(linkState(revoking, hours(24))))
-    assert.equal(linkState({ status: 'revoked', revocationEffectiveAt: null }, T0), 'revoked')
+    assert.equal(
+      linkState({ status: 'revoked', revocationEffectiveAt: null, createdAt: T0 }, T0),
+      'revoked'
+    )
+  })
+})
+
+test.group('Link lifetime and visibility', () => {
+  test('test_a_pending_link_lapses_after_24_hours', ({ assert }) => {
+    assert.equal(PENDING_LINK_TTL_HOURS, 24)
+    assert.equal(linkState(pending, hours(23)), 'pending')
+    assert.equal(linkState(pending, hours(24)), 'revoked')
+    assert.equal(linkState(active, hours(24 * 30)), 'active', 'an active link never lapses')
+  })
+
+  test('test_a_revoking_link_hides_the_summary_but_keeps_approvals', ({ assert }) => {
+    assert.isTrue(grantsVisibility('active'))
+    for (const state of ['pending', 'revoking', 'revoked'] as const) {
+      assert.isFalse(grantsVisibility(state), state)
+    }
+    assert.isTrue(grantsGuardianship('revoking'), 'unlock approvals last until the deadline')
+    assert.isFalse(grantsGuardianship('pending'))
   })
 })
 

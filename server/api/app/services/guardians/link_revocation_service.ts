@@ -7,7 +7,14 @@ import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import type User from '#models/user'
 import GuardianLink from '#models/guardian_link'
 import { CodedError } from '#exceptions/coded_error'
-import { grantsGuardianship, type LinkRole } from '#domain/guardians/link_state'
+import {
+  PENDING_LINK_TTL_HOURS,
+  grantsGuardianship,
+  type LinkRole,
+} from '#domain/guardians/link_state'
+import type { ModelQueryBuilderContract } from '@adonisjs/lucid/types/model'
+import { lockUserRows } from '#services/database/user_row_locks'
+import { retryOnDeadlock } from '#services/database/deadlock_retry'
 import {
   canCancelRevocation,
   planRevocation,
@@ -15,7 +22,9 @@ import {
 } from '#domain/guardians/link_revocation'
 import GuardianNotices from '#services/guardians/guardian_notices'
 import GuardianLinkEvents from '#services/guardians/guardian_link_events'
-import GuardianLinkRegistry from '#services/guardians/guardian_link_registry'
+import GuardianLinkRegistry, {
+  GUARDIAN_LINKS_TABLE,
+} from '#services/guardians/guardian_link_registry'
 
 /** Links finished per job run; the rest wait for the next tick. */
 const BATCH = 200
@@ -32,7 +41,8 @@ const BATCH = 200
  * - at the deadline access ends by itself (every lookup reads the
  *   deadline) and the job (`finalizeDue`) stores the final state, the
  *   neutral `pairing_ended` notice and `guardian_unlinked`;
- * - a link that never became active ends at once and tells nobody;
+ * - a link that never became active ends at once and tells nobody, and
+ *   one the ward never confirmed lapses after PENDING_LINK_TTL_HOURS;
  * - deleting an account ends its links the same way, just before the
  *   cascade removes them.
  *
@@ -49,6 +59,10 @@ export default class LinkRevocationService {
 
   /** Answers the link while it lives on (a scheduled end), null once it ended. */
   async revoke(user: User, linkId: number, now: DateTime): Promise<GuardianLink | null> {
+    return retryOnDeadlock(() => this.revokeOnce(user, linkId, now))
+  }
+
+  protected revokeOnce(user: User, linkId: number, now: DateTime): Promise<GuardianLink | null> {
     return db.transaction(async (trx) => {
       const { link, role } = await this.links.findLiveForParty(user, linkId, now, {
         trx,
@@ -94,6 +108,10 @@ export default class LinkRevocationService {
 
   /** The ward withdraws their request to leave. */
   async cancel(ward: User, linkId: number, now: DateTime): Promise<GuardianLink> {
+    return retryOnDeadlock(() => this.cancelOnce(ward, linkId, now))
+  }
+
+  protected cancelOnce(ward: User, linkId: number, now: DateTime): Promise<GuardianLink> {
     return db.transaction(async (trx) => {
       const link = await this.links.findLive(ward, linkId, 'ward', now, { trx, forUpdate: true })
       if (!canCancelRevocation('ward', link.stateAt(now))) {
@@ -111,59 +129,92 @@ export default class LinkRevocationService {
   }
 
   /**
-   * The job side: stores the end of every link whose ward's deadline has
-   * passed. Rows are claimed with `FOR UPDATE SKIP LOCKED`, so two
-   * containers never finish the same link; answers how many it finished.
+   * The job side. Pending links past their lifetime are declined in one
+   * statement (they granted nothing: no notice, no event). Each link whose
+   * ward's deadline has passed is then finished in its own transaction,
+   * users rows first like every guardian flow (user_row_locks.ts), the
+   * link taken with `FOR UPDATE SKIP LOCKED` while still due, so two
+   * containers never finish the same link. Answers how many links ended.
    */
   async finalizeDue(now: DateTime): Promise<number> {
-    return db.transaction(async (trx) => {
-      const due = await GuardianLink.query({ client: trx })
-        .where('status', 'active')
-        .whereNotNull('revocation_effective_at')
-        .where('revocation_effective_at', '<=', now.toJSDate())
-        .orderBy('revocation_effective_at')
-        .limit(BATCH)
-        .forUpdate()
-        .skipLocked()
-      for (const link of due) {
-        await this.end(trx, link, {
-          by: 'ward',
-          byUserId: link.wardUserId,
-          at: link.revocationEffectiveAt!,
-          granted: true,
+    const lapsed = await db.rawQuery<{ rowCount: number }>(
+      `UPDATE ${GUARDIAN_LINKS_TABLE}
+          SET status = 'revoked', revoked_at = created_at + make_interval(hours => ?), updated_at = ?
+        WHERE status = 'pending' AND created_at <= ?`,
+      [PENDING_LINK_TTL_HOURS, now.toJSDate(), this.links.pendingCutoff(now)]
+    )
+
+    const due = await this.dueQuery(GuardianLink.query(), now)
+      .orderBy('revocation_effective_at')
+      .limit(BATCH)
+    let finished = 0
+    for (const candidate of due) {
+      finished += await retryOnDeadlock(() =>
+        db.transaction(async (trx) => {
+          await lockUserRows(trx, [
+            { id: candidate.wardUserId, mode: 'key share' },
+            { id: candidate.guardianUserId, mode: 'key share' },
+          ])
+          const link = await this.dueQuery(GuardianLink.query({ client: trx }), now)
+            .where('id', candidate.id)
+            .forUpdate()
+            .skipLocked()
+            .first()
+          if (!link) return 0
+          await this.end(trx, link, {
+            by: 'ward',
+            byUserId: link.wardUserId,
+            at: link.revocationEffectiveAt!,
+            granted: true,
+          })
+          return 1
         })
-      }
-      return due.length
-    })
+      )
+    }
+    return lapsed.rowCount + finished
+  }
+
+  /** The other person of every live link of `user` (to lock their rows before deleting it). */
+  async counterpartsOf(user: User, now: DateTime): Promise<number[]> {
+    const links = await this.links.liveLinksOf(user, now)
+    return links.map((link) =>
+      link.wardUserId === user.id ? link.guardianUserId : link.wardUserId
+    )
   }
 
   /**
-   * Before an account is deleted (in the deletion's transaction): each
-   * guardian of a ward that leaves gets `pairing_ended`; each ward of a
-   * guardian that leaves gets `guardian_unlinked` in their log. Pending
-   * links granted nothing and tell nobody.
+   * Before an account is deleted, in the deletion's transaction (which has
+   * locked the users rows): each guardian of a ward that leaves gets
+   * `pairing_ended`; each ward of a guardian that leaves gets
+   * `guardian_unlinked` in their log. The links are locked by one
+   * statement in id order. Pending links granted nothing and tell nobody.
    */
   async endForDeletedAccount(
     user: User,
     now: DateTime,
     trx: TransactionClientContract
   ): Promise<void> {
-    for (const role of ['ward', 'guardian'] as const) {
-      for (const link of await this.links.liveOn(user, role, now, trx)) {
-        if (!grantsGuardianship(link.stateAt(now))) continue
-        if (role === 'ward') {
-          await this.notices.queue(trx, link, { kind: 'pairing_ended', linkId: link.id }, now)
-        } else {
-          await this.events.record(
-            trx,
-            link,
-            'guardian_unlinked',
-            { endedBy: 'guardian', reason: 'account_deleted' },
-            now
-          )
-        }
+    for (const link of await this.links.liveLinksOf(user, now, trx)) {
+      if (!grantsGuardianship(link.stateAt(now))) continue
+      if (link.wardUserId === user.id) {
+        await this.notices.queue(trx, link, { kind: 'pairing_ended', linkId: link.id }, now)
+      } else {
+        await this.events.record(
+          trx,
+          link,
+          'guardian_unlinked',
+          { endedBy: 'guardian', reason: 'account_deleted' },
+          now
+        )
       }
     }
+  }
+
+  protected dueQuery(query: ModelQueryBuilderContract<typeof GuardianLink>, now: DateTime) {
+    return query
+      .where('status', 'active')
+      .whereNotNull('revocation_effective_at')
+      .where('revocation_effective_at', '<=', now.toJSDate())
   }
 
   /** Stores the end; a link that had granted guardianship is recorded (and announced if the ward left). */

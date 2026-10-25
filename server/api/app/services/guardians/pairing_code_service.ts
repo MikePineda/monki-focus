@@ -4,6 +4,7 @@ import type { DateTime } from 'luxon'
 import env from '#start/env'
 import db from '@adonisjs/lucid/services/db'
 import type User from '#models/user'
+import { assertMayStartOwnProtection } from '#services/guardians/guardian_only_accounts'
 import {
   PAIRING_CODE_MAX_ATTEMPTS,
   PAIRING_CODE_SPACE,
@@ -38,6 +39,7 @@ export interface IssuedPairingCode {
  */
 export default class PairingCodeService {
   async create(ward: User, now: DateTime): Promise<IssuedPairingCode> {
+    assertMayStartOwnProtection(ward)
     await consumePairingCodeCreation(ward.id)
     const expiresAt = now.plus({
       minutes: pairingCodeTtlMinutes(env.get('PAIRING_CODE_TTL_MINUTES')),

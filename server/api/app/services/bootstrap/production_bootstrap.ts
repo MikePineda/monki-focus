@@ -52,6 +52,7 @@ export default class ProductionBootstrap {
         timeZone: person.timeZone,
         weekStart: 1,
         isAdmin,
+        guardianOnly: false,
         sessionVersion: 0,
       },
       { client: trx }

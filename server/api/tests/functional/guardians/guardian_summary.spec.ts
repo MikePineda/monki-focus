@@ -16,6 +16,8 @@ import { expectStatus } from '#tests/support/expect_response'
 import { BYPASS_EVENTS } from '#tests/support/guardians'
 
 const NOW = '2026-01-12T09:00:00Z'
+/** Every link of these specs was confirmed before the events they store. */
+const CONFIRMED = DateTime.fromISO('2026-01-01T09:00:00Z', { zone: 'utc' })
 
 const summary = (client: ApiClient, wardId: number) =>
   client.get(`/api/v1/guardian/wards/${wardId}/summary`)
@@ -46,7 +48,7 @@ test.group('Guardian summary', (group) => {
 
   test('test_the_guardian_sees_scores_unlocks_and_bypasses_only', async ({ client, assert }) => {
     freezeTime(NOW)
-    const { ward, guardian } = await guardianPair({ state: 'active' })
+    const { ward, guardian } = await guardianPair({ state: 'active', confirmedAt: CONFIRMED })
     const { device } = await enrolledDevice(ward)
     await storeEvent(ward, device.id, 'c:a:old', '2026-01-04T09:00:00Z')
     await storeEvent(ward, device.id, 'c:a:1', '2026-01-10T09:00:00Z')
@@ -85,7 +87,7 @@ test.group('Guardian summary', (group) => {
 
   test('test_guardian_payload_never_contains_titles_or_urls', async ({ client, assert }) => {
     freezeTime(NOW)
-    const { ward, guardian } = await guardianPair({ state: 'active' })
+    const { ward, guardian } = await guardianPair({ state: 'active', confirmedAt: CONFIRMED })
     await storeEvent(ward, null, 'c:a:hostile', '2026-01-11T09:00:00Z', {
       details: JSON.stringify({
         scope: 'rule',
@@ -111,6 +113,7 @@ test.group('Guardian summary', (group) => {
     const active = await guardianPair({ state: 'active' })
     const pending = await guardianPair({ state: 'pending' })
     const revoked = await guardianPair({ state: 'revoked' })
+    const revoking = await guardianPair({ state: 'revoking' })
     const withoutTwoFactor = await guardianPair({ state: 'active', guardianTwoFactor: false })
     const lapsed = await guardianPair({ state: 'active' })
     lapsed.link.revocationRequestedAt = DateTime.utc().minus({ days: 2 })
@@ -122,6 +125,7 @@ test.group('Guardian summary', (group) => {
       [stranger, active.ward],
       [pending.guardian, pending.ward],
       [revoked.guardian, revoked.ward],
+      [revoking.guardian, revoking.ward],
       [withoutTwoFactor.guardian, withoutTwoFactor.ward],
       [lapsed.guardian, lapsed.ward],
       [active.ward, active.guardian],
@@ -136,6 +140,57 @@ test.group('Guardian summary', (group) => {
       client.get('/api/v1/guardian/wards/not-a-number/summary').actingAs(active.guardian),
       404
     )
+  })
+
+  test('test_the_summary_is_scoped_to_this_guardians_link', async ({ client, assert }) => {
+    freezeTime(NOW)
+    const ward = await UserFactory.create()
+    const first = await guardianPair({ state: 'active', ward, confirmedAt: CONFIRMED })
+    const laterConfirmed = DateTime.fromISO('2026-01-10T09:00:00Z', { zone: 'utc' })
+    const second = await guardianPair({ state: 'active', ward, confirmedAt: laterConfirmed })
+    const linked = (link: { id: number }, at: string) =>
+      storeEvent(ward, null, `s:guardian_linked:${link.id}`, at, {
+        kind: 'guardian_linked',
+        source: 'server',
+        details: '{}',
+      })
+    await linked(first.link, '2026-01-05T09:00:00Z')
+    await linked(second.link, '2026-01-10T09:00:00Z')
+    await storeEvent(
+      ward,
+      null,
+      's:guardian_revocation_requested:999999:1',
+      '2026-01-11T09:00:00Z',
+      {
+        kind: 'guardian_revocation_requested',
+        source: 'server',
+        details: JSON.stringify({ cooldownHours: 24 }),
+      }
+    )
+    await storeEvent(ward, null, 'c:a:before-second', '2026-01-08T09:00:00Z')
+    await storeEvent(ward, null, 'c:a:after-second', '2026-01-11T09:00:00Z')
+
+    const asFirst = await summary(client, ward.id).actingAs(first.guardian)
+    const asSecond = await summary(client, ward.id).actingAs(second.guardian)
+
+    const keysOf = (response: typeof asFirst) =>
+      response
+        .body()
+        .bypasses.recent.map((event: { kind: string; occurredAt: string }) => [
+          event.kind,
+          event.occurredAt,
+        ])
+    assert.deepEqual(keysOf(asFirst), [
+      ['emergency_override', '2026-01-11T09:00:00.000Z'],
+      ['emergency_override', '2026-01-08T09:00:00.000Z'],
+      ['guardian_linked', '2026-01-05T09:00:00.000Z'],
+    ])
+    assert.equal(asFirst.body().bypasses.last7Days, 3)
+    assert.deepEqual(keysOf(asSecond), [
+      ['emergency_override', '2026-01-11T09:00:00.000Z'],
+      ['guardian_linked', '2026-01-10T09:00:00.000Z'],
+    ])
+    assert.equal(asSecond.body().bypasses.last7Days, 2)
   })
 
   test('test_guardian_cannot_read_ward_timeline_404', async ({ client, assert }) => {

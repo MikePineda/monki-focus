@@ -52,6 +52,8 @@ export async function guardianPair(
     ward?: User
     guardian?: User
     guardianTwoFactor?: boolean
+    /** When the ward confirmed it (active and revoking links; default: now). */
+    confirmedAt?: DateTime
   } = {}
 ) {
   const ward = options.ward ?? (await UserFactory.create())
@@ -61,7 +63,11 @@ export async function guardianPair(
       ? await UserFactory.create()
       : await UserFactory.apply('twoFactor').create())
   const state = options.state ?? 'active'
-  const builder = GuardianLinkFactory.merge({ wardUserId: ward.id, guardianUserId: guardian.id })
+  const builder = GuardianLinkFactory.merge({
+    wardUserId: ward.id,
+    guardianUserId: guardian.id,
+    ...(options.confirmedAt && state !== 'pending' ? { confirmedAt: options.confirmedAt } : {}),
+  })
   const link = await (state === 'active' ? builder : builder.apply(state)).create()
   return { ward, guardian, link }
 }

@@ -59,12 +59,13 @@ test.group('Guardian registration through a pairing code', (group) => {
     response.assertSession('auth_web', guardian.id)
     response.assertBodyContains({
       user: {
+        guardianOnly: true,
         email: 'guardian-1@example.com',
         locale: 'es',
         isAdmin: false,
         twoFactorEnabled: false,
       },
-      link: { role: 'guardian', status: 'pending', wardUserId: ward.id },
+      link: { role: 'guardian', status: 'pending', counterpart: null },
     })
     assert.isFalse(guardian.isAdmin)
     const link = await GuardianLink.findOrFail(response.body().link.id)

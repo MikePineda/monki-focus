@@ -97,16 +97,19 @@ export default class TwoFactorService {
     throw invalidCode()
   }
 
-  /** Turns TOTP off: seed, steps and recovery codes are gone. */
-  async disable(user: User): Promise<void> {
-    await db.transaction(async (trx) => {
-      await RecoveryCode.query({ client: trx }).where('user_id', user.id).delete()
-      user.useTransaction(trx)
-      user.totpSecretEncrypted = null
-      user.totpEnabledAt = null
-      user.totpLastUsedStep = null
-      await user.save()
-    })
+  /**
+   * Turns TOTP off: seed, steps and recovery codes are gone. In the
+   * caller's transaction when given one (the dashboard route runs it under
+   * a lock on the user's row, after checking the user guards no one).
+   */
+  async disable(user: User, trx?: TransactionClientContract): Promise<void> {
+    if (!trx) return db.transaction((own) => this.disable(user, own))
+    await RecoveryCode.query({ client: trx }).where('user_id', user.id).delete()
+    user.useTransaction(trx)
+    user.totpSecretEncrypted = null
+    user.totpEnabledAt = null
+    user.totpLastUsedStep = null
+    await user.save()
   }
 
   /** A new set of recovery codes; the old ones stop working. */

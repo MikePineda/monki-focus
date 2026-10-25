@@ -6,3 +6,8 @@ import { email } from '#validators/account_fields'
 export const createInvitationValidator = vine.create({
   email: email().nullable().optional(),
 })
+
+/** POST /me/invitation: the secret part of an invitation link. */
+export const acceptInvitationValidator = vine.create({
+  invitation: vine.string().trim().minLength(1).maxLength(128),
+})

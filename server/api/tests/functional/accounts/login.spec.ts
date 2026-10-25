@@ -178,6 +178,7 @@ test.group('Accounts / login and sessions', (group) => {
         timeZone: 'Europe/Madrid',
         weekStart: 7,
         isAdmin: false,
+        guardianOnly: false,
         twoFactorEnabled: false,
         createdAt: user.createdAt.toUTC().toISO(),
       },

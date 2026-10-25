@@ -23,5 +23,6 @@
   "E_GUARDIAN_LINK_NOT_PENDING": "Esta vinculación ya no espera confirmación",
   "E_GUARDIAN_LINK_NOT_ACTIVE": "Esta vinculación todavía no está activa",
   "E_NO_REVOCATION_PENDING": "No hay ninguna solicitud de salida que cancelar",
-  "E_NOTIFICATIONS_UNAVAILABLE": "Las notificaciones no están configuradas en este servidor"
+  "E_NOTIFICATIONS_UNAVAILABLE": "Las notificaciones no están configuradas en este servidor",
+  "E_GUARDIAN_ONLY_ACCOUNT": "Esta cuenta se creó para ser guardián de alguien. Pide una invitación al administrador para proteger tus propios dispositivos"
 }

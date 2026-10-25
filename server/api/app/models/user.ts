@@ -41,6 +41,10 @@ export default class User extends compose(
   @column()
   declare isAdmin: boolean
 
+  /** Created through a guardian pairing code: may only guard while registration is closed. */
+  @column()
+  declare guardianOnly: boolean
+
   @column({ serializeAs: null })
   declare sessionVersion: number
 

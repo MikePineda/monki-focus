@@ -4,6 +4,7 @@ import env from '#start/env'
 import type { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import type User from '#models/user'
+import { assertMayStartOwnProtection } from '#services/guardians/guardian_only_accounts'
 import Device from '#models/device'
 import { CodedError } from '#exceptions/coded_error'
 import { ownedBy } from '#services/tenancy/owned_by'
@@ -46,6 +47,7 @@ export function enrollmentPepper(): string {
  */
 export default class EnrollmentCodeService {
   async create(user: User, now: DateTime): Promise<IssuedEnrollmentCode> {
+    assertMayStartOwnProtection(user)
     await consumeEnrollmentCodeCreation(user.id)
 
     const active = await ownedBy(Device, user).whereNull('revoked_at').count('* as total')
