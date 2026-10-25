@@ -80,4 +80,44 @@
     <!-- Bedtime cover. -->
     <string name="bedtime_title">It’s bedtime</string>
     <string name="bedtime_body_until">Apps you limited stay closed until %1$s.</string>
+
+    <!-- Accessibility service (Settings → Accessibility → monki-focus). -->
+    <string name="accessibility_service_description">monki-focus reads the screen of the apps and browsers you set rules for, to recognise feeds such as Reels and Shorts, and the address bar of supported browsers. It also watches its own pages in Settings so protection is not turned off by accident. It never stores or sends what is on screen: only the app, the site and which kind of screen it is, on this phone.</string>
+
+    <!-- Bounce card over our own Settings screens. -->
+    <string name="bounce_title">This screen can turn off monki-focus</string>
+    <string name="bounce_body_device_admin">Turning off uninstall protection here is the first step to removing your rules.</string>
+    <string name="bounce_body_accessibility">Turning off this service stops every rule you set.</string>
+    <string name="bounce_body_app_info">From here monki-focus can be stopped, cleared or uninstalled.</string>
+    <string name="bounce_body_uninstall">Uninstalling removes every rule you set.</string>
+    <string name="bounce_back">Go back</string>
+    <string name="bounce_disable_guardian">Disable protection (waits 2 min, your guardian will be notified)</string>
+    <string name="bounce_disable_no_guardian">Disable protection (waits 2 min, it is recorded)</string>
+
+    <!-- Exit and unlink. -->
+    <string name="exit_title">Exit and unlink</string>
+    <string name="exit_body">After a 2-minute wait, uninstall protection and the Settings guard turn off and monki-focus stops. If you have a guardian, they get a neutral notice: protection ended. Your rules stay on this phone.</string>
+    <string name="exit_start">Start the 2-minute wait</string>
+    <string name="exit_waiting">Protection ends when the wait is over.</string>
+    <string name="exit_keep">Keep protection</string>
+    <string name="exit_ended">Protection ended. You can turn the service off or uninstall monki-focus.</string>
+
+    <!-- Hide-feed cover. -->
+    <string name="cover_feed_hidden">The feed is hidden. Direct links work.</string>
+
+    <!-- Persistent notice while protection is on. -->
+    <string name="notice_channel_name">Protection status</string>
+    <string name="notice_channel_description">Shows while monki-focus is active, so it is never running unseen.</string>
+    <string name="notice_title">monki-focus is active</string>
+    <string name="notice_text_guardian">Your guardian sees: score, unlocks, bypasses</string>
+    <string name="notice_text_no_guardian">No guardian linked. Nothing leaves this phone.</string>
+    <string name="notice_text_exit_pending">Protection ends in a moment.</string>
+    <string name="notice_action_exit">Exit and unlink</string>
+
+    <!-- Device admin (uninstall friction only, no policies). -->
+    <string name="device_admin_description">Adds one step before monki-focus can be uninstalled. It sets no device policies. You can turn it off any time with Exit and unlink.</string>
+    <string name="device_admin_disable_warning">Turning this off is recorded as a bypass. Exit and unlink in the app ends protection without one.</string>
+
+    <!-- Home. -->
+    <string name="home_exit_button">Exit and unlink</string>
 </resources>

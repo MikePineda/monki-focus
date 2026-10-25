@@ -72,4 +72,44 @@
     <!-- Bedtime cover. -->
     <string name="bedtime_title">Es hora de dormir</string>
     <string name="bedtime_body_until">Las apps que limitaste siguen cerradas hasta las %1$s.</string>
+
+    <!-- Accessibility service (Settings → Accessibility → monki-focus). -->
+    <string name="accessibility_service_description">monki-focus lee la pantalla de las apps y navegadores para los que pusiste reglas, para reconocer feeds como Reels y Shorts, y la barra de direcciones de los navegadores compatibles. También vigila sus propias páginas en Ajustes para que la protección no se apague por accidente. Nunca guarda ni envía lo que hay en pantalla: solo la app, el sitio y qué tipo de pantalla es, en este teléfono.</string>
+
+    <!-- Bounce card over our own Settings screens. -->
+    <string name="bounce_title">Esta pantalla puede apagar monki-focus</string>
+    <string name="bounce_body_device_admin">Quitar aquí la protección contra desinstalación es el primer paso para borrar tus reglas.</string>
+    <string name="bounce_body_accessibility">Apagar este servicio detiene todas las reglas que pusiste.</string>
+    <string name="bounce_body_app_info">Desde aquí se puede detener, borrar o desinstalar monki-focus.</string>
+    <string name="bounce_body_uninstall">Desinstalar borra todas las reglas que pusiste.</string>
+    <string name="bounce_back">Volver</string>
+    <string name="bounce_disable_guardian">Desactivar la protección (espera 2 min, se avisará a tu guardián)</string>
+    <string name="bounce_disable_no_guardian">Desactivar la protección (espera 2 min, queda registrado)</string>
+
+    <!-- Exit and unlink. -->
+    <string name="exit_title">Salir y desvincular</string>
+    <string name="exit_body">Tras una espera de 2 minutos se apagan la protección contra desinstalación y la guardia de Ajustes, y monki-focus se detiene. Si tienes guardián, recibe un aviso neutro: la protección terminó. Tus reglas se quedan en este teléfono.</string>
+    <string name="exit_start">Empezar la espera de 2 minutos</string>
+    <string name="exit_waiting">La protección termina cuando acabe la espera.</string>
+    <string name="exit_keep">Mantener la protección</string>
+    <string name="exit_ended">La protección terminó. Puedes apagar el servicio o desinstalar monki-focus.</string>
+
+    <!-- Hide-feed cover. -->
+    <string name="cover_feed_hidden">El feed está oculto. Los enlaces directos funcionan.</string>
+
+    <!-- Persistent notice while protection is on. -->
+    <string name="notice_channel_name">Estado de la protección</string>
+    <string name="notice_channel_description">Aparece mientras monki-focus está activo, para que nunca funcione sin que lo veas.</string>
+    <string name="notice_title">monki-focus está activo</string>
+    <string name="notice_text_guardian">Tu guardián ve: puntaje, desbloqueos, bypasses</string>
+    <string name="notice_text_no_guardian">Sin guardián vinculado. Nada sale de este teléfono.</string>
+    <string name="notice_text_exit_pending">La protección termina en un momento.</string>
+    <string name="notice_action_exit">Salir y desvincular</string>
+
+    <!-- Device admin (uninstall friction only, no policies). -->
+    <string name="device_admin_description">Añade un paso antes de poder desinstalar monki-focus. No impone ninguna política al dispositivo. Puedes quitarlo cuando quieras con Salir y desvincular.</string>
+    <string name="device_admin_disable_warning">Quitarlo queda registrado como bypass. Salir y desvincular en la app termina la protección sin bypass.</string>
+
+    <!-- Home. -->
+    <string name="home_exit_button">Salir y desvincular</string>
 </resources>

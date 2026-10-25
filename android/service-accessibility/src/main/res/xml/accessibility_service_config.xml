@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!--
+  docs/threat-model.md, Android: an explicit packageNames list (the watched
+  apps and browsers of the compiled pack allowlist, plus Settings and the
+  package installers for the anti-bypass guard), the two window events the
+  pipeline needs, window content only for those packages and view ids for
+  the detector packs. No isAccessibilityTool: this is not an assistive tool.
+  A test keeps packageNames equal to PackageAllowlist.COMPILED.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/accessibility_service_description"
+    android:notificationTimeout="150"
+    android:packageNames="com.instagram.android,com.google.android.youtube,com.android.chrome,com.brave.browser,com.vivaldi.browser,org.cromite.cromite,app.vanadium.browser,org.mozilla.firefox,com.sec.android.app.sbrowser,com.android.settings,com.google.android.packageinstaller,com.android.packageinstaller" />
