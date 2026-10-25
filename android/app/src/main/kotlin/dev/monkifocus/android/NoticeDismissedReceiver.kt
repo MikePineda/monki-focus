@@ -20,10 +20,11 @@ class NoticeDismissedReceiver : BroadcastReceiver() {
         val graph = (context.applicationContext as MonkiApplication).graph
         val notifier = graph.notifier
         notifier.dismissed()
-        val exit = graph.protection.exitFlow.state
+        val protection = graph.protection
+        val exit = protection.exitFlow.state
         notifier.reconcile(
             protectionActive = graph.accessibilityServiceEnabled() && exit !is ExitFlowState.Ended,
-            content = NoticeContent(guardianLinked = false, exitPending = exit is ExitFlowState.Waiting),
+            content = NoticeContent.of(protection.guardianLinked, exit),
         )
     }
 }

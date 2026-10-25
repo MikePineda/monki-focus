@@ -65,6 +65,8 @@ class AppGraph(
 
         override fun bundledPacks(): Map<String, ByteArray> = rules.packs()
 
+        override fun starterRuleset(): Ruleset = rules.starter
+
         override suspend fun activeRuleset(now: String): Ruleset = data.rulesets.active(now)?.ruleset ?: rules.starter
 
         override val escalationStates: EscalationStateRepository get() = data.escalationStates

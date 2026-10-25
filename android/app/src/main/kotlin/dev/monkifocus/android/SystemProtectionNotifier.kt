@@ -38,8 +38,7 @@ class SystemProtectionNotifier(
         content: NoticeContent,
     ) {
         val showing = runCatching { manager.activeNotifications.any { it.id == NOTICE_ID } }.getOrDefault(false)
-        val permitted = NotificationManagerCompat.from(appContext).areNotificationsEnabled()
-        when (val command = notice.reconcile(protectionActive, showing, permitted, content)) {
+        when (val command = notice.reconcile(protectionActive, showing, permitted(), content)) {
             is NoticeCommand.Post -> post(command.content)
             NoticeCommand.Cancel -> manager.cancel(NOTICE_ID)
             NoticeCommand.None -> Unit
@@ -49,6 +48,8 @@ class SystemProtectionNotifier(
     override fun dismissed() {
         notice.dismissed()
     }
+
+    override fun permitted(): Boolean = NotificationManagerCompat.from(appContext).areNotificationsEnabled()
 
     private fun post(content: NoticeContent) {
         ensureChannel()
