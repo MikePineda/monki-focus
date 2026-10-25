@@ -21,10 +21,16 @@ server.use([
   () => import('@adonisjs/cors/cors_middleware'),
 ])
 
+/**
+ * Every matched route: body parsing and the cookie-free half of Shield
+ * (CSP, frame guard, HSTS, nosniff). No session and no CSRF here, so
+ * `/api/v1/keys`, `/api/v1/device/*` and `/api/v1/actions/*` never set a
+ * cookie.
+ */
 router.use([
   () => import('@adonisjs/core/bodyparser_middleware'),
-  () => import('@adonisjs/session/session_middleware'),
-  () => import('@adonisjs/shield/shield_middleware'),
+  () => import('#middleware/security_headers_middleware'),
+  // Lazy: it only builds `ctx.auth`; the session guard reads the session where `session` runs.
   () => import('@adonisjs/auth/initialize_auth_middleware'),
 ])
 
@@ -32,6 +38,10 @@ router.use([
  * Named middleware, assigned to routes or groups explicitly.
  */
 export const middleware = router.named({
+  /** Dashboard groups only: the session cookie. Always before `shield`. */
+  session: () => import('@adonisjs/session/session_middleware'),
+  /** Dashboard groups only, after `session`: CSRF (XSRF-TOKEN cookie) plus the headers. */
+  shield: () => import('@adonisjs/shield/shield_middleware'),
   clientVersion: () => import('#middleware/client_version_middleware'),
   /** Session (`web`) by default, with the session-version check; S4 adds `device`. */
   auth: () => import('#middleware/auth_middleware'),

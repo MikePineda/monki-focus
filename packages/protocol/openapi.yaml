@@ -62,7 +62,7 @@ paths:
             Cache-Control:
               schema:
                 type: string
-                const: max-age=300
+                const: public, max-age=300
           content:
             application/json:
               schema:

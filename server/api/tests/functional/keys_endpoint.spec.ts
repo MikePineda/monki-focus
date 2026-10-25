@@ -95,13 +95,15 @@ test.group('GET /api/v1/keys', () => {
     const first = await client.get('/api/v1/keys').header('X-Client-Version', CLIENT_VERSION)
     const etag = first.header('etag') ?? ''
     assert.match(etag, /^"[A-Za-z0-9_-]{27}"$/)
-    assert.equal(first.header('cache-control'), 'max-age=300')
+    assert.equal(first.header('cache-control'), 'public, max-age=300')
+    assert.isUndefined(first.header('set-cookie'))
 
     const again = await client
       .get('/api/v1/keys')
       .header('X-Client-Version', CLIENT_VERSION)
       .header('If-None-Match', etag)
     again.assertStatus(304)
+    assert.isUndefined(again.header('set-cookie'))
   })
 
   test('test_keys_publishes_the_retired_key_and_an_endorsement_that_verifies_after_rotation', async ({
@@ -151,12 +153,23 @@ test.group('GET /api/v1/keys', () => {
     missing.assertBody({ code: 'validation_failed', fields: { 'X-Client-Version': 'invalid' } })
   })
 
-  test('test_keys_sets_no_session_cookie', async ({ client, assert }) => {
+  test('test_keys_sets_no_cookie_and_keeps_the_security_headers', async ({ client, assert }) => {
     await bootKeys()
 
     const response = await client.get('/api/v1/keys').header('X-Client-Version', CLIENT_VERSION)
 
-    const cookies = Object.keys(response.cookies())
-    assert.notInclude(cookies, 'adonis-session')
+    response.assertStatus(200)
+    assert.isUndefined(response.header('set-cookie'))
+    assert.deepEqual(response.cookies(), {})
+    response.assertHeader('x-frame-options', 'DENY')
+    response.assertHeader('x-content-type-options', 'nosniff')
+    assert.include(String(response.header('content-security-policy')), `default-src 'self'`)
+  })
+
+  test('test_no_api_route_outside_the_dashboard_sets_a_cookie', async ({ client, assert }) => {
+    for (const path of ['/api/health', '/api/health/live', '/api/v1/device/unknown']) {
+      const response = await client.get(path).header('X-Client-Version', CLIENT_VERSION)
+      assert.isUndefined(response.header('set-cookie'), path)
+    }
   })
 })
