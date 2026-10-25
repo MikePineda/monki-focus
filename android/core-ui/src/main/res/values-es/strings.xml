@@ -73,7 +73,7 @@
     <string name="bedtime_body_until">Las apps que limitaste siguen cerradas hasta las %1$s.</string>
 
     <!-- Accessibility service (Settings → Accessibility → monki-focus). -->
-    <string name="accessibility_service_description">monki-focus lee la pantalla de las apps y navegadores para los que pusiste reglas, para reconocer feeds como Reels y Shorts, y la barra de direcciones de los navegadores compatibles. También vigila sus propias páginas en Ajustes para que la protección no se apague por accidente. Nunca guarda ni envía lo que hay en pantalla: solo la app, el sitio y qué tipo de pantalla es, en este teléfono.</string>
+    <string name="accessibility_service_description">monki-focus lee la pantalla de las apps y navegadores para los que pusiste reglas, para reconocer feeds como Reels y Shorts, y la barra de direcciones de los navegadores compatibles. También vigila sus propias páginas en Ajustes para que la protección no se apague por accidente. Nunca guarda ni envía lo que hay en pantalla. Para las estadísticas guarda, solo en este teléfono, la app, el dominio del sitio web y, solo en sitios conocidos, qué sección (como reddit.com/r). Las pestañas privadas (incógnito) no se distinguen, así que sus dominios también se cuentan.</string>
 
     <!-- Bounce card over our own Settings screens. -->
     <string name="bounce_title">Esta pantalla puede apagar monki-focus</string>
@@ -142,7 +142,7 @@
     <string name="onboarding_disclosure_intro">monki-focus usa el servicio de Accesibilidad de Android para aplicar las reglas que pones. Antes de activarlo, esto es exactamente lo que hace.</string>
     <string name="onboarding_disclosure_reads_title">Qué lee</string>
     <string name="onboarding_disclosure_reads_apps">La estructura de la pantalla (qué tipo de pantalla está abierta) en Instagram, YouTube, tus navegadores y los Ajustes de Android: para distinguir Reels y Shorts y proteger sus propios ajustes.</string>
-    <string name="onboarding_disclosure_reads_url">En los navegadores, solo el texto de la barra de direcciones, reducido al instante al sitio y a la primera parte de la ruta (por ejemplo reddit.com/r).</string>
+    <string name="onboarding_disclosure_reads_url">En los navegadores, solo el texto de la barra de direcciones, reducido al instante al dominio del sitio web y, solo en sitios conocidos, a la sección (por ejemplo reddit.com/r); no se guarda nada más de la dirección. Las pestañas privadas (incógnito) no se distinguen, así que sus dominios también cuentan en tus estadísticas, solo en este teléfono.</string>
     <string name="onboarding_disclosure_never_title">Qué no hace nunca</string>
     <string name="onboarding_disclosure_never_store">Nunca lee ni guarda tus mensajes, publicaciones o lo que escribes, y no almacena texto de la pantalla.</string>
     <string name="onboarding_disclosure_never_send">No envía nada a ningún lado: la app no tiene permiso de internet. Todo se queda en este teléfono.</string>
