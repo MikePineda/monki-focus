@@ -70,6 +70,15 @@ class ProtectionPreferences(
         prefs.edit(commit = true) { putStringSet(KEY_JOURNAL, journal() - line) }
     }
 
+    /**
+     * Set only by our app's "Turn on protection" flow, after the
+     * notification step; cleared when "Exit and unlink" ends protection.
+     * Without it the service enforces nothing.
+     */
+    var armedByUser: Boolean
+        get() = prefs.getBoolean(KEY_ARMED_BY_USER, false)
+        set(value) = prefs.edit(commit = true) { putBoolean(KEY_ARMED_BY_USER, value) }
+
     var overlayImeFailed: Boolean
         get() = prefs.getBoolean(KEY_OVERLAY_IME_FAILED, false)
         set(value) = prefs.edit(commit = true) { putBoolean(KEY_OVERLAY_IME_FAILED, value) }
@@ -82,6 +91,7 @@ class ProtectionPreferences(
         const val KEY_REARM_ALLOWED = "exit_rearm_allowed"
         const val KEY_JOURNAL = "bypass_journal"
         const val KEY_OVERLAY_IME_FAILED = "overlay_ime_failed"
+        const val KEY_ARMED_BY_USER = "armed_by_user"
         const val STATE_WAITING = "waiting"
         const val STATE_ENDED = "ended"
     }

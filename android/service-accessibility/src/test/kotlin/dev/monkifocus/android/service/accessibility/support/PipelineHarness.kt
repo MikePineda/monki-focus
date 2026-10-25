@@ -29,6 +29,9 @@ internal class PipelineHarness(
     var labelCollision: Boolean = false,
     startWallMs: Long = MORNING_MS,
     unsupportedBrowsers: Set<String> = emptySet(),
+    /** Whether the user armed protection in the app; most tests start armed. */
+    var armedByUser: Boolean = true,
+    var noticePermitted: Boolean = true,
 ) {
     val performer = RecordingPerformer()
     val escalationWrites = mutableListOf<EscalationState>()
@@ -71,6 +74,8 @@ internal class PipelineHarness(
             ourPackage = OURS,
             packs = { RulesData.packs },
             unsupportedBrowsers = { unsupportedBrowsers },
+            armedByUser = { armedByUser },
+            noticePermitted = { noticePermitted },
         )
 
     var mono = 100_000L

@@ -118,4 +118,11 @@
     <string name="home_turn_on">Activar la protección</string>
     <string name="status_notice_on">Aviso de protección: activado</string>
     <string name="status_notice_off">Aviso de protección: apagado</string>
+    <string name="setup_card_title">Termina de configurar monki-focus</string>
+    <string name="setup_card_body">El servicio está encendido, pero la protección no hace nada hasta que la actives en la app.</string>
+    <string name="setup_card_open">Abrir monki-focus</string>
+    <string name="notice_card_title">La protección está activa y las notificaciones apagadas</string>
+    <string name="notice_card_body">monki-focus no puede mostrar su aviso de estado, así que en sus pantallas aparece un banner. Permite las notificaciones para verlo siempre.</string>
+    <string name="notice_card_allow">Permitir notificaciones</string>
+    <string name="card_dismiss">Ahora no</string>
 </resources>

@@ -23,7 +23,9 @@ import dev.monkifocus.android.service.accessibility.action.OverlayContent
  *   touch on it; they are `FLAG_NOT_FOCUSABLE` (keys and the IME stay with
  *   the app below) except a prompt with a text field, which needs focus;
  * - the hide-feed cover is only as tall as its region, so the bars around it
- *   (URL bar, tab bar) keep working, and it never takes focus.
+ *   (URL bar, tab bar) keep working, and it never takes focus;
+ * - a status card (setup, notice off) is a small window at the top that
+ *   blocks nothing.
  *
  * The window is created once and its content and layout updated in place.
  * Main thread only.
@@ -93,9 +95,16 @@ internal class OverlayHost(
         focusable: Boolean,
     ): WindowManager.LayoutParams {
         val region = (next as? OverlayContent.Cover)?.region
-        val height = region?.let { (it.bottom - it.top).coerceAtLeast(1) } ?: WindowManager.LayoutParams.MATCH_PARENT
+        val card = next is OverlayContent.Card
+        val height =
+            when {
+                region != null -> (region.bottom - region.top).coerceAtLeast(1)
+                card -> WindowManager.LayoutParams.WRAP_CONTENT
+                else -> WindowManager.LayoutParams.MATCH_PARENT
+            }
         var flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-        if (!focusable || region != null) flags = flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        // Covers and status cards never take focus; touches outside them reach the app.
+        if (!focusable || region != null || card) flags = flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         return WindowManager
             .LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,

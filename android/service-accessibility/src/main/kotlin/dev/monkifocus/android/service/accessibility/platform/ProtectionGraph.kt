@@ -35,12 +35,17 @@ class ProtectionGraph(
         ExitFlowController(
             preferences,
             bypasses,
-            DeviceAdminDisarmer(appContext, inputs.deviceAdmin, inputs.notifier),
+            DeviceAdminDisarmer(appContext, inputs.deviceAdmin, inputs.notifier, preferences),
             AndroidExitClock(appContext),
         )
     }
 
     val gateRelay: GateRelay by lazy { GateRelay() }
+
+    /** "Turn on protection" in our app, after the notification step: the service may now act. */
+    fun armByUser() {
+        preferences.armedByUser = true
+    }
 
     /** Whether a guardian is linked, as the running service last read it (the notice names them only then). */
     @Volatile

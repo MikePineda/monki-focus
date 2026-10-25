@@ -10,6 +10,7 @@ import dev.monkifocus.android.core.ui.MonkiTheme
 import dev.monkifocus.android.feature.gate.GateActions
 import dev.monkifocus.android.feature.gate.GateScreen
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
+import dev.monkifocus.android.service.accessibility.action.StatusCard
 import dev.monkifocus.android.service.accessibility.pipeline.UserAction
 
 /**
@@ -26,7 +27,7 @@ fun OverlayScreen(
     modifier: Modifier = Modifier,
 ) {
     MonkiTheme {
-        if (noticeOff && content !is OverlayContent.Cover) {
+        if (noticeOff && content !is OverlayContent.Cover && content !is OverlayContent.Card) {
             Column(modifier = Modifier.fillMaxSize()) {
                 NoticeOffBanner()
                 Box(modifier = Modifier.weight(1f)) { ScreenOf(content, onAction, modifier) }
@@ -61,6 +62,17 @@ private fun ScreenOf(
 
         is OverlayContent.Cover -> {
             FeedCover(onClose = { onAction(UserAction.CoverClose) }, modifier = modifier)
+        }
+
+        is OverlayContent.Card -> {
+            StatusCardView(
+                card = content.card,
+                onPrimary = {
+                    onAction(if (content.card == StatusCard.SETUP) UserAction.OpenApp else UserAction.AllowNotifications)
+                },
+                onDismiss = { onAction(UserAction.DismissCard) },
+                modifier = modifier,
+            )
         }
 
         is OverlayContent.Bounce -> {

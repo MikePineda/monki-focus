@@ -16,6 +16,7 @@ import dev.monkifocus.android.service.accessibility.action.ActionSelector
 import dev.monkifocus.android.service.accessibility.action.BackLoopGuard
 import dev.monkifocus.android.service.accessibility.action.CoverRegion
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
+import dev.monkifocus.android.service.accessibility.action.StatusCard
 import dev.monkifocus.android.service.accessibility.decision.DecisionEvaluator
 import dev.monkifocus.android.service.accessibility.decision.Evaluation
 import dev.monkifocus.android.service.accessibility.decision.RulesetAddition
@@ -64,6 +65,10 @@ class EventPipeline(
     private val packs: () -> List<DetectorPack>,
     /** Browsers resolved on the device that no pack can read (no URL bar ids): friction always, bedtime blocks. */
     private val unsupportedBrowsers: () -> Set<String> = { emptySet() },
+    /** Whether the user finished "Turn on protection" in our app (the consent gate). */
+    private val armedByUser: () -> Boolean,
+    /** Whether the persistent notice can be posted (notification permission). */
+    private val noticePermitted: () -> Boolean,
     private val readThrottle: ReadThrottle = ReadThrottle(),
     private val decisionThrottle: DecisionThrottle = DecisionThrottle(),
     private val backGuard: BackLoopGuard = BackLoopGuard(),
@@ -85,10 +90,21 @@ class EventPipeline(
     private var presented: Presented? = null
     private var urlBarMissingPackage: String? = null
     private var urlBarMissingSinceMs = 0L
+    private var noticeCardShown = false
+    private var setupCardDismissed = false
 
     /** What our overlay shows now, or null. */
     var showing: OverlayContent? = null
         private set
+
+    /** Whether protection may act now (see [Readiness]). */
+    fun readiness(): Readiness = Readiness.of(armedByUser(), noticePermitted(), noticeCardShown)
+
+    /** The service connected: show the setup or the notice-off card when one is due. */
+    fun onConnected() {
+        if (exitFlow.protectionEnded) return
+        showDueCard()
+    }
 
     fun onEvent(
         event: WindowEvent,
@@ -125,6 +141,10 @@ class EventPipeline(
         exitFlow.tick()
         if (exitFlow.protectionEnded) {
             stand()
+            return
+        }
+        if (readiness() != Readiness.ACTIVE) {
+            showDueCard()
             return
         }
         if (foregroundPackage != null && foregroundPackage != ourPackage && foregroundPackage != foreground &&
@@ -225,6 +245,21 @@ class EventPipeline(
                 exitFlow.cancel()
                 refreshBounce(nowEpochMs)
             }
+
+            UserAction.OpenApp -> {
+                dismiss()
+                performer.openApp(notificationSettings = false)
+            }
+
+            UserAction.AllowNotifications -> {
+                dismiss()
+                performer.openApp(notificationSettings = true)
+            }
+
+            UserAction.DismissCard -> {
+                if ((showing as? OverlayContent.Card)?.card == StatusCard.SETUP) setupCardDismissed = true
+                dismiss()
+            }
         }
     }
 
@@ -237,6 +272,13 @@ class EventPipeline(
             stand()
             return
         }
+        // The consent gate: nothing is enforced (bedtime included) until the user armed protection in
+        // our app, and nothing before the notice or the notice-off card made protection visible.
+        if (readiness() != Readiness.ACTIVE) {
+            showDueCard()
+            return
+        }
+        if ((showing as? OverlayContent.Card)?.card == StatusCard.SETUP) dismiss()
         val screen = readScreen() ?: return
         handle(observer.observe(screen, packs(), nowMonotonicMs), nowMonotonicMs, nowEpochMs)
     }
@@ -417,6 +459,25 @@ class EventPipeline(
             return
         }
         show(OverlayContent.Gate(state, shown.group, shown.notice))
+    }
+
+    /** The card the current [Readiness] calls for, if any; the notice-off card once per session. */
+    private fun showDueCard() {
+        when (readiness()) {
+            Readiness.NOT_ARMED -> {
+                if (showing !is OverlayContent.Card && showing != null) stand()
+                if (!setupCardDismissed) show(OverlayContent.Card(StatusCard.SETUP))
+            }
+
+            Readiness.AWAITING_NOTICE_CARD -> {
+                show(OverlayContent.Card(StatusCard.NOTICE_OFF))
+                noticeCardShown = true
+            }
+
+            Readiness.ACTIVE -> {
+                Unit
+            }
+        }
     }
 
     private fun refreshBounce(nowEpochMs: Long) {

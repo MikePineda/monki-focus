@@ -126,4 +126,11 @@
     <string name="home_turn_on">Turn on protection</string>
     <string name="status_notice_on">Protection notice: on</string>
     <string name="status_notice_off">Protection notice: off</string>
+    <string name="setup_card_title">Finish setting up monki-focus</string>
+    <string name="setup_card_body">The service is on, but protection does nothing until you turn it on in the app.</string>
+    <string name="setup_card_open">Open monki-focus</string>
+    <string name="notice_card_title">Protection is on, notifications are off</string>
+    <string name="notice_card_body">monki-focus cannot show its status notice, so a banner shows on its screens instead. Allow notifications to see it at any time.</string>
+    <string name="notice_card_allow">Allow notifications</string>
+    <string name="card_dismiss">Not now</string>
 </resources>

@@ -32,4 +32,13 @@ sealed interface UserAction {
 
     /** Keep protection: cancels a running exit wait. */
     data object KeepProtection : UserAction
+
+    /** "Open monki-focus" on the setup card. */
+    data object OpenApp : UserAction
+
+    /** "Allow notifications" on the notice-off card. */
+    data object AllowNotifications : UserAction
+
+    /** Closes a status card. */
+    data object DismissCard : UserAction
 }
