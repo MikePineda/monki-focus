@@ -69,7 +69,7 @@ export default class SessionsController {
 
   /** GET /auth/me: the dashboard's boot call. Guests get 401 (and the XSRF cookie). */
   async show({ auth }: HttpContext) {
-    return { user: userResource(auth.getUserOrFail()) }
+    return { user: userResource(auth.use('web').getUserOrFail()) }
   }
 
   /**
@@ -79,7 +79,7 @@ export default class SessionsController {
    * other devices included).
    */
   async destroy({ auth, response }: HttpContext) {
-    await revokeSessions(auth.getUserOrFail())
+    await revokeSessions(auth.use('web').getUserOrFail())
     await auth.use('web').logout()
     return response.noContent()
   }

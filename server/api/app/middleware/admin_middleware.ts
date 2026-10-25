@@ -9,7 +9,7 @@ import { CodedError } from '#exceptions/coded_error'
  */
 export default class AdminMiddleware {
   handle(ctx: HttpContext, next: NextFn) {
-    if (!ctx.auth.getUserOrFail().isAdmin) {
+    if (!ctx.auth.use('web').getUserOrFail().isAdmin) {
       throw new CodedError('E_ROUTE_NOT_FOUND', 404, 'Not found')
     }
     return next()

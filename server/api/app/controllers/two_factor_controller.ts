@@ -27,7 +27,7 @@ export default class TwoFactorController {
   /** POST /me/two-factor: a new seed and its otpauth:// URI (for the QR code). */
   async store({ auth, request }: HttpContext) {
     const { password } = await request.validateUsing(reauthValidator)
-    const user = auth.getUserOrFail()
+    const user = auth.use('web').getUserOrFail()
     await this.reauth.confirm(user, password)
     return this.twoFactor.begin(user)
   }
@@ -35,7 +35,7 @@ export default class TwoFactorController {
   /** POST /me/two-factor/confirm: activates TOTP and returns the recovery codes once. */
   async confirm(ctx: HttpContext) {
     const { code } = await ctx.request.validateUsing(confirmTwoFactorValidator)
-    const user = ctx.auth.getUserOrFail()
+    const user = ctx.auth.use('web').getUserOrFail()
     const recoveryCodes = await throttleFailures(twoFactorRules(user.id, clientIp(ctx)), () =>
       this.twoFactor.confirm(user, code, this.clock.now())
     )
@@ -59,7 +59,7 @@ export default class TwoFactorController {
 
   protected async reauthenticate(ctx: HttpContext) {
     const { password, ...factor } = await ctx.request.validateUsing(twoFactorReauthValidator)
-    const user = ctx.auth.getUserOrFail()
+    const user = ctx.auth.use('web').getUserOrFail()
     await this.reauth.confirm(user, password)
     await throttleFailures(twoFactorRules(user.id, clientIp(ctx)), () =>
       this.twoFactor.verify(user, factor, this.clock.now())

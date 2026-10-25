@@ -6,6 +6,11 @@ import { userResource } from '#transformers/user_transformer'
 import InvitationService from '#services/accounts/invitation_service'
 import TwoFactorService from '#services/accounts/two_factor_service'
 import { invitationResource } from '#transformers/invitation_transformer'
+import Device from '#models/device'
+import BypassEvent from '#models/bypass_event'
+import { ownedBy } from '#services/tenancy/owned_by'
+import { deviceResource } from '#transformers/device_transformer'
+import { bypassEventResource } from '#transformers/bypass_event_transformer'
 
 /** Identifies the document; bump `version` on any breaking change of its shape. */
 export const EXPORT_FORMAT = 'monki-focus.export'
@@ -15,8 +20,9 @@ export const EXPORT_VERSION = 1
  * `GET /me/export?format=native`: everything the server holds about the
  * user, as JSON, read only through the user's own scope. Secrets are never
  * part of it (password hash, TOTP seed, recovery code and invitation
- * digests). Later packages add their sections (devices, unlocks, activity;
- * the ActivityWatch format comes with analytics).
+ * digests, device tokens, enrolment codes). Devices and bypass events are
+ * here; later packages add theirs (unlocks, activity; the ActivityWatch
+ * format comes with analytics).
  */
 @inject()
 export default class AccountExport {
@@ -27,6 +33,9 @@ export default class AccountExport {
 
   async build(user: User, now: DateTime) {
     const invitations = await this.invitations.list(user)
+    const devices = await ownedBy(Device, user).orderBy('id')
+    const uuidOf = new Map(devices.map((device) => [device.id, device.uuid]))
+    const bypassEvents = await ownedBy(BypassEvent, user, 'ward_user_id').orderBy('id')
 
     return {
       format: EXPORT_FORMAT,
@@ -41,6 +50,13 @@ export default class AccountExport {
           : 0,
       },
       invitationsCreated: invitations.map((invitation) => invitationResource(invitation, now)),
+      devices: devices.map(deviceResource),
+      bypassEvents: bypassEvents.map((event) =>
+        bypassEventResource(
+          event,
+          event.deviceId === null ? null : (uuidOf.get(event.deviceId) ?? null)
+        )
+      ),
     }
   }
 }

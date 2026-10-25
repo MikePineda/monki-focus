@@ -15,9 +15,11 @@ import { isRegistrableDomain } from '#services/public_suffix_list'
 import SigningKeyStore from '#services/signing_key_store'
 import TokenIssuance from '#services/token_issuance'
 import UnlockTokenLedgerStore, { UNLOCK_TOKENS_TABLE } from '#services/unlock_token_ledger_store'
+import { DeviceFactory } from '#tests/factories/device_factory'
 
 const ISSUER = 'http://127.0.0.1:3333'
 const DEVICE = '6f1c2d3e-4b5a-4c6d-8e7f-90a1b2c3d4e5'
+const OTHER_DEVICE = '0d9e8f7a-6b5c-4d3e-9f2a-1b0c9d8e7f6a'
 const T0 = parseRfc3339Utc('2026-01-05T09:00:00Z')!
 const NONCE = 'AAECAwQFBgcICQoLDA0ODw'
 
@@ -32,6 +34,9 @@ const grant: UnlockGrant = {
 }
 
 async function setup() {
+  // Ledger rows name enrolled devices (foreign key on devices.uuid).
+  await DeviceFactory.with('user').merge({ uuid: DEVICE }).create()
+  await DeviceFactory.with('user').merge({ uuid: OTHER_DEVICE }).create()
   const keys = new SigningKeyStore()
   await keys.ensureKeys(T0)
   let now = T0
@@ -137,7 +142,7 @@ test.group('Token issuance', () => {
     const { issuance } = await setup()
     const other = await issuance.issueUnlock({
       ...grant,
-      deviceUuid: '0d9e8f7a-6b5c-4d3e-9f2a-1b0c9d8e7f6a',
+      deviceUuid: OTHER_DEVICE,
     })
     assert.isTrue(other.ok)
     if (!other.ok) return

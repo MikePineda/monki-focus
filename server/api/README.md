@@ -10,8 +10,12 @@ in-process scheduler with `scheduler_runs` claims and the `/api/v1` device
 gate (`X-Client-Version`, 426 for old clients). Accounts (S2): cookie
 sessions with `session_version` revocation, closed registration with admin
 invitations, optional TOTP two-step verification, profile, export and
-account deletion (routes in `docs/CONTRACTS.md`, "Dashboard API"). Devices,
-guardians and unlocks arrive with S3 to S8.
+account deletion (routes in `docs/CONTRACTS.md`, "Dashboard API"). Signing
+keys and token issuance (S3). Devices (S4): one-time enrolment codes, `mfd_`
+device tokens (Bearer, hashed at rest, rotated every 30 days), heartbeats
+answered with signed time tokens, bypass events and the dead-man switch
+(device API in `packages/protocol/openapi.yaml`). Guardians and unlocks
+arrive with S5 to S8.
 
 ## Run it
 

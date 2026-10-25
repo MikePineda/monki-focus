@@ -11,7 +11,7 @@ import type { NextFn } from '@adonisjs/core/types/http'
  */
 export default class UserLocaleMiddleware {
   handle(ctx: HttpContext, next: NextFn) {
-    const user = ctx.auth.user
+    const user = ctx.auth.authenticatedViaGuard === 'web' ? ctx.auth.use('web').user : undefined
     if (user && i18nManager.supportedLocales().includes(user.locale)) {
       ctx.i18n = i18nManager.locale(user.locale)
       ctx.containerResolver.bindValue(I18n, ctx.i18n)

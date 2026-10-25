@@ -39,6 +39,8 @@ export default defineConfig({
     () => import('@adonisjs/limiter/limiter_provider'),
     // Signing keys, the unlock-token ledger and token issuance; checks the keys on web boot.
     () => import('#providers/signing_keys_provider'),
+    // The `bypassAlerts` port (device bypass events to the guardian, S6).
+    () => import('#providers/devices_provider'),
     {
       // The HTTP server only (production, unless SCHEDULER=off): never ace or tests.
       file: () => import('#providers/scheduler_provider'),

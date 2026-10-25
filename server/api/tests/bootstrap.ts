@@ -18,11 +18,23 @@ declare module '@japa/api-client' {
      * leaves it (user id + session_version stamp) plus a valid CSRF token.
      */
     actingAs(user: User): this
+    /**
+     * A device API call: the Bearer device token and a valid
+     * `X-Client-Version`, nothing else (no session, no CSRF).
+     */
+    asDevice(token: string, clientVersion?: string): this
   }
 }
 
 ApiRequest.macro('actingAs', function (this: ApiRequest, user: User) {
   return this.loginAs(user).withSession({ sv: user.sessionVersion }).withCsrfToken()
+})
+
+ApiRequest.macro('asDevice', function (this: ApiRequest, token: string, clientVersion?: string) {
+  return this.header('Authorization', `Bearer ${token}`).header(
+    'X-Client-Version',
+    clientVersion ?? 'android/0.1.0'
+  )
 })
 
 /**

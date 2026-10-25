@@ -17,7 +17,7 @@ export default class ProfileController {
   /** PATCH /me: name, language, IANA time zone and week start. */
   async update({ auth, request }: HttpContext) {
     const changes = await request.validateUsing(updateProfileValidator)
-    const user = await this.profile.update(auth.getUserOrFail(), changes)
+    const user = await this.profile.update(auth.use('web').getUserOrFail(), changes)
     return { user: userResource(user) }
   }
 
@@ -26,7 +26,7 @@ export default class ProfileController {
    * new one. Every other session ends; this one stays signed in.
    */
   async password(ctx: HttpContext) {
-    const user = ctx.auth.getUserOrFail()
+    const user = ctx.auth.use('web').getUserOrFail()
     const { currentPassword, password } = await ctx.request.validateUsing(changePasswordValidator, {
       meta: { email: user.email },
     })

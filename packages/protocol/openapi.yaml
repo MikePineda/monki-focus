@@ -19,6 +19,11 @@ info:
       Never log it.
     - Times are RFC 3339 UTC strings.
     - Another user's resource answers `404`, never `403`.
+    - Every error is an `Error` (`{code, fields?}`): a stable snake_case
+      reason code, never text. Validation failures are `422`
+      `validation_failed` with `fields` (`<path>: <rule>`); a missing,
+      unknown or revoked token is `401` `unauthorized`; throttles are `429`
+      `too_many_requests` with `Retry-After`.
     - Nothing in a request or response ever carries a URL path, page title,
       window title or accessibility text, except an unlock `scope`, which
       names exactly one domain, path or app.
@@ -78,8 +83,12 @@ paths:
         The 8-character code is generated in the dashboard, valid for 10
         minutes and single use. Each code tolerates at most 5 failed
         attempts: the fifth wrong attempt invalidates it (the dashboard must
-        issue a new one), and attempts are also rate limited per IP. The
-        device token is returned exactly once.
+        issue a new one), and attempts are also rate limited per IP (10
+        failures per 15 minutes). The first 3 characters find the pending
+        code and the whole code proves it, so a wrong guess spends an
+        attempt of at most one code. Wrong, expired, used and locked codes
+        all answer the same `400` `invalid_enrollment_code`. The device
+        token is returned exactly once.
 
         Key pinning: the dashboard shows the code together with the kid of
         each active signing key (also encoded in its QR code, see
@@ -99,10 +108,27 @@ paths:
       responses:
         '201':
           description: Enrolled.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnrollResponse'
+        '400':
+          description: '`invalid_enrollment_code`: wrong, expired, already used or locked (identical answers).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: '`device_limit_reached`: the user already has 20 active devices.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '422':
           $ref: '#/components/responses/ValidationFailed'
         '426':
@@ -123,6 +149,8 @@ paths:
         the nonce and boot id), announces key changes (`keysEtag`) and may
         carry a newer signed policy. Only the signed time token anchors
         trusted time or revokes anything; `serverTime` is informative.
+        `tokenRotationDue` asks the device to rotate its token
+        (`rotateDeviceToken`). At most 60 heartbeats per hour per device.
       parameters:
         - $ref: '#/components/parameters/ClientVersion'
       requestBody:
@@ -144,14 +172,25 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '426':
           $ref: '#/components/responses/UpgradeRequired'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /device/bypass-events:
     post:
       operationId: reportBypassEvents
       tags: [bypass-events]
       summary: Report a batch of bypass events (idempotent)
       description: |
-        At most 100 events per batch. Each event is idempotent by
-        `dedupeKey`; re-sending a batch after a timeout is safe.
+        At most 100 events per batch, 120 batches per hour per device. Each
+        event is idempotent by `dedupeKey` (per device: two devices never
+        collide); re-sending a batch after a timeout is safe. `accepted`
+        counts events stored now, `duplicates` the ones already stored or
+        repeated in the batch. Devices report only the client kinds of
+        `BypassEvent.kind`; the server raises its own kinds itself
+        (`heartbeat_missing`, `heartbeat_resumed`, `key_pin_mismatch`,
+        `protection_disabled`, `device_enrolled`, `device_revoked`), which
+        a device cannot send. A heartbeat that turns `protectionActive` off
+        raises `protection_disabled`, because the dead-man switch only
+        watches protected devices.
       parameters:
         - $ref: '#/components/parameters/ClientVersion'
       requestBody:
@@ -173,6 +212,40 @@ paths:
           $ref: '#/components/responses/ValidationFailed'
         '426':
           $ref: '#/components/responses/UpgradeRequired'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /device/token/rotate:
+    post:
+      operationId: rotateDeviceToken
+      tags: [enrolment]
+      summary: Replace the device token (every 30 days)
+      description: |
+        Device tokens do not expire, but a device rotates its token once the
+        heartbeat answers `tokenRotationDue: true` (the token is 30 days
+        old). The response carries the new token, returned only here; every
+        other token of the device is deleted and the one used for this call
+        keeps working for 10 more minutes, so a lost response can be retried
+        with it (a retry never extends that grace). At most 10 per hour.
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      responses:
+        '201':
+          description: Rotated.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRotation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /device/unlock-requests:
     post:
       operationId: createUnlockRequest
@@ -336,6 +409,7 @@ components:
     Timestamp:
       type: string
       format: date-time
+      pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$'
       description: RFC 3339 UTC.
       examples: ['2026-01-05T09:00:00Z']
     Sha256Base64Url:
@@ -447,8 +521,7 @@ components:
         platform:
           $ref: '#/components/schemas/Platform'
         clientVersion:
-          type: string
-          maxLength: 32
+          $ref: '#/components/schemas/ClientVersionString'
     EnrollResponse:
       type: object
       additionalProperties: false
@@ -457,13 +530,27 @@ components:
         deviceUuid:
           $ref: '#/components/schemas/Uuid'
         token:
-          type: string
-          pattern: '^mfd_[A-Za-z0-9_-]{20,}$'
-          description: Device token, returned only here. Store it in the platform keystore.
+          $ref: '#/components/schemas/DeviceToken'
         keys:
           $ref: '#/components/schemas/KeySet'
+          description: The keys to pin, only if every kid equals one the dashboard showed.
         serverTime:
           $ref: '#/components/schemas/Timestamp'
+    DeviceToken:
+      type: string
+      pattern: '^mfd_[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{40,}$'
+      description: Device token (`mfd_<id>.<secret>`), returned only at enrolment and rotation. Store it in the platform keystore; never log it.
+    ClientVersionString:
+      type: string
+      pattern: '^[0-9A-Za-z.+_-]{1,32}$'
+      description: The client's version, as in `X-Client-Version` after the platform.
+    TokenRotation:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          $ref: '#/components/schemas/DeviceToken'
     HeartbeatRequest:
       type: object
       additionalProperties: false
@@ -488,8 +575,7 @@ components:
         policyHash:
           $ref: '#/components/schemas/Sha256Base64Url'
         clientVersion:
-          type: string
-          maxLength: 32
+          $ref: '#/components/schemas/ClientVersionString'
         nonce:
           $ref: '#/components/schemas/Nonce'
         boot:
@@ -528,7 +614,7 @@ components:
     HeartbeatResponse:
       type: object
       additionalProperties: false
-      required: [serverTime, timeToken, keysEtag, rulesVersion]
+      required: [serverTime, timeToken, keysEtag, rulesVersion, tokenRotationDue]
       properties:
         serverTime:
           $ref: '#/components/schemas/Timestamp'
@@ -547,6 +633,9 @@ components:
         rulesVersion:
           type: integer
           minimum: 0
+        tokenRotationDue:
+          type: boolean
+          description: The device token is 30 days old; call `rotateDeviceToken`.
         policyToken:
           $ref: '#/components/schemas/PasetoV4Public'
           description: A newer signed policy for this device, when there is one.
@@ -557,29 +646,39 @@ components:
       properties:
         dedupeKey:
           type: string
-          minLength: 1
-          maxLength: 96
+          pattern: '^[A-Za-z0-9._:-]{1,96}$'
+          description: Unique per device, for example a random uuid.
         kind:
           type: string
-          pattern: '^[a-z][a-z0-9_]{0,47}$'
-          examples:
-            [
-              accessibility_disabled,
-              extension_removed,
-              time_changed,
-              emergency_override,
-              key_pin_mismatch,
-              time_floor_lowered,
-            ]
+          description: Client kinds only; the server raises its own kinds itself.
+          enum:
+            - emergency_override
+            - accessibility_disabled
+            - device_admin_disabled
+            - usage_access_revoked
+            - accessibility_permission_revoked
+            - protection_ended
+            - extension_removed
+            - browser_unsupported
+            - time_changed
+            - timezone_changed
+            - clock_changed
+            - time_floor_lowered
+            - policy_hash_mismatch
         occurredAt:
           $ref: '#/components/schemas/Timestamp'
         details:
           type: object
           maxProperties: 16
-          description: Small non-personal details. Never URLs, titles or screen text.
+          description: |
+            Small non-personal details. Never URLs, titles or screen text:
+            keys are identifiers and strings are at most 64 characters of
+            `A-Z a-z 0-9 . _ : -` (no space, slash, `@` or `%` fits).
+          propertyNames:
+            pattern: '^[a-z][A-Za-z0-9_]{0,47}$'
           additionalProperties:
             type: [string, number, boolean]
-            maxLength: 128
+            pattern: '^[A-Za-z0-9._:-]{0,64}$'
     BypassEventBatch:
       type: object
       additionalProperties: false

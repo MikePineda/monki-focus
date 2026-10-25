@@ -8,6 +8,8 @@ import router from '@adonisjs/core/services/router'
 import limiter from '@adonisjs/limiter/services/main'
 import { UserFactory } from '#tests/factories/user_factory'
 import InvitationService from '#services/accounts/invitation_service'
+import Device from '#models/device'
+import { enrolledDevice } from '#tests/factories/device_factory'
 
 /**
  * Another user's resource answers 404 (never 403, which would confirm that
@@ -21,6 +23,7 @@ import InvitationService from '#services/accounts/invitation_service'
 interface Victim {
   user: User
   invitation: Invitation
+  device: Device
 }
 
 interface IsolationCase {
@@ -39,6 +42,26 @@ const cases: IsolationCase[] = [
     url: (victim) => `/api/v1/admin/invitations/${victim.invitation.id}`,
     untouched: async (victim) => (await Invitation.find(victim.invitation.id)) !== null,
   },
+  {
+    route: 'v1.devices.update',
+    method: 'patch',
+    url: (victim) => `/api/v1/devices/${victim.device.uuid}`,
+    body: { name: 'Renamed by someone else', deadmanHours: 48 },
+    untouched: async (victim) => {
+      const device = await Device.findOrFail(victim.device.id)
+      return device.name === victim.device.name && device.deadmanHours === 6
+    },
+  },
+  {
+    route: 'v1.devices.destroy',
+    method: 'delete',
+    url: (victim) => `/api/v1/devices/${victim.device.uuid}`,
+    untouched: async (victim) => {
+      const device = await Device.findOrFail(victim.device.id)
+      const tokens = await Device.accessTokens.all(device)
+      return device.revokedAt === null && tokens.length === 1
+    },
+  },
 ]
 
 /** Routes whose params are not ids of a user's rows (none yet). Each needs a reason. */
@@ -48,7 +71,8 @@ async function aVictim(): Promise<Victim> {
   const user = await UserFactory.apply('admin').create()
   const clock = await app.container.make(Clock)
   const { invitation } = await new InvitationService().create(user, null, clock.now())
-  return { user, invitation }
+  const { device } = await enrolledDevice(user)
+  return { user, invitation, device }
 }
 
 test.group('Tenant isolation', (group) => {
@@ -91,8 +115,15 @@ test.group('Tenant isolation', (group) => {
     const admin = await UserFactory.apply('admin').create()
 
     const response = await client.delete('/api/v1/admin/invitations/not-a-number').actingAs(admin)
+    const device = await client.delete('/api/v1/devices/not-a-uuid').actingAs(admin)
+    const upper = await client
+      .patch('/api/v1/devices/6F1C2D3E-4B5A-4C6D-8E7F-90A1B2C3D4E5')
+      .json({ name: 'x' })
+      .actingAs(admin)
 
     response.assertStatus(404)
+    device.assertStatus(404)
+    upper.assertStatus(404)
   })
 
   test('test_lists_and_the_export_only_show_the_users_own_rows', async ({ client, assert }) => {
@@ -103,9 +134,16 @@ test.group('Tenant isolation', (group) => {
     list.assertStatus(200)
     assert.deepEqual(list.body().invitations, [])
 
+    const devices = await client.get('/api/v1/devices').actingAs(attacker)
+    devices.assertStatus(200)
+    assert.deepEqual(devices.body().devices, [])
+
     const exported = await client.get('/api/v1/me/export').actingAs(attacker)
     exported.assertStatus(200)
     assert.deepEqual(exported.body().invitationsCreated, [])
+    assert.deepEqual(exported.body().devices, [])
+    assert.deepEqual(exported.body().bypassEvents, [])
     assert.notInclude(JSON.stringify(exported.body()), victim.user.email)
+    assert.notInclude(JSON.stringify(exported.body()), victim.device.uuid)
   })
 })

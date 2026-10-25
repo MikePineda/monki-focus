@@ -13,5 +13,6 @@
   "E_INVALID_TWO_FACTOR_CODE": "El código no es válido. Usa el código actual de tu app",
   "E_TWO_FACTOR_ALREADY_ENABLED": "La verificación en dos pasos ya está activada",
   "E_TWO_FACTOR_NOT_ENABLED": "La verificación en dos pasos está desactivada",
-  "E_TWO_FACTOR_NOT_PENDING": "Primero inicia la configuración de la verificación en dos pasos"
+  "E_TWO_FACTOR_NOT_PENDING": "Primero inicia la configuración de la verificación en dos pasos",
+  "E_DEVICE_LIMIT_REACHED": "Ya tienes 20 dispositivos. Quita uno antes de agregar otro"
 }

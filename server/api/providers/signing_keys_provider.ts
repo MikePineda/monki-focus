@@ -2,8 +2,8 @@
 import type { ApplicationService } from '@adonisjs/core/types'
 
 /**
- * Binds the signing-key store, the unlock-token ledger and the token
- * issuance service as singletons, and, when the HTTP server boots (`web`
+ * Binds the signing-key store and the unlock-token ledger as singletons and
+ * the token issuance service (cheap, around both) per resolve, and, when the HTTP server boots (`web`
  * only: never ace, the REPL or tests), makes sure every purpose has an
  * active key that loads, decrypts and passes the strict checks. Any
  * problem (APP_KEY changed, UNLOCK_SIGNING_KEY not the active key, a
@@ -23,7 +23,8 @@ export default class SigningKeysProvider {
         await import('#services/unlock_token_ledger_store')
       return new UnlockTokenLedgerStore()
     })
-    this.app.container.singleton('tokenIssuance', async (resolver) => {
+    // Not a singleton: each resolve reads the current Clock binding (tests freeze it).
+    this.app.container.bind('tokenIssuance', async (resolver) => {
       const [{ default: env }, { default: Clock }, { default: TokenIssuance }] = await Promise.all([
         import('#start/env'),
         import('#services/clock'),
