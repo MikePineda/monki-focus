@@ -179,6 +179,44 @@ describe('gate hardening', () => {
       expect(harness.state.passes.at(-1)).toEqual({ tabId: TAB, url: REDDIT_POST })
       expect(harness.state.diagnostics).toContain('escalation.unsaved')
     })
+
+    it('an_unsaved_override_grants_one_15_minute_pass_window_per_wait_and_one_bypass', async () => {
+      const harness = gateHarness()
+      await arrive(harness)
+      await harness.controller.emergency(TAB)
+      harness.clock.advanceSeconds(120)
+      harness.state.escalationWritesFail = true
+      await harness.controller.emergencyDone(TAB)
+
+      harness.clock.advanceSeconds(10 * 60)
+      expect(await harness.controller.emergencyDone(TAB)).toEqual({
+        kind: 'pass',
+        url: REDDIT_POST,
+      })
+      harness.restart()
+      harness.clock.advanceSeconds(5 * 60)
+      const after = await harness.controller.emergencyDone(TAB)
+
+      expect(after.kind).not.toBe('pass')
+      expect(harness.state.bypasses).toHaveLength(1)
+      expect(harness.state.passes).toHaveLength(2)
+      expect((await harness.escalation.get(REDDIT_GROUP)).phase).toBe('override_waiting')
+    })
+
+    it('a_clock_set_back_ends_an_unsaved_override_grant_too', async () => {
+      const harness = gateHarness()
+      await arrive(harness)
+      await harness.controller.emergency(TAB)
+      harness.clock.advanceSeconds(120)
+      harness.state.escalationWritesFail = true
+      await harness.controller.emergencyDone(TAB)
+
+      harness.clock.advanceSeconds(-10 * 60)
+      const after = await harness.controller.emergencyDone(TAB)
+
+      expect(after.kind).not.toBe('pass')
+      expect(harness.state.bypasses).toHaveLength(1)
+    })
   })
 
   describe('stored escalation is validated entry by entry', () => {
@@ -222,6 +260,45 @@ describe('gate hardening', () => {
       expect((await harness.decisions.decide(REDDIT_POST)).access).toBe('gate')
       expect(harness.state.changes).toBeGreaterThan(changes)
       expect(harness.state.diagnostics).toContain('clock.rewound')
+    })
+
+    it('repeated_small_rewinds_never_stretch_an_intention', async () => {
+      const harness = gateHarness()
+      await commitIntention(harness, 5)
+      // Forward 4 min, back 3 min, twice: never behind the last escalation event.
+      harness.clock.advanceSeconds(4 * 60)
+      await harness.controller.checkClock()
+      harness.clock.advanceSeconds(-3 * 60)
+      await harness.controller.checkClock()
+
+      expect((await harness.escalation.get(REDDIT_GROUP)).phase).not.toBe('active')
+      expect((await harness.decisions.decide(REDDIT_POST)).access).toBe('gate')
+      expect(harness.state.diagnostics).toContain('clock.rewound')
+    })
+
+    it('the_highest_wall_clock_seen_survives_a_worker_restart', async () => {
+      const harness = gateHarness()
+      await commitIntention(harness, 5)
+      harness.clock.advanceSeconds(4 * 60)
+      await harness.controller.checkClock()
+
+      harness.restart()
+      harness.clock.advanceSeconds(-3 * 60)
+      await harness.controller.checkClock()
+
+      expect((await harness.escalation.get(REDDIT_GROUP)).phase).not.toBe('active')
+    })
+
+    it('a_correction_of_a_second_is_not_a_rewind', async () => {
+      const harness = gateHarness()
+      await commitIntention(harness, 5)
+      harness.clock.advanceSeconds(60)
+      await harness.controller.checkClock()
+
+      harness.clock.advanceSeconds(-1)
+      await harness.controller.checkClock()
+
+      expect((await harness.escalation.get(REDDIT_GROUP)).phase).toBe('active')
     })
 
     it('an_active_override_ends_when_the_clock_goes_back', async () => {

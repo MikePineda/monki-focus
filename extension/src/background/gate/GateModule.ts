@@ -27,6 +27,8 @@ import { GATE_TIMER_ALARM, GateTimers, type TimerAlarmsApi } from './GateTimers'
 import { IntentionNotes } from './IntentionNotes'
 import { TabCloser, type ClosingTabsApi } from './TabCloser'
 import { TabPasses } from './TabPasses'
+import { UnsavedOverrideGrants } from './UnsavedOverrideGrants'
+import { WallClockFloor } from './WallClockFloor'
 
 /** Raw intention facts are kept as long as raw events (E7). */
 const INTENTION_RETENTION_MS = 30 * 86_400_000
@@ -181,6 +183,8 @@ export function createGateModule(deps: GateModuleDependencies): GateModule {
     tabs,
     ticket,
     notes,
+    floor: new WallClockFloor(browser.storage.local),
+    grants: new UnsavedOverrideGrants(browser.storage.session),
     log: { record: async (entry) => (await log()).record(entry) },
     day: async () =>
       new IntentionStatsQuery(await log()).today(clock.now(), (await rulesets.load()).timeZone),

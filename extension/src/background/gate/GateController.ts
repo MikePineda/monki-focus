@@ -40,6 +40,8 @@ import { groupOf } from './GateGroup'
 import type { GateTabs } from './GateTabs'
 import type { GateTicket } from './GateTicket'
 import type { IntentionNotes } from './IntentionNotes'
+import type { UnsavedOverrideGrants } from './UnsavedOverrideGrants'
+import type { WallClockFloor } from './WallClockFloor'
 
 /** Sites whose gate offers a search box (`/search?q=`, never gated). */
 const GATE_SEARCH_SITES: ReadonlySet<string> = new Set(['reddit.com', 'youtube.com'])
@@ -56,6 +58,10 @@ export interface GateControllerOptions {
   tabs: GateTabs
   ticket: GateTicket
   notes: IntentionNotes
+  /** The highest wall clock seen: a clock behind it ends running lifts. */
+  floor: WallClockFloor
+  /** The one grant of each emergency wait whose override could not be stored. */
+  grants: UnsavedOverrideGrants
   log: { record(entry: { at: string; kind: IntentionEntryKind; group: string }): Promise<void> }
   /** Today's intention facts in the pinned zone. */
   day: () => Promise<IntentionDay>
@@ -83,6 +89,13 @@ export interface GateControllerOptions {
 
 function epochMs(instant: string | null): number | null {
   return instant === null ? null : epochSecondsOf(instant) * 1000
+}
+
+/** One emergency wait: its group and when it became ready (unique per wait). */
+function waitOf(state: EscalationState): string | null {
+  return state.phase === 'override_waiting' && state.overrideReadyAt !== null
+    ? `${state.targetGroup} ${state.overrideReadyAt}`
+    : null
 }
 
 function blockReasonOf(decision: Decision): GateBlockReason {
@@ -189,13 +202,22 @@ export class GateController {
    * The wait is over: the override is always granted and always recorded.
    * The bypass is recorded first (outbox, else the fallback queue, else the
    * unrecorded flag), then the grant is stored; if even that fails the tab
-   * still gets through on a pass. The redirect is re-synced on every path.
+   * still gets through on a pass, and that wait keeps exactly one grant of
+   * 15 minutes (`UnsavedOverrideGrants`): passes until it ends, never a
+   * second bypass. The redirect is re-synced on every path.
    */
   emergencyDone(tabId: number): Promise<GateView> {
     return this.serial(async () => {
       const target = await this.targetOf(tabId)
       if (target === null) return this.viewOf(tabId)
       const before = await this.options.escalation.get(target.group)
+      const wait = waitOf(before)
+      const granted = wait === null ? null : await this.options.grants.endsAt(wait)
+      if (granted !== null) {
+        if (this.options.clock.now() >= granted) return this.viewOf(tabId)
+        await this.options.passes.grant(tabId, target.destination).catch(() => false)
+        return { kind: 'pass', url: target.destination }
+      }
       const result = nextEscalation(before, { type: 'emergency_wait_elapsed' }, this.now(), false)
       if (result.state === before) return this.viewOf(tabId)
       if (result.effects.includes('record_bypass')) await this.recordBypass(before, result.state)
@@ -208,6 +230,8 @@ export class GateController {
       }
       await this.options.onChange()
       if (stored) return this.viewOf(tabId)
+      const endsAt = epochMs(result.state.overrideEndsAt)
+      if (wait !== null && endsAt !== null) await this.options.grants.record(wait, endsAt)
       await this.options.passes.grant(tabId, target.destination).catch(() => false)
       return { kind: 'pass', url: target.destination }
     })
@@ -471,18 +495,22 @@ export class GateController {
   }
 
   /**
-   * The wall clock went back behind the last escalation event: a lift whose
-   * end is measured on that clock would last longer than chosen, so active
-   * intentions end (the engine's `leave`) and active overrides end with the
-   * engine's idle state; the counters stay. Fails toward friction.
+   * The wall clock went back, behind the highest wall clock seen
+   * (`WallClockFloor`, so repeated small rewinds count too) or behind the
+   * last escalation event: a lift whose end is measured on that clock would
+   * last longer than chosen, so active intentions end (the engine's `leave`),
+   * active overrides end with the engine's idle state and unsaved override
+   * grants end; the counters stay. Fails toward friction.
    */
   private async endRewoundLifts(): Promise<boolean> {
     const nowSeconds = epochSecondsOf(this.now())
+    const rewound = await this.options.floor.rewound(this.options.clock.now())
+    if (rewound) await this.options.grants.expireAll()
     let changed = false
     for (const state of await this.options.escalation.all()) {
-      if (state.lastActivityAt === null || epochSecondsOf(state.lastActivityAt) <= nowSeconds) {
-        continue
-      }
+      const behindLastEvent =
+        state.lastActivityAt !== null && epochSecondsOf(state.lastActivityAt) > nowSeconds
+      if (!rewound && !behindLastEvent) continue
       if (state.phase === 'active') {
         changed = (await this.step(state.targetGroup, { type: 'leave' })) !== null || changed
       } else if (state.phase === 'override_active') {

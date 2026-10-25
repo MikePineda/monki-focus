@@ -10,6 +10,8 @@ import { GateController } from '../../src/background/gate/GateController'
 import { GateTabs } from '../../src/background/gate/GateTabs'
 import { GateTicket } from '../../src/background/gate/GateTicket'
 import { IntentionNotes } from '../../src/background/gate/IntentionNotes'
+import { UnsavedOverrideGrants } from '../../src/background/gate/UnsavedOverrideGrants'
+import { WallClockFloor } from '../../src/background/gate/WallClockFloor'
 import { IntentionStatsQuery } from '../../src/background/stats/IntentionStatsQuery'
 import type { BypassEventPayload, IntentionEntry } from '../../src/background/storage/db'
 import { bundledRulesCatalog } from '../../src/shared/bundledRulesCatalog'
@@ -98,6 +100,8 @@ export function gateHarness(options: GateHarnessOptions = {}) {
       tabs: new GateTabs(fakeBrowser.storage.session),
       ticket,
       notes: new IntentionNotes(fakeBrowser.storage.session),
+      floor: new WallClockFloor(fakeBrowser.storage.local),
+      grants: new UnsavedOverrideGrants(fakeBrowser.storage.session),
       log: {
         record: (entry) => {
           if (state.logFails) return Promise.reject(new Error('idb.unavailable'))
