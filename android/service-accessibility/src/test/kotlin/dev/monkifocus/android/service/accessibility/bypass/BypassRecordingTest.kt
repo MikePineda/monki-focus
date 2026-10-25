@@ -22,7 +22,7 @@ class BypassRecordingTest {
 
     @Test
     fun a_detail_that_is_not_a_code_is_dropped_never_recorded() {
-        recorder.record(BypassKind.EMERGENCY_OVERRIDE, 1_767_603_600_000, details = mapOf("target_group" to "https://example.org/page"))
+        recorder.record(BypassKind.EMERGENCY_OVERRIDE, 1_767_603_600_000, details = mapOf("scope" to "https://example.org/page"))
 
         assertEquals(emptyMap<String, String>(), queued.single().details)
     }
@@ -43,7 +43,7 @@ class BypassRecordingTest {
                 "2026-01-05T09:00:00Z",
                 "2026-01-05T09:00:01Z",
                 mapOf(
-                    "target_group" to "rule-1",
+                    "scope" to "rule",
                     "ends_at" to "2026-01-05T09:15:00Z",
                 ),
             )

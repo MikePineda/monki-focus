@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import dev.monkifocus.android.service.accessibility.bypass.BypassJournalCodec
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,12 +59,44 @@ class MonkiAccessibilityServiceTest {
     }
 
     @Test
-    fun turning_the_service_on_again_after_an_exit_rearms_protection() {
+    fun turning_the_service_on_again_after_an_exit_does_not_undo_it() {
         graph.preferences.save(ExitFlowState.Ended(1_000))
 
         connected()
 
+        assertTrue(graph.exitFlow.state is ExitFlowState.Ended)
+        assertNull("nothing is armed", graph.gateRelay.onAction)
+        assertEquals(false, application.notices.last())
+    }
+
+    @Test
+    fun a_re_arm_asked_for_in_our_app_brings_protection_back_on_the_next_start() {
+        graph.preferences.save(ExitFlowState.Ended(1_000, rearmAllowed = true))
+
+        connected()
+
         assertEquals(ExitFlowState.Armed, graph.exitFlow.state)
+        assertTrue(graph.gateRelay.onAction != null)
+    }
+
+    @Test
+    fun an_interrupt_is_never_recorded_as_a_bypass() {
+        val service = connected()
+
+        service.onInterrupt()
+        Thread.sleep(200)
+
+        assertEquals(emptyList<String>(), application.outbox.events.map { it.kind })
+        assertEquals(emptySet<String>(), graph.preferences.journal())
+    }
+
+    @Test
+    fun without_the_notice_permission_every_gate_carries_the_banner() {
+        application.noticesPermitted = false
+
+        connected()
+
+        assertTrue(graph.gateRelay.noticeOff.value)
     }
 
     @Test

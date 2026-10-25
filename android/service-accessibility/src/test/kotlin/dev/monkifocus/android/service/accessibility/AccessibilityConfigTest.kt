@@ -36,7 +36,7 @@ class AccessibilityConfigTest {
     fun the_service_reads_window_content_with_view_ids_and_two_window_events() {
         assertEquals("true", attr("canRetrieveWindowContent"))
         assertEquals(setOf("typeWindowStateChanged", "typeWindowContentChanged"), attr("accessibilityEventTypes").split('|').toSet())
-        assertEquals(setOf("flagReportViewIds", "flagRetrieveInteractiveWindows"), attr("accessibilityFlags").split('|').toSet())
+        assertEquals("view ids only: no interactive windows", setOf("flagReportViewIds"), attr("accessibilityFlags").split('|').toSet())
         assertEquals("@string/accessibility_service_description", attr("description"))
     }
 

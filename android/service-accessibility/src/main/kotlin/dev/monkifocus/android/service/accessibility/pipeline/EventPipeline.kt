@@ -18,6 +18,7 @@ import dev.monkifocus.android.service.accessibility.action.CoverRegion
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
 import dev.monkifocus.android.service.accessibility.decision.DecisionEvaluator
 import dev.monkifocus.android.service.accessibility.decision.Evaluation
+import dev.monkifocus.android.service.accessibility.decision.RulesetAddition
 import dev.monkifocus.android.service.accessibility.decision.SnapshotHolder
 import dev.monkifocus.android.service.accessibility.decision.UnclassifiedCapRule
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowController
@@ -61,6 +62,8 @@ class EventPipeline(
     private val labels: TargetLabels,
     private val ourPackage: String,
     private val packs: () -> List<DetectorPack>,
+    /** Browsers resolved on the device that no pack can read (no URL bar ids): friction always, bedtime blocks. */
+    private val unsupportedBrowsers: () -> Set<String> = { emptySet() },
     private val readThrottle: ReadThrottle = ReadThrottle(),
     private val decisionThrottle: DecisionThrottle = DecisionThrottle(),
     private val backGuard: BackLoopGuard = BackLoopGuard(),
@@ -80,6 +83,8 @@ class EventPipeline(
     private var foregroundCapped = false
     private var currentGroup: String? = null
     private var presented: Presented? = null
+    private var urlBarMissingPackage: String? = null
+    private var urlBarMissingSinceMs = 0L
 
     /** What our overlay shows now, or null. */
     var showing: OverlayContent? = null
@@ -117,7 +122,7 @@ class EventPipeline(
         nowEpochMs: Long,
         readScreen: () -> Screen?,
     ) {
-        exitFlow.tick(nowEpochMs)
+        exitFlow.tick()
         if (exitFlow.protectionEnded) {
             stand()
             return
@@ -127,7 +132,12 @@ class EventPipeline(
         ) {
             leftForUnwatched(foregroundPackage, nowMonotonicMs)
         } else {
-            foreground?.let { if (isCapped(it)) cap = cap.observe(it, foregroundClassified, nowMonotonicMs) }
+            foreground?.let {
+                if (isCapped(it)) {
+                    cap =
+                        cap.observe(it, foregroundClassified && !urlBarUnread(it, nowMonotonicMs), nowMonotonicMs)
+                }
+            }
         }
         val changed = coordinator.tick(nowEpochMs, onScreenGroup = presented?.group ?: currentGroup)
         val capFlipped = foreground?.let { capApplies(it, nowMonotonicMs) != foregroundCapped } == true
@@ -142,6 +152,8 @@ class EventPipeline(
             }
         }
         (showing as? OverlayContent.Bounce)?.let { show(bounce(it.screen, nowEpochMs)) }
+        // The watched app is in front but our screen is not (GateActivity left with HOME, then the app reopened): show it again.
+        if (foregroundPackage != null && foregroundPackage == foreground) showing?.let { if (!performer.isOnTop()) performer.show(it) }
     }
 
     /** The screen turned off: no app is in front, the cap stops counting. */
@@ -205,12 +217,12 @@ class EventPipeline(
             }
 
             UserAction.DisableProtection -> {
-                exitFlow.request(nowEpochMs)
+                exitFlow.request()
                 refreshBounce(nowEpochMs)
             }
 
             UserAction.KeepProtection -> {
-                exitFlow.cancel(nowEpochMs)
+                exitFlow.cancel()
                 refreshBounce(nowEpochMs)
             }
         }
@@ -236,6 +248,7 @@ class EventPipeline(
     ) {
         val pkg = observation.packageName
         if (presented?.let { it.notice && it.packageName != pkg } == true) presented = null
+        if (observation !is ScreenObservation.UrlAbsent) urlBarMissingPackage = null
         when (observation) {
             is ScreenObservation.Guarded -> {
                 feedCap(pkg, classified = true, nowMonotonicMs)
@@ -244,7 +257,30 @@ class EventPipeline(
                 show(bounce(observation.screen, nowEpochMs))
             }
 
-            is ScreenObservation.Unguarded, is ScreenObservation.Untracked -> {
+            is ScreenObservation.Untracked -> {
+                feedCap(pkg, classified = true, nowMonotonicMs)
+                val ruleset = snapshots.snapshot?.ruleset
+                if (pkg !in unsupportedBrowsers() || (ruleset != null && !UnclassifiedCapRule.coversWeb(ruleset))) {
+                    currentGroup = null
+                    dismiss()
+                    return
+                }
+                val key = ObservationKey.App(pkg, null)
+                if (!decisionThrottle.admit(key, nowMonotonicMs)) return
+                val addition = RulesetAddition.UnsupportedBrowser(pkg)
+                decideAndAct(
+                    AppObservation(pkg, null),
+                    key,
+                    CoverRegion.NONE,
+                    addition,
+                    labels.appLabel(pkg),
+                    pkg,
+                    nowMonotonicMs,
+                    nowEpochMs,
+                )
+            }
+
+            is ScreenObservation.Unguarded -> {
                 feedCap(pkg, classified = true, nowMonotonicMs)
                 currentGroup = null
                 dismiss()
@@ -256,7 +292,30 @@ class EventPipeline(
             }
 
             is ScreenObservation.UrlAbsent -> {
-                feedCap(pkg, classified = true, nowMonotonicMs)
+                if (urlBarMissingPackage != pkg) {
+                    urlBarMissingPackage = pkg
+                    urlBarMissingSinceMs = nowMonotonicMs
+                }
+                // Past the grace a browser that shows no URL bar counts as unclassified: no fail-open by hiding the bar.
+                val unread = urlBarUnread(pkg, nowMonotonicMs)
+                feedCap(pkg, classified = !unread, nowMonotonicMs)
+                if (!unread) return
+                val capped = capApplies(pkg, nowMonotonicMs)
+                foregroundCapped = capped
+                if (!capped) return
+                val key = ObservationKey.App(pkg, null, capped = true)
+                if (!decisionThrottle.admit(key, nowMonotonicMs)) return
+                val addition = RulesetAddition.UnclassifiedCap(pkg)
+                decideAndAct(
+                    AppObservation(pkg, null),
+                    key,
+                    CoverRegion.NONE,
+                    addition,
+                    labels.appLabel(pkg),
+                    pkg,
+                    nowMonotonicMs,
+                    nowEpochMs,
+                )
             }
 
             is ScreenObservation.App -> {
@@ -270,7 +329,7 @@ class EventPipeline(
                     target,
                     key,
                     observation.cover,
-                    if (capped) pkg else null,
+                    if (capped) RulesetAddition.UnclassifiedCap(pkg) else null,
                     labels.appLabel(pkg),
                     pkg,
                     nowMonotonicMs,
@@ -292,7 +351,7 @@ class EventPipeline(
         target: Observation,
         key: ObservationKey,
         cover: CoverRegion,
-        capPackage: String?,
+        addition: RulesetAddition?,
         label: String,
         pkg: String,
         nowMonotonicMs: Long,
@@ -301,7 +360,7 @@ class EventPipeline(
         val snapshot = snapshots.snapshot
         // Before the first load there is nothing to decide with; a failed load fails closed below.
         if (snapshot == null && !snapshots.loadFailed) return
-        val evaluation = evaluator.evaluate(snapshot, target, capPackage, nowEpochMs)
+        val evaluation = evaluator.evaluate(snapshot, target, addition, nowEpochMs)
         currentGroup = GateGroup.of(evaluation.decision)
         when (val plan = ActionSelector.select(evaluation, cover) { coordinator.stateOf(it).phase }) {
             ActionPlan.Clear -> {
@@ -370,7 +429,7 @@ class EventPipeline(
     ): OverlayContent =
         OverlayContent.Bounce(
             screen = screen,
-            exitRemainingSeconds = exitFlow.remainingSeconds(nowEpochMs),
+            exitRemainingSeconds = exitFlow.remainingSeconds(),
             guardianLinked = snapshots.snapshot?.guardianLinked == true,
         )
 
@@ -395,24 +454,43 @@ class EventPipeline(
         foregroundCapped = false
     }
 
-    private fun capPackOf(pkg: String): DetectorPack? =
-        packs().firstOrNull { it.appliesTo(pkg) && it.unclassifiedCapMinutes > 0 && it.urlBarViewIds.isEmpty() }
+    /** The cap of [pkg] in minutes: its app pack's, the compiled browser cap for a readable browser, or null. */
+    private fun capMinutesOf(pkg: String): Int? {
+        val applicable = packs().filter { it.appliesTo(pkg) }
+        if (applicable.any { it.urlBarViewIds.isNotEmpty() }) return BROWSER_CAP_MINUTES
+        return applicable
+            .firstOrNull { it.unclassifiedCapMinutes > 0 && it.packId != ScreenObserver.SETTINGS_PACK_ID }
+            ?.unclassifiedCapMinutes
+    }
 
-    private fun isCapped(pkg: String): Boolean = capPackOf(pkg) != null
+    private fun isCapped(pkg: String): Boolean = capMinutesOf(pkg) != null
 
-    private fun isWatched(pkg: String): Boolean = packs().any { it.appliesTo(pkg) }
+    private fun isWatched(pkg: String): Boolean = packs().any { it.appliesTo(pkg) } || pkg in unsupportedBrowsers()
+
+    private fun urlBarUnread(
+        pkg: String,
+        nowMonotonicMs: Long,
+    ): Boolean = urlBarMissingPackage == pkg && nowMonotonicMs - urlBarMissingSinceMs > URL_BAR_GRACE_MS
 
     private fun capApplies(
         pkg: String,
         nowMonotonicMs: Long,
     ): Boolean {
-        val pack = capPackOf(pkg) ?: return false
+        val minutes = capMinutesOf(pkg) ?: return false
         val ruleset = snapshots.snapshot?.ruleset ?: return false
-        return cap.frictionApplies(pkg, pack.unclassifiedCapMinutes, UnclassifiedCapRule.covers(ruleset, pack), nowMonotonicMs)
+        val applicable = packs().filter { it.appliesTo(pkg) }
+        val covered =
+            if (applicable.any { it.urlBarViewIds.isNotEmpty() }) {
+                UnclassifiedCapRule.coversWeb(ruleset)
+            } else {
+                applicable.any { UnclassifiedCapRule.covers(ruleset, it) }
+            }
+        return cap.frictionApplies(pkg, minutes, covered, nowMonotonicMs)
     }
 
+    /** Shows [content] unless exactly that is already on top (never trusts "showing" while our host is not in front). */
     private fun show(content: OverlayContent) {
-        if (content == showing) return
+        if (content == showing && performer.isOnTop()) return
         showing = content
         performer.show(content)
     }
@@ -444,5 +522,11 @@ class EventPipeline(
 
         /** Keeps the unclassified cap fed (it accounts at most 60 s per observation). */
         const val CAP_TICK_MS = 30_000L
+
+        /** A browser may hide its URL bar this long (scrolling, a video) before the screen counts as unclassified. */
+        const val URL_BAR_GRACE_MS = 30_000L
+
+        /** The unclassified cap of readable browsers whose URL bar stays hidden (the packs' minimum for capped apps). */
+        const val BROWSER_CAP_MINUTES = 5
     }
 }

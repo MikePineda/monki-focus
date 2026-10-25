@@ -9,9 +9,10 @@ import dev.monkifocus.android.detectors.SettingsScreenClassifier
 /**
  * Decides whether a Settings or package-installer screen is one of ours to
  * guard (plan §2.8), through [SettingsScreenClassifier]. The label
- * collision ([LabelCollision]) is asked for lazily, only when the screen
- * would otherwise be guarded as App info, uninstall or device admin, because
- * computing it walks the installed packages.
+ * collision ([LabelCollision]) is asked for lazily, only when a screen
+ * would otherwise be guarded. Every guarded screen is released on a
+ * collision, our accessibility-service details page too: a look-alike app
+ * or service could otherwise be trapped behind our card.
  *
  * A guarded screen is never blocked silently: the pipeline shows the bounce
  * card with the way out (plan 04 §2, conciliation rule 5).
@@ -43,6 +44,7 @@ class AntiBypassGuard(
     }
 
     private companion object {
-        val COLLISION_SENSITIVE = setOf(GuardedScreen.APP_INFO, GuardedScreen.UNINSTALL, GuardedScreen.DEVICE_ADMIN)
+        val COLLISION_SENSITIVE =
+            setOf(GuardedScreen.APP_INFO, GuardedScreen.UNINSTALL, GuardedScreen.DEVICE_ADMIN, GuardedScreen.ACCESSIBILITY_DETAIL)
     }
 }

@@ -25,6 +25,11 @@ internal class RecordingPerformer : ActionPerformer {
 
     val calls = mutableListOf<Call>()
 
+    /** Whether our host is in front; showing puts it there, a test takes it away (the user left with HOME). */
+    var onTop = false
+
+    override fun isOnTop(): Boolean = onTop
+
     override fun back() {
         calls += Call.Back
     }
@@ -35,10 +40,12 @@ internal class RecordingPerformer : ActionPerformer {
 
     override fun show(content: OverlayContent) {
         calls += Call.Show(content)
+        onTop = true
     }
 
     override fun clear() {
         calls += Call.Clear
+        onTop = false
     }
 
     fun take(): List<Call> = calls.toList().also { calls.clear() }

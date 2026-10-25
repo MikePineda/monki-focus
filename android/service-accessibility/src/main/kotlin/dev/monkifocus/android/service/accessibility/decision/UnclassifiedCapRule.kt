@@ -5,6 +5,7 @@ import dev.monkifocus.android.core.domain.rules.AppTarget
 import dev.monkifocus.android.core.domain.rules.Rule
 import dev.monkifocus.android.core.domain.rules.RuleMode
 import dev.monkifocus.android.core.domain.rules.Ruleset
+import dev.monkifocus.android.core.domain.rules.SiteTarget
 import dev.monkifocus.android.core.domain.rules.SurfaceTarget
 import dev.monkifocus.android.detectors.DetectorPack
 
@@ -30,6 +31,16 @@ object UnclassifiedCapRule {
         ruleset.rules.any { rule ->
             val target = rule.target
             rule.enabled && rule.mode == RuleMode.BLOCK && target is SurfaceTarget && target.surface.substringBefore('.') == pack.packId
+        }
+
+    /**
+     * True when [ruleset] restricts anything on the web (an enabled site or
+     * surface rule that is not `allow`): then a browser that cannot be read
+     * must not be a way around it.
+     */
+    fun coversWeb(ruleset: Ruleset): Boolean =
+        ruleset.rules.any { rule ->
+            rule.enabled && rule.mode != RuleMode.ALLOW && (rule.target is SiteTarget || rule.target is SurfaceTarget)
         }
 
     /** [ruleset] plus the cap rule for [packageName] (unchanged when a rule already uses that id). */

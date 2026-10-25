@@ -41,6 +41,12 @@ internal class OverlayHost(
     /** The overlay's root view while it is shown (for the IME probe). */
     val rootView: View? get() = view
 
+    /**
+     * True while our window has been added and not removed. An accessibility
+     * overlay always sits above the app, so an added window is on top.
+     */
+    val attached: Boolean get() = view != null
+
     fun show(
         next: OverlayContent,
         focusable: Boolean,

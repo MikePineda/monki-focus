@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 package dev.monkifocus.android.service.accessibility.notice
 
+import dev.monkifocus.android.service.accessibility.exit.ExitFlowState
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -63,5 +64,18 @@ class ProtectionNoticeTest {
     fun without_the_notification_permission_nothing_is_posted() {
         assertEquals(NoticeCommand.None, reconcile(showing = false, permitted = false))
         assertEquals(NoticeCommand.Post(plain), reconcile(showing = false, permitted = true))
+    }
+
+    @Test
+    fun active_protection_without_the_notice_permission_shows_the_in_app_banner() {
+        assertEquals(NoticeVisibility.BANNER, NoticeVisibility.of(protectionActive = true, notificationsPermitted = false))
+        assertEquals(NoticeVisibility.NOTICE, NoticeVisibility.of(protectionActive = true, notificationsPermitted = true))
+        assertEquals(NoticeVisibility.NONE, NoticeVisibility.of(protectionActive = false, notificationsPermitted = false))
+    }
+
+    @Test
+    fun the_notice_content_comes_from_the_guardian_state_and_the_exit_wait() {
+        assertEquals(NoticeContent(guardianLinked = true, exitPending = true), NoticeContent.of(true, ExitFlowState.Waiting(1, boot = 1)))
+        assertEquals(NoticeContent(guardianLinked = false, exitPending = false), NoticeContent.of(false, ExitFlowState.Armed))
     }
 }

@@ -27,8 +27,8 @@ class ProtectionPreferences(
     override fun load(): ExitFlowState {
         val at = prefs.getLong(KEY_EXIT_AT, 0L)
         return when (prefs.getString(KEY_EXIT_STATE, null)) {
-            STATE_WAITING -> ExitFlowState.Waiting(at)
-            STATE_ENDED -> ExitFlowState.Ended(at)
+            STATE_WAITING -> ExitFlowState.Waiting(at, prefs.getInt(KEY_EXIT_BOOT, 0))
+            STATE_ENDED -> ExitFlowState.Ended(at, prefs.getBoolean(KEY_REARM_ALLOWED, false))
             else -> ExitFlowState.Armed
         }
     }
@@ -39,16 +39,20 @@ class ProtectionPreferences(
                 ExitFlowState.Armed -> {
                     remove(KEY_EXIT_STATE)
                     remove(KEY_EXIT_AT)
+                    remove(KEY_EXIT_BOOT)
+                    remove(KEY_REARM_ALLOWED)
                 }
 
                 is ExitFlowState.Waiting -> {
                     putString(KEY_EXIT_STATE, STATE_WAITING)
                     putLong(KEY_EXIT_AT, state.requestedAtMs)
+                    putInt(KEY_EXIT_BOOT, state.boot)
                 }
 
                 is ExitFlowState.Ended -> {
                     putString(KEY_EXIT_STATE, STATE_ENDED)
                     putLong(KEY_EXIT_AT, state.endedAtMs)
+                    putBoolean(KEY_REARM_ALLOWED, state.rearmAllowed)
                 }
             }
         }
@@ -74,6 +78,8 @@ class ProtectionPreferences(
         const val FILE = "monki_protection"
         const val KEY_EXIT_STATE = "exit_state"
         const val KEY_EXIT_AT = "exit_at_ms"
+        const val KEY_EXIT_BOOT = "exit_boot"
+        const val KEY_REARM_ALLOWED = "exit_rearm_allowed"
         const val KEY_JOURNAL = "bypass_journal"
         const val KEY_OVERLAY_IME_FAILED = "overlay_ime_failed"
         const val STATE_WAITING = "waiting"

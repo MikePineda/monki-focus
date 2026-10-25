@@ -35,13 +35,22 @@ class EventPipelineGuardTest {
     }
 
     @Test
-    fun our_accessibility_detail_is_guarded_without_a_label_lookup() {
+    fun our_accessibility_detail_is_guarded() {
         val h = PipelineHarness()
 
         h.opened(settings("accessibility_detail-01"))
 
         assertEquals(GuardedScreen.ACCESSIBILITY_DETAIL, (h.showing as OverlayContent.Bounce).screen)
-        assertEquals(0, h.collisionChecks)
+    }
+
+    @Test
+    fun a_label_collision_releases_our_accessibility_detail_too() {
+        val h = PipelineHarness(labelCollision = true)
+
+        h.opened(settings("accessibility_detail-01"))
+
+        assertNull("a look-alike service is never trapped behind our card", h.showing)
+        assertEquals(1, h.collisionChecks)
     }
 
     @Test

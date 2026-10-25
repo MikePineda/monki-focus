@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 package dev.monkifocus.android.service.accessibility.gate
 
+import dev.monkifocus.android.core.domain.engine.BEDTIME_GROUP
 import dev.monkifocus.android.core.domain.engine.RulesCatalog
 import dev.monkifocus.android.core.domain.engine.effectiveEscalationState
 import dev.monkifocus.android.core.domain.engine.epochSecondsOf
@@ -19,6 +20,7 @@ import dev.monkifocus.android.feature.gate.state.GateUiState
 import dev.monkifocus.android.feature.gate.state.GateUiStateMapper
 import dev.monkifocus.android.service.accessibility.bypass.BypassKind
 import dev.monkifocus.android.service.accessibility.bypass.BypassRecorder
+import dev.monkifocus.android.service.accessibility.decision.ConservativeEscalation
 import dev.monkifocus.android.service.accessibility.decision.Evaluation
 import dev.monkifocus.android.service.accessibility.decision.SnapshotHolder
 
@@ -53,7 +55,7 @@ class GateCoordinator(
         snapshots.snapshot
             ?.escalation
             ?.firstOrNull { it.targetGroup == group }
-            ?: initialEscalationState(group)
+            ?: if (snapshots.escalationUncertain) ConservativeEscalation.of(group) else initialEscalationState(group)
 
     private val guardianLinked: Boolean get() = snapshots.snapshot?.guardianLinked == true
 
@@ -235,7 +237,9 @@ class GateCoordinator(
         val ruleset = evaluation.ruleset ?: return
         val winner = ruleset.rules.firstOrNull { it.id == group } ?: return
         val now = instantOf(nowEpochMs)
-        val states = snapshots.snapshot?.escalation.orEmpty()
+        // A group the snapshot does not list yet (an added rule) starts from stateOf, conservative while unknown.
+        val listed = snapshots.snapshot?.escalation.orEmpty()
+        val states = if (listed.any { it.targetGroup == group }) listed else listed + stateOf(group)
         val candidates = FrictionCandidates.of(ruleset, evaluation.observation, now, catalog)
         val effective = effectiveEscalationState(winner, candidates, states, now)
         val result = nextEscalation(effective, EscalationEvent.Visit, now, guardianLinked)
@@ -263,7 +267,8 @@ class GateCoordinator(
     ) {
         val details =
             buildMap {
-                put("target_group", after.targetGroup)
+                // Never the rule id: it may name a site or an app. Only whether it was bedtime.
+                put("scope", if (after.targetGroup == BEDTIME_GROUP) "bedtime" else "rule")
                 before.overrideReadyAt?.let { put("wait_ended_at", it) }
                 after.overrideEndsAt?.let { put("ends_at", it) }
             }

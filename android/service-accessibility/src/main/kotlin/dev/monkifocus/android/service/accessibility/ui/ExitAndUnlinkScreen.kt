@@ -28,21 +28,24 @@ import kotlinx.coroutines.delay
  * screen, the notice and every bounce card; nothing here asks the decision
  * engine, so nothing can block it. While it is open it ticks the flow
  * itself, so the exit finishes even when the accessibility service is off.
+ * After the end it offers the one way back: [onRearm] (the app then opens
+ * the accessibility settings); a service turned on without it turns itself
+ * off again.
  */
 @Composable
 fun ExitAndUnlinkScreen(
     exitFlow: ExitFlowController,
     onDone: () -> Unit,
+    onRearm: () -> Unit,
     modifier: Modifier = Modifier,
-    clock: () -> Long = System::currentTimeMillis,
 ) {
     var state by remember { mutableStateOf(exitFlow.state) }
-    var remaining by remember { mutableStateOf(exitFlow.remainingSeconds(clock())) }
+    var remaining by remember { mutableStateOf(exitFlow.remainingSeconds()) }
     LaunchedEffect(exitFlow) {
         while (true) {
-            exitFlow.tick(clock())
+            exitFlow.tick()
             state = exitFlow.state
-            remaining = exitFlow.remainingSeconds(clock())
+            remaining = exitFlow.remainingSeconds()
             delay(TICK_MS)
         }
     }
@@ -57,8 +60,8 @@ fun ExitAndUnlinkScreen(
                 MonkiSecondaryButton(
                     text = stringResource(R.string.exit_start),
                     onClick = {
-                        state = exitFlow.request(clock())
-                        remaining = exitFlow.remainingSeconds(clock())
+                        state = exitFlow.request()
+                        remaining = exitFlow.remainingSeconds()
                     },
                     modifier = Modifier.testTag(OverlayTestTags.EXIT_START),
                 )
@@ -71,7 +74,7 @@ fun ExitAndUnlinkScreen(
                 MonkiQuietButton(
                     text = stringResource(R.string.exit_keep),
                     onClick = {
-                        state = exitFlow.cancel(clock())
+                        state = exitFlow.cancel()
                         onDone()
                     },
                     muted = true,
@@ -81,6 +84,15 @@ fun ExitAndUnlinkScreen(
             is ExitFlowState.Ended -> {
                 Text(text = stringResource(R.string.exit_ended), color = colors.ink2, style = typography.body)
                 MonkiCloseButton(text = stringResource(R.string.action_close), onClick = onDone)
+                // The only way protection comes back after an exit: asked for here, then the service is turned on.
+                MonkiQuietButton(
+                    text = stringResource(R.string.exit_rearm),
+                    onClick = {
+                        state = exitFlow.allowRearm()
+                        onRearm()
+                    },
+                    modifier = Modifier.testTag(OverlayTestTags.REARM),
+                )
             }
         }
     }

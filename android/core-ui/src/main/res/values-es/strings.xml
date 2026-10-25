@@ -112,4 +112,10 @@
 
     <!-- Home. -->
     <string name="home_exit_button">Salir y desvincular</string>
+    <string name="notice_off_banner">Protección activa — el aviso está apagado</string>
+    <string name="exit_rearm">Volver a activar la protección</string>
+    <string name="home_notice_request">Activar el aviso de protección</string>
+    <string name="home_turn_on">Activar la protección</string>
+    <string name="status_notice_on">Aviso de protección: activado</string>
+    <string name="status_notice_off">Aviso de protección: apagado</string>
 </resources>

@@ -15,4 +15,7 @@ interface ProtectionNotifier {
 
     /** The user swiped the notice away (`deleteIntent`). */
     fun dismissed()
+
+    /** Whether the notice can be posted at all (notification permission, app notifications on). */
+    fun permitted(): Boolean
 }

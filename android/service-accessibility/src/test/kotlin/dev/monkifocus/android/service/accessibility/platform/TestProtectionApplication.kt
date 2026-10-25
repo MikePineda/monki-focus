@@ -26,6 +26,9 @@ class TestProtectionApplication :
     val outbox = MemoryOutbox()
     val notices: MutableList<Boolean> = Collections.synchronizedList(mutableListOf())
 
+    /** Whether the fake notifier may post; false simulates a missing notification permission. */
+    var noticesPermitted = true
+
     override val protectionGraph: ProtectionGraph by lazy { ProtectionGraph(this, Inputs()) }
 
     private inner class Inputs : ProtectionInputs {
@@ -33,6 +36,8 @@ class TestProtectionApplication :
         override val packLoader: DetectorPackLoader get() = RulesData.loader
 
         override fun bundledPacks(): Map<String, ByteArray> = RulesData.packIds.associateWith(RulesData::packBytes)
+
+        override fun starterRuleset(): Ruleset = RulesData.starter
 
         override suspend fun activeRuleset(now: String): Ruleset = aRuleset()
 
@@ -49,6 +54,8 @@ class TestProtectionApplication :
                 }
 
                 override fun dismissed() = Unit
+
+                override fun permitted(): Boolean = noticesPermitted
             }
         override val deviceAdmin: ComponentName get() = ComponentName(this@TestProtectionApplication, "dev.monkifocus.test.Admin")
         override val ownLabels: Set<String> = setOf("monki-focus")

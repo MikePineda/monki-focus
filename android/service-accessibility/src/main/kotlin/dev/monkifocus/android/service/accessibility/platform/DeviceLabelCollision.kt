@@ -3,12 +3,13 @@ package dev.monkifocus.android.service.accessibility.platform
 
 import android.app.admin.DevicePolicyManager
 import android.content.Context
+import android.view.accessibility.AccessibilityManager
 import dev.monkifocus.android.service.accessibility.guard.LabelCollision
 
 /**
  * Computes [LabelCollision] on the device: every installed package (the app
- * declares `QUERY_ALL_PACKAGES` for this check alone) and every active
- * device admin, by label. Labels are compared in memory and never kept.
+ * declares `QUERY_ALL_PACKAGES` for this check alone), every installed
+ * accessibility service and every active device admin, by label. Labels are compared in memory and never kept.
  *
  * Reading hundreds of labels is slow, so [refresh] runs off the main thread
  * (at service start and then every minute) and the guard reads the cached
@@ -52,6 +53,18 @@ internal class DeviceLabelCollision(
                         }.getOrNull()
                     LabelCollision.Labelled(component.packageName, label)
                 }
-        return LabelCollision.exists(ownLabels, appContext.packageName, installed, admins)
+        val services =
+            appContext
+                .getSystemService(AccessibilityManager::class.java)
+                ?.installedAccessibilityServiceList
+                .orEmpty()
+                .map { info ->
+                    val resolve = info.resolveInfo
+                    LabelCollision.Labelled(
+                        resolve.serviceInfo.packageName,
+                        runCatching { resolve.loadLabel(packages).toString() }.getOrNull(),
+                    )
+                }
+        return LabelCollision.exists(ownLabels, appContext.packageName, installed, admins, services)
     }
 }

@@ -23,6 +23,9 @@ interface ProtectionInputs {
     /** Pack id → bytes of the packs bundled in the APK (blocking I/O: call off the main thread). */
     fun bundledPacks(): Map<String, ByteArray>
 
+    /** The bundled starter preset, validated, in the device zone: enforced at once while the stored rules load. */
+    fun starterRuleset(): Ruleset
+
     /** The rule set in force at [now] (UTC RFC 3339), or the bundled starter preset before the first commit. */
     suspend fun activeRuleset(now: String): Ruleset
 
