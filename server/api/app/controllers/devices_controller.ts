@@ -50,7 +50,8 @@ export default class DevicesController {
     const device = await this.devices.update(
       auth.use('web').getUserOrFail(),
       String(params.uuid),
-      changes
+      changes,
+      this.clock.now()
     )
     return { device: deviceResource(device) }
   }

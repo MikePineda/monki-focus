@@ -75,13 +75,20 @@ later package. Implemented (S3, S4): `GET /keys`, `POST /device/enroll`,
 - **Bypass events**: batches of 1 to 100, 120 batches per hour per device,
   idempotent per device and `dedupeKey`. Client kinds only (the schema's
   enum); the server raises `heartbeat_missing`, `heartbeat_resumed`,
-  `key_pin_mismatch`, `protection_disabled`, `device_enrolled` and `device_revoked` itself, under
-  dedupe keys a device cannot write. `details`: at most 16 members, keys
-  are identifiers, strings at most 64 characters of `A-Z a-z 0-9 . _ : -`
-  (no URL, title or sentence fits), finite numbers, booleans.
+  `key_pin_mismatch`, `protection_disabled`, `deadman_threshold_raised`,
+  `device_enrolled` and `device_revoked` itself, under dedupe keys a device
+  cannot write. `details` are a strict allowlist per kind, enum values and
+  bounded integers only, never a free string (so no domain, path, title or
+  slug fits): `emergency_override` takes `scope` (`rule`, `bedtime`),
+  `waitSeconds` (0-3600) and `durationSeconds` (0-86400); `time_changed`
+  and `clock_changed` take `deltaSeconds` (±31536000); `time_floor_lowered`
+  takes `loweredBySeconds` (0-31536000); every other kind takes none.
+  Anything else is 422 `validation_failed` (`events.<i>.details`).
 - **Token rotation**: `POST /device/token/rotate` (10 per hour) returns a
   new token; every other token is deleted and the calling one works 10
-  more minutes (a retry never extends it).
+  more minutes. An atomic claim on the calling token plus a lock on the
+  device row make concurrent calls mint exactly one token; a token in its
+  grace can never rotate again (409 `token_rotation_refused`).
 - **Dead-man switch**: every 5-minute window (one claim per window), a
   protected, unrevoked device silent for its `deadmanHours` (default
   `DEADMAN_DEFAULT_HOURS`, 6) gets one `heartbeat_missing` per gap; the next
@@ -89,7 +96,12 @@ later package. Implemented (S3, S4): `GET /keys`, `POST /device/enroll`,
   announced shutdown (`goingOffline`) labels the alert (`announced: true`),
   never suppresses it. A heartbeat that turns protection off raises
   `protection_disabled` instead, since the switch only watches protected
-  devices. New events go to the `BypassAlerts` port (guardian
+  devices. Already alerted devices are left out of the scan (a backlog of
+  silent devices never starves new alerts), and each alert is inserted only
+  while the locked device row still has the scanned `last_seen_at`, so a
+  heartbeat that just landed never gets a false alert. Raising
+  `deadmanHours` from the dashboard takes effect at once and stores
+  `deadman_threshold_raised` (`fromHours`, `toHours`); lowering it does not. New events go to the `BypassAlerts` port (guardian
   notifications arrive with S6).
 - **Retention**: a daily job prunes heartbeats older than
   `HEARTBEAT_RETENTION_DAYS` (30), enrolment codes a day after expiry and
@@ -216,7 +228,8 @@ revokedAt, createdAt }`. Never a token, hash or boot id. `enrolledKids`
 - The code is shown once (`Cache-Control: no-store`) with the issuer and
   the kid of every published key; the dashboard displays them and encodes
   `{ code, issuer, kids }` in the QR code. 10 codes per hour per user; a new
-  code replaces the pending one; 409 `E_DEVICE_LIMIT_REACHED` at 20 active
+  code replaces the pending one (one pending code per user, enforced by a
+  unique index and a lock on the user row); 409 `E_DEVICE_LIMIT_REACHED` at 20 active
   devices. `name`: 1 to 64 characters, no control characters;
   `deadmanHours`: whole hours from 1 to 48.
 

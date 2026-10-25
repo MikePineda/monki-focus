@@ -178,31 +178,47 @@ test.group('POST /api/v1/device/token/rotate', (group) => {
     )
   })
 
-  test('test_a_retried_rotation_keeps_only_the_newest_token_and_the_grace', async ({
-    client,
-    assert,
-  }) => {
+  test('test_a_token_in_its_grace_can_never_rotate_again', async ({ client, assert }) => {
     const { device, token } = await enrolledDevice()
 
-    const lost = await client.post('/api/v1/device/token/rotate').asDevice(token)
-    const retried = await client.post('/api/v1/device/token/rotate').asDevice(token)
+    const rotated = await expectStatus(
+      client.post('/api/v1/device/token/rotate').asDevice(token),
+      201
+    )
+    const again = await client.post('/api/v1/device/token/rotate').asDevice(token)
 
-    retried.assertStatus(201)
-    await expectStatus(
-      client
-        .post(HEARTBEAT)
-        .json(await heartbeatBody())
-        .asDevice(lost.body().token),
-      401
+    again.assertStatus(409)
+    again.assertBody({ code: 'token_rotation_refused' })
+    const rows = await db.from(ACCESS_TOKENS_TABLE).where('tokenable_id', device.id)
+    assert.lengthOf(rows, 2)
+    assert.lengthOf(
+      rows.filter((row) => row.expires_at === null),
+      1,
+      'exactly one permanent token'
     )
     await expectStatus(
       client
         .post(HEARTBEAT)
         .json(await heartbeatBody())
-        .asDevice(retried.body().token),
+        .asDevice(rotated.body().token),
       200
     )
-    assert.lengthOf(await db.from(ACCESS_TOKENS_TABLE).where('tokenable_id', device.id), 2)
+  })
+
+  test('test_concurrent_rotations_mint_exactly_one_permanent_token', async ({ client, assert }) => {
+    const { device, token } = await enrolledDevice()
+
+    const responses = await Promise.all(
+      Array.from({ length: 4 }, () => client.post('/api/v1/device/token/rotate').asDevice(token))
+    )
+
+    assert.deepEqual(responses.map((response) => response.status()).sort(), [201, 409, 409, 409])
+    const rows = await db.from(ACCESS_TOKENS_TABLE).where('tokenable_id', device.id)
+    assert.lengthOf(rows, 2)
+    assert.lengthOf(
+      rows.filter((row) => row.expires_at === null),
+      1
+    )
   })
 
   test('test_rotation_needs_a_device_token', async ({ client }) => {

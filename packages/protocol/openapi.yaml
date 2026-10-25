@@ -187,7 +187,8 @@ paths:
         repeated in the batch. Devices report only the client kinds of
         `BypassEvent.kind`; the server raises its own kinds itself
         (`heartbeat_missing`, `heartbeat_resumed`, `key_pin_mismatch`,
-        `protection_disabled`, `device_enrolled`, `device_revoked`), which
+        `protection_disabled`, `deadman_threshold_raised`,
+        `device_enrolled`, `device_revoked`), which
         a device cannot send. A heartbeat that turns `protectionActive` off
         raises `protection_disabled`, because the dead-man switch only
         watches protected devices.
@@ -224,8 +225,12 @@ paths:
         heartbeat answers `tokenRotationDue: true` (the token is 30 days
         old). The response carries the new token, returned only here; every
         other token of the device is deleted and the one used for this call
-        keeps working for 10 more minutes, so a lost response can be retried
-        with it (a retry never extends that grace). At most 10 per hour.
+        keeps working for 10 more minutes so requests in flight finish. A
+        token in that grace can never rotate again (`409`
+        `token_rotation_refused`), so concurrent or repeated calls mint
+        exactly one new token; a device that lost the response keeps using
+        the old token until the grace ends, then enrols again. At most 10
+        per hour.
       parameters:
         - $ref: '#/components/parameters/ClientVersion'
       responses:
@@ -242,6 +247,12 @@ paths:
                 $ref: '#/components/schemas/TokenRotation'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: '`token_rotation_refused`: this token is already in its grace (it was rotated).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '426':
           $ref: '#/components/responses/UpgradeRequired'
         '429':
@@ -669,16 +680,71 @@ components:
           $ref: '#/components/schemas/Timestamp'
         details:
           type: object
-          maxProperties: 16
+          additionalProperties: false
           description: |
-            Small non-personal details. Never URLs, titles or screen text:
-            keys are identifiers and strings are at most 64 characters of
-            `A-Z a-z 0-9 . _ : -` (no space, slash, `@` or `%` fits).
-          propertyNames:
-            pattern: '^[a-z][A-Za-z0-9_]{0,47}$'
-          additionalProperties:
-            type: [string, number, boolean]
-            pattern: '^[A-Za-z0-9._:-]{0,64}$'
+            A strict allowlist per `kind` (the `allOf` below): only the keys
+            listed for the event's kind, each an enum value or a bounded
+            integer. There is no free string, so no domain, path, title or
+            sentence fits; anything else is `422` `validation_failed`.
+
+            | kind | keys |
+            | --- | --- |
+            | `emergency_override` | `scope` (`rule`, `bedtime`), `waitSeconds` (0-3600), `durationSeconds` (0-86400) |
+            | `time_changed`, `clock_changed` | `deltaSeconds` (-31536000 to 31536000) |
+            | `time_floor_lowered` | `loweredBySeconds` (0-31536000) |
+            | every other kind | none |
+          properties:
+            scope:
+              type: string
+              enum: [rule, bedtime]
+            waitSeconds:
+              type: integer
+              minimum: 0
+              maximum: 3600
+            durationSeconds:
+              type: integer
+              minimum: 0
+              maximum: 86400
+            deltaSeconds:
+              type: integer
+              minimum: -31536000
+              maximum: 31536000
+            loweredBySeconds:
+              type: integer
+              minimum: 0
+              maximum: 31536000
+      allOf:
+        - if:
+            properties: { kind: { const: emergency_override } }
+          then:
+            properties:
+              details: { propertyNames: { enum: [scope, waitSeconds, durationSeconds] } }
+        - if:
+            properties: { kind: { enum: [time_changed, clock_changed] } }
+          then:
+            properties:
+              details: { propertyNames: { enum: [deltaSeconds] } }
+        - if:
+            properties: { kind: { const: time_floor_lowered } }
+          then:
+            properties:
+              details: { propertyNames: { enum: [loweredBySeconds] } }
+        - if:
+            properties:
+              kind:
+                enum:
+                  - accessibility_disabled
+                  - device_admin_disabled
+                  - usage_access_revoked
+                  - accessibility_permission_revoked
+                  - protection_ended
+                  - extension_removed
+                  - browser_unsupported
+                  - timezone_changed
+                  - policy_hash_mismatch
+          then:
+            properties:
+              details: { maxProperties: 0 }
     BypassEventBatch:
       type: object
       additionalProperties: false

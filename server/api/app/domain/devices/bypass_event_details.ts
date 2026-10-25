@@ -1,44 +1,79 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { refuse, succeed, type Outcome } from '#domain/outcome'
+import type { ClientBypassKind } from '#domain/devices/bypass_event_kinds'
 
 /**
- * The `details` of a bypass event: small codes and numbers the guardian
- * may see, never personal data. The shape itself keeps URLs, titles and
- * screen text out:
- *
- * - at most 16 members;
- * - keys are identifiers (`targetGroup`, `wait_seconds`);
- * - strings are at most 64 characters of `A-Z a-z 0-9 . _ : -`, so no
- *   space, slash, `@`, `?` or `%` fits: no sentence, path, URL or email;
- * - numbers are finite; booleans as they are; nothing nested.
+ * The `details` a device may attach to a bypass event. The guardian may see
+ * them, so they are a strict **allowlist per kind**: only the keys listed
+ * for the event's kind, each an enum value or a bounded integer. There is
+ * no free string at all, so no domain, path, title, slug or sentence can be
+ * smuggled in, whatever a modified client sends (anti-stalkerware rule,
+ * SECURITY.md). Anything else is refused with the contract's validation
+ * error; packages/protocol/openapi.yaml (`BypassEvent`) carries the same
+ * table (tests/unit/devices/bypass_details_contract.spec.ts).
  */
 
-export const MAX_DETAILS = 16
-export const DETAIL_KEY_PATTERN = /^[a-z][A-Za-z0-9_]{0,47}$/
-export const DETAIL_STRING_PATTERN = /^[A-Za-z0-9._:-]{0,64}$/
+export type DetailRule =
+  | { readonly type: 'enum'; readonly values: readonly string[] }
+  | { readonly type: 'integer'; readonly min: number; readonly max: number }
 
-export type DetailValue = string | number | boolean
-export type BypassDetails = Readonly<Record<string, DetailValue>>
+const YEAR_SECONDS = 365 * 24 * 3600
 
-export type DetailsProblem = 'not_an_object' | 'too_many' | 'bad_key' | 'bad_value'
+const DELTA_SECONDS: DetailRule = { type: 'integer', min: -YEAR_SECONDS, max: YEAR_SECONDS }
 
-export function checkBypassDetails(value: unknown): Outcome<BypassDetails, DetailsProblem> {
+export const BYPASS_DETAIL_RULES: Readonly<
+  Record<ClientBypassKind, Readonly<Record<string, DetailRule>>>
+> = {
+  emergency_override: {
+    /** What was lifted: a rule's block or the bedtime lock, never which site. */
+    scope: { type: 'enum', values: ['rule', 'bedtime'] },
+    /** How long the user waited before the override was granted. */
+    waitSeconds: { type: 'integer', min: 0, max: 3600 },
+    /** How long the override lasts. */
+    durationSeconds: { type: 'integer', min: 0, max: 86_400 },
+  },
+  accessibility_disabled: {},
+  device_admin_disabled: {},
+  usage_access_revoked: {},
+  accessibility_permission_revoked: {},
+  protection_ended: {},
+  extension_removed: {},
+  browser_unsupported: {},
+  /** How far the wall clock jumped (positive: forward). */
+  time_changed: { deltaSeconds: DELTA_SECONDS },
+  timezone_changed: {},
+  clock_changed: { deltaSeconds: DELTA_SECONDS },
+  /** How far a signed time token lowered the trusted-time floor. */
+  time_floor_lowered: { loweredBySeconds: { type: 'integer', min: 0, max: YEAR_SECONDS } },
+  policy_hash_mismatch: {},
+}
+
+export type DetailValue = string | number
+export type BypassDetails = Readonly<Record<string, DetailValue | boolean>>
+
+export type DetailsProblem = 'not_an_object' | 'not_allowed' | 'bad_value'
+
+export function checkBypassDetails(
+  kind: ClientBypassKind,
+  value: unknown
+): Outcome<BypassDetails, DetailsProblem> {
   if (value === undefined || value === null) return succeed({})
   if (typeof value !== 'object' || Array.isArray(value)) return refuse('not_an_object')
-  const entries = Object.entries(value as Record<string, unknown>)
-  if (entries.length > MAX_DETAILS) return refuse('too_many')
 
+  const rules = BYPASS_DETAIL_RULES[kind]
   const details: Record<string, DetailValue> = {}
-  for (const [key, child] of entries) {
-    if (!DETAIL_KEY_PATTERN.test(key)) return refuse('bad_key')
-    if (!isDetailValue(child)) return refuse('bad_value')
-    details[key] = child
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    const rule = Object.hasOwn(rules, key) ? rules[key] : undefined
+    if (rule === undefined) return refuse('not_allowed')
+    if (!fits(rule, child)) return refuse('bad_value')
+    details[key] = child as DetailValue
   }
   return succeed(details)
 }
 
-function isDetailValue(value: unknown): value is DetailValue {
-  if (typeof value === 'boolean') return true
-  if (typeof value === 'number') return Number.isFinite(value)
-  return typeof value === 'string' && DETAIL_STRING_PATTERN.test(value)
+function fits(rule: DetailRule, value: unknown): boolean {
+  if (rule.type === 'enum') return typeof value === 'string' && rule.values.includes(value)
+  return (
+    Number.isSafeInteger(value) && (value as number) >= rule.min && (value as number) <= rule.max
+  )
 }

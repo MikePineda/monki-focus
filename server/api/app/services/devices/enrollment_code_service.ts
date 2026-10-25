@@ -39,7 +39,8 @@ export function enrollmentPepper(): string {
 /**
  * Dashboard side of enrolment: a signed-in user asks for a code to type on
  * a new device. One pending code per user (a new one replaces the old), 10
- * per hour, and none once the user has 20 active devices. The code is
+ * per hour, and none once the user has 20 active devices. Requests are
+ * serialised on the user row, so concurrent ones still leave one code. The code is
  * returned once and stored only as its two HMACs
  * (app/domain/devices/enrollment_code.ts).
  */
@@ -53,14 +54,20 @@ export default class EnrollmentCodeService {
     }
 
     const expiresAt = now.plus({ minutes: ENROLLMENT_CODE_TTL_MINUTES })
-    // Only one pending code per user: the previous one stops working.
-    await db.from(ENROLLMENT_CODES_TABLE).where('user_id', user.id).whereNull('used_at').delete()
 
     for (let draw = 0; draw < MAX_DRAWS; draw++) {
       const code = enrollmentCodeFromBytes(randomBytes(ENROLLMENT_CODE_BYTES))
       const { lookupHash, codeHash } = enrollmentCodeDigests(code, enrollmentPepper())
       try {
         await db.transaction(async (trx) => {
+          // Serialised per user; the previous pending code stops working
+          // (also enforced: device_enrollment_codes_pending_user).
+          await trx.from('users').where('id', user.id).forUpdate().select('id')
+          await trx
+            .from(ENROLLMENT_CODES_TABLE)
+            .where('user_id', user.id)
+            .whereNull('used_at')
+            .delete()
           // A dead code (expired or out of attempts) no longer holds its lookup part.
           await trx
             .from(ENROLLMENT_CODES_TABLE)
@@ -83,7 +90,8 @@ export default class EnrollmentCodeService {
         })
         return { code, expiresAt }
       } catch (error) {
-        // Another pending code has these first characters: draw again.
+        // Another pending code has these first characters (or a concurrent
+        // request won the user's slot): draw again, replacing it.
         if ((error as { code?: unknown }).code !== UNIQUE_VIOLATION) throw error
       }
     }

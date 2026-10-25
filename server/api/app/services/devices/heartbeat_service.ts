@@ -27,6 +27,14 @@ import { publishedKeys } from '#services/devices/published_keys'
 
 export const DEVICE_HEARTBEATS_TABLE = 'device_heartbeats'
 
+interface LockedState {
+  last_seen_at: Date
+  announced_offline_at: Date | null
+  protection_active: boolean
+}
+
+const toSeconds = (date: Date) => Math.floor(date.getTime() / 1000)
+
 /** openapi.yaml `HeartbeatRequest`, validated. */
 export interface Heartbeat {
   readonly clientTime: DateTime
@@ -58,7 +66,8 @@ export interface HeartbeatAnswer {
  * 2. the signed time token (TokenIssuance), bound to this device, the
  *    request's nonce and boot id, with the device's pending revocations;
  *    nothing is written if it cannot be signed;
- * 3. one transaction: an open dead-man gap is resolved (and a
+ * 3. one transaction, holding the device row (`FOR UPDATE`, the lock the
+ *    dead-man switch inserts under): an open dead-man gap is resolved (and a
  *    `heartbeat_resumed` stored with its length), the heartbeat row and the
  *    device's state are written, pinned kids the instance does not publish
  *    raise one `key_pin_mismatch` per distinct pinned set, and turning
@@ -98,9 +107,17 @@ export default class HeartbeatService {
     const keys = await publishedKeys()
     const pins = checkKeyPins(heartbeat.pinnedKids, keys.kids)
     const nowDate = now.toJSDate()
-    const previousSeenAt = Math.floor(device.lastSeenAt.toSeconds())
-
     await db.transaction(async (trx) => {
+      // The device row first: the dead-man switch inserts under the same
+      // lock, so it either sees this heartbeat or its alert is resolved below.
+      const locked = (await trx
+        .from('devices')
+        .where('id', device.id)
+        .forUpdate()
+        .select('last_seen_at', 'announced_offline_at', 'protection_active')
+        .first()) as LockedState
+      const previousSeenAt = toSeconds(locked.last_seen_at)
+      const wasProtected = locked.protection_active
       const resolved = await trx
         .from(BYPASS_EVENTS_TABLE)
         .where('device_id', device.id)
@@ -118,17 +135,17 @@ export default class HeartbeatService {
         details: {
           gapSeconds: gapSeconds(previousSeenAt, Math.floor(now.toSeconds())),
           announced: wasAnnounced({
-            protectionActive: device.protectionActive,
+            protectionActive: wasProtected,
             revoked: false,
             lastSeenAt: previousSeenAt,
             deadmanHours: device.deadmanHours,
-            announcedOfflineAt: device.announcedOfflineAt
-              ? Math.floor(device.announcedOfflineAt.toSeconds())
+            announcedOfflineAt: locked.announced_offline_at
+              ? toSeconds(locked.announced_offline_at)
               : null,
           }),
         },
       }))
-      if (device.protectionActive && !heartbeat.protectionActive) {
+      if (wasProtected && !heartbeat.protectionActive) {
         raised.push({
           wardUserId: device.userId,
           deviceId: device.id,

@@ -77,17 +77,24 @@ export default class BypassEventRecorder {
       occurredAt: row.occurred_at,
     }))
     if (raised.length > 0) {
-      // The rows are stored either way: a failing port never fails the request or the job.
-      const announce = () =>
-        app.container
-          .make(BypassAlerts)
-          .then((alerts) => alerts.raised(raised))
-          .catch((error) =>
-            logger.error({ err: error, events: raised.length }, 'bypass alerts: hand-off failed')
-          )
-      if (trx) trx.after('commit', () => void announce())
-      else await announce()
+      if (trx) trx.after('commit', () => void this.announce(raised))
+      else await this.announce(raised)
     }
     return raised
+  }
+
+  /**
+   * Hands newly stored events to the `BypassAlerts` port (for writers that
+   * insert on their own, like the dead-man switch). The rows are stored
+   * either way: a failing port never fails the request or the job.
+   */
+  async announce(raised: readonly RaisedBypassEvent[]): Promise<void> {
+    if (raised.length === 0) return
+    try {
+      const alerts = await app.container.make(BypassAlerts)
+      await alerts.raised(raised)
+    } catch (error) {
+      logger.error({ err: error, events: raised.length }, 'bypass alerts: hand-off failed')
+    }
   }
 }

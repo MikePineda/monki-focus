@@ -6,8 +6,10 @@
  * old the heartbeat says so (`tokenRotationDue`) and the device calls
  * `POST /device/token/rotate`. A copy stolen earlier then dies with the
  * old token; if the thief rotates first, the real device starts getting
- * 401, which is visible. The old token keeps working for a short grace so
- * a lost rotation response never locks the device out. Epoch seconds.
+ * 401, which is visible. The old token keeps working for a short grace
+ * (so in-flight requests finish) and can never rotate again, so it cannot
+ * mint a second permanent token: a device whose rotation response was lost
+ * keeps the old token for the grace, then enrols again. Epoch seconds.
  */
 
 export const TOKEN_ROTATION_DAYS = 30
@@ -20,11 +22,7 @@ export function isRotationDue(issuedAt: number, now: number): boolean {
   return now - issuedAt >= TOKEN_ROTATION_SECONDS
 }
 
-/**
- * When the previous token stops working: the grace from now, never later
- * than a grace it already had (a retried rotation cannot extend it).
- */
-export function previousTokenValidUntil(now: number, currentExpiry: number | null): number {
-  const grace = now + ROTATION_GRACE_SECONDS
-  return currentExpiry === null ? grace : Math.min(currentExpiry, grace)
+/** When the previous token stops working: the grace from now. A token in its grace never rotates again. */
+export function previousTokenValidUntil(now: number): number {
+  return now + ROTATION_GRACE_SECONDS
 }

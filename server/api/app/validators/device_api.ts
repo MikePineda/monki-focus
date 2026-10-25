@@ -13,7 +13,6 @@ import { DEVICE_PLATFORMS } from '#domain/devices/device_platform'
 import { RISK_STATES, MAX_RISK_STATES } from '#domain/devices/risk_state'
 import { CLIENT_BYPASS_KINDS } from '#domain/devices/bypass_event_kinds'
 import { CLIENT_DEDUPE_KEY_PATTERN } from '#domain/devices/bypass_dedupe_key'
-import { checkBypassDetails } from '#domain/devices/bypass_event_details'
 import { MAX_BYPASS_BATCH } from '#services/devices/bypass_event_reports'
 import { deviceName } from '#validators/devices'
 
@@ -50,11 +49,6 @@ function kids() {
   return vine.array(vine.string().regex(KEY_ID_PATTERN)).minLength(1).maxLength(2)
 }
 
-const codesOnlyDetails = vine.createRule((value: unknown, _: undefined, field: FieldContext) => {
-  const checked = checkBypassDetails(value)
-  if (!checked.ok) field.report('The {{ field }} field must hold codes only', 'details', field)
-})
-
 /** POST /device/enroll (`EnrollRequest`). The code is never logged. */
 export const enrollValidator = vine.create({
   code: vine.string().regex(ENROLLMENT_CODE_PATTERN),
@@ -86,7 +80,8 @@ export const bypassEventsValidator = vine.create({
         dedupeKey: vine.string().regex(CLIENT_DEDUPE_KEY_PATTERN),
         kind: vine.enum(CLIENT_BYPASS_KINDS),
         occurredAt: utcTimestamp(),
-        details: vine.any().use(codesOnlyDetails()).optional(),
+        // Checked against the kind's allowlist by the controller (checkBypassDetails).
+        details: vine.any().optional(),
       })
     )
     .minLength(1)

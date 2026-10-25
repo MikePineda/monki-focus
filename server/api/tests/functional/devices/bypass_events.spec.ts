@@ -15,7 +15,7 @@ function event(dedupeKey: string, overrides: Record<string, unknown> = {}) {
     dedupeKey,
     kind: 'emergency_override',
     occurredAt: '2026-01-05T09:00:00.000Z',
-    details: { targetGroup: 'social.video', waitSeconds: 120, granted: true },
+    details: { scope: 'rule', waitSeconds: 120, durationSeconds: 900 },
     ...overrides,
   }
 }
@@ -27,7 +27,9 @@ test.group('POST /api/v1/device/bypass-events', (group) => {
   test('test_a_batch_is_stored_once_per_dedupe_key', async ({ client, assert }) => {
     const alerts = fakeBypassAlerts()
     const { user, device, token } = await enrolledDevice()
-    const batch = { events: [event('a1b2'), event('c3d4', { kind: 'accessibility_disabled' })] }
+    const batch = {
+      events: [event('a1b2'), event('c3d4', { kind: 'accessibility_disabled', details: {} })],
+    }
 
     const first = await client.post(URL).json(batch).asDevice(token)
     const again = await client.post(URL).json(batch).asDevice(token)
@@ -46,11 +48,8 @@ test.group('POST /api/v1/device/bypass-events', (group) => {
         ['accessibility_disabled', 'client', device.id, `c:${device.uuid}:c3d4`],
       ]
     )
-    assert.deepEqual(rows[0].details, {
-      targetGroup: 'social.video',
-      waitSeconds: 120,
-      granted: true,
-    })
+    assert.deepEqual(rows[0].details, { scope: 'rule', waitSeconds: 120, durationSeconds: 900 })
+    assert.deepEqual(rows[1].details, {})
     assert.equal(rows[0].occurred_at.toISOString(), '2026-01-05T09:00:00.000Z')
     assert.deepEqual(alerts.kinds(), ['emergency_override', 'accessibility_disabled'])
   })
@@ -106,23 +105,54 @@ test.group('POST /api/v1/device/bypass-events', (group) => {
     assert.lengthOf(await db.from(BYPASS_EVENTS_TABLE).where('ward_user_id', user.id), 0)
   })
 
-  test('test_details_carrying_a_url_or_free_text_are_refused', async ({ client, assert }) => {
+  test('test_details_carrying_browsing_data_or_free_text_are_refused', async ({
+    client,
+    assert,
+  }) => {
     const { user, token } = await enrolledDevice()
 
-    for (const details of [
-      { site: 'https://video.example.com/watch' },
-      { title: 'A page title with spaces' },
-      { nested: { deep: 1 } },
-      { 'bad key': 1 },
-    ]) {
+    for (const [kind, details] of [
+      ['emergency_override', { site: 'reddit.com' }],
+      ['emergency_override', { targetGroup: 'social.video' }],
+      ['emergency_override', { scope: 'youtube.com:watch' }],
+      ['emergency_override', { scope: 'rule', title: 'cat-videos-compilation' }],
+      ['emergency_override', { waitSeconds: 3601 }],
+      ['emergency_override', { waitSeconds: 1.5 }],
+      ['emergency_override', { waitSeconds: '120' }],
+      ['emergency_override', { deltaSeconds: 60 }],
+      ['accessibility_disabled', { scope: 'rule' }],
+      ['time_changed', { deltaSeconds: 31_536_001 }],
+      ['emergency_override', { nested: { deep: 1 } }],
+      ['emergency_override', ['scope']],
+    ] as const) {
       const response = await client
         .post(URL)
-        .json({ events: [event('ok'), event('x', { details })] })
+        .json({ events: [event('ok'), event('x', { kind, details })] })
         .asDevice(token)
       response.assertStatus(422)
       response.assertBody({ code: 'validation_failed', fields: { 'events.1.details': 'details' } })
     }
     assert.lengthOf(await db.from(BYPASS_EVENTS_TABLE).where('ward_user_id', user.id), 0)
+  })
+
+  test('test_each_kind_accepts_only_its_own_allowlisted_details', async ({ client }) => {
+    const { token } = await enrolledDevice()
+
+    const response = await client
+      .post(URL)
+      .json({
+        events: [
+          event('e1', { details: { scope: 'bedtime', waitSeconds: 0 } }),
+          event('e2', { kind: 'time_changed', details: { deltaSeconds: -3600 } }),
+          event('e3', { kind: 'clock_changed', details: { deltaSeconds: 90 } }),
+          event('e4', { kind: 'time_floor_lowered', details: { loweredBySeconds: 120 } }),
+          event('e5', { kind: 'extension_removed', details: {} }),
+          event('e6', { kind: 'protection_ended', details: undefined }),
+        ],
+      })
+      .asDevice(token)
+
+    response.assertBody({ accepted: 6, duplicates: 0 })
   })
 
   test('test_a_batch_holds_one_to_a_hundred_events', async ({ client }) => {

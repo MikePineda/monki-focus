@@ -10,7 +10,7 @@ import {
   type DeadmanSubject,
 } from '#domain/devices/deadman_rule'
 import { isRotationDue, previousTokenValidUntil } from '#domain/devices/token_rotation'
-import { checkBypassDetails } from '#domain/devices/bypass_event_details'
+import { BYPASS_DETAIL_RULES, checkBypassDetails } from '#domain/devices/bypass_event_details'
 import { clientDedupeKey, serverDedupeKey } from '#domain/devices/bypass_dedupe_key'
 import { clockOffsetMs } from '#domain/devices/clock_offset'
 import { isDeviceName } from '#domain/devices/device_name'
@@ -118,50 +118,55 @@ test.group('Device token rotation', () => {
     assert.isTrue(isRotationDue(T0, T0 + 30 * 24 * HOUR))
   })
 
-  test('test_a_retried_rotation_never_extends_the_previous_tokens_grace', ({ assert }) => {
-    assert.equal(previousTokenValidUntil(T0, null), T0 + 600)
-    assert.equal(previousTokenValidUntil(T0 + 300, T0 + 600), T0 + 600)
-    assert.equal(previousTokenValidUntil(T0, T0 + 60), T0 + 60)
+  test('test_the_previous_token_keeps_a_ten_minute_grace', ({ assert }) => {
+    assert.equal(previousTokenValidUntil(T0), T0 + 600)
   })
 })
 
 test.group('Bypass event details', () => {
-  test('test_codes_numbers_and_booleans_are_accepted', ({ assert }) => {
-    const details = {
-      targetGroup: 'social.video',
-      waitEndedAt: '2026-01-05T09:00:00.000Z',
-      waitSeconds: 120,
-      announced: true,
-    }
-
-    assert.deepEqual(checkBypassDetails(details), { ok: true, value: details })
-    assert.deepEqual(checkBypassDetails(undefined), { ok: true, value: {} })
+  test('test_only_allowlisted_keys_with_enum_or_bounded_integer_values_pass', ({ assert }) => {
+    assert.deepEqual(
+      checkBypassDetails('emergency_override', { scope: 'bedtime', waitSeconds: 120 }),
+      {
+        ok: true,
+        value: { scope: 'bedtime', waitSeconds: 120 },
+      }
+    )
+    assert.deepEqual(checkBypassDetails('time_changed', { deltaSeconds: -60 }), {
+      ok: true,
+      value: { deltaSeconds: -60 },
+    })
+    assert.deepEqual(checkBypassDetails('protection_ended', undefined), { ok: true, value: {} })
   })
 
-  test('test_urls_titles_and_free_text_never_fit_in_details', ({ assert }) => {
-    for (const value of [
-      'https://video.example.com/watch',
-      'video.example.com/path',
-      'A page title with spaces',
-      'user@example.com',
-      'a'.repeat(65),
+  test('test_browsing_data_and_free_strings_never_fit_in_details', ({ assert }) => {
+    for (const details of [
+      { site: 'reddit.com' },
+      { scope: 'youtube.com:watch' },
+      { targetGroup: 'social.video' },
+      { scope: 'rule', title: 'cat-videos' },
+      { waitSeconds: '120' },
+      { waitSeconds: 1.5 },
+      { waitSeconds: -1 },
+      { waitSeconds: 3601 },
+      { deltaSeconds: 60 },
+      { nested: { deep: 1 } },
     ]) {
-      assert.deepEqual(
-        checkBypassDetails({ site: value }),
-        { ok: false, reason: 'bad_value' },
-        value
-      )
+      assert.isFalse(checkBypassDetails('emergency_override', details).ok, JSON.stringify(details))
     }
+    assert.isFalse(checkBypassDetails('accessibility_disabled', { scope: 'rule' }).ok)
+    assert.isFalse(checkBypassDetails('emergency_override', ['scope']).ok)
+    assert.isFalse(checkBypassDetails('emergency_override', 'scope').ok)
   })
 
-  test('test_nested_values_bad_keys_and_too_many_members_are_refused', ({ assert }) => {
-    assert.deepEqual(checkBypassDetails({ nested: { a: 1 } }), { ok: false, reason: 'bad_value' })
-    assert.deepEqual(checkBypassDetails({ list: ['a'] }), { ok: false, reason: 'bad_value' })
-    assert.deepEqual(checkBypassDetails({ infinite: Infinity }), { ok: false, reason: 'bad_value' })
-    assert.deepEqual(checkBypassDetails({ 'Bad Key': 1 }), { ok: false, reason: 'bad_key' })
-    assert.deepEqual(checkBypassDetails(['a']), { ok: false, reason: 'not_an_object' })
-    const many = Object.fromEntries(Array.from({ length: 17 }, (_, i) => [`k${i}`, i]))
-    assert.deepEqual(checkBypassDetails(many), { ok: false, reason: 'too_many' })
+  test('test_every_client_kind_has_an_allowlist_of_enum_or_integer_rules', ({ assert }) => {
+    for (const kind of CLIENT_BYPASS_KINDS) {
+      const rules = BYPASS_DETAIL_RULES[kind]
+      assert.isObject(rules, kind)
+      for (const rule of Object.values(rules)) {
+        assert.include(['enum', 'integer'], rule.type)
+      }
+    }
   })
 })
 

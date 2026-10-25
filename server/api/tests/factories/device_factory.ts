@@ -51,6 +51,6 @@ export async function enrolledDevice(
 ) {
   const owner = user ?? (await UserFactory.create())
   const device = await DeviceFactory.merge({ userId: owner.id, ...merge }).create()
-  const token = await new DeviceTokens().issue(device)
+  const token = await new DeviceTokens().issue(device, DateTime.utc())
   return { user: owner, device, token }
 }

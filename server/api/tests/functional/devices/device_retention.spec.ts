@@ -63,6 +63,7 @@ test.group('Device data retention', (group) => {
         lookup_hash: hex('a'),
         code_hash: hex('b'),
         expires_at: now.minus({ days: 1, minutes: 1 }).toJSDate(),
+        used_at: now.minus({ days: 1, minutes: 5 }).toJSDate(),
         created_at: now.minus({ days: 2 }).toJSDate(),
       },
       {
