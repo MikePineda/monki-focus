@@ -1,0 +1,22 @@
+# Keep the build context small. Do NOT add `.git`: the gitsha stage reads it.
+**/node_modules
+**/dist
+**/build
+**/.output
+**/.wxt
+**/.angular
+**/.adonisjs
+**/.turbo
+**/coverage
+**/tmp
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/.DS_Store
+**/playwright-report
+**/test-results
+docs/internal
+# Native clients never enter the server image.
+android
+macos

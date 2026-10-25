@@ -1,0 +1,8 @@
+{
+  "E_ROUTE_NOT_FOUND": "Not found",
+  "E_ROW_NOT_FOUND": "Not found",
+  "E_BAD_CSRF_TOKEN": "Your session expired. Reload the page and try again",
+  "E_TOO_MANY_REQUESTS": "Too many requests. Wait a minute and try again",
+  "E_CONFLICT": "This already exists. Reload and try again",
+  "E_INTERNAL_SERVER_ERROR": "Something went wrong on the server. Try again in a moment"
+}

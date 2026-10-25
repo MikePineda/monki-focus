@@ -1,0 +1,45 @@
+meta {
+  type: collection
+}
+
+headers {
+  User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36
+  Accept: application/json
+}
+
+auth {
+  mode: none
+}
+
+script:pre-request {
+  // Production is read-only for this collection: GETs only (plus, once they
+  // exist, the smoke user's own login and logout). Any other write is
+  // skipped there and runs against `local` only.
+  const method = req.getMethod().toUpperCase()
+  const url = req.getUrl().split('?')[0]
+  const authOnly = ['/api/v1/auth/login', '/api/v1/auth/logout'].some((path) => url.endsWith(path))
+  if (bru.getEnvName() === 'prod' && !['GET', 'HEAD'].includes(method) && !authOnly) {
+    console.log(`skipped in prod (writes are local only): ${method} ${url}`)
+    bru.runner.skipRequest()
+  }
+}
+
+script:post-response {
+  // CSRF: the server sets the XSRF-TOKEN cookie on responses (Shield). Keep
+  // the newest value in the runtime var `xsrfToken`; every POST, PUT, PATCH
+  // and DELETE to a session route sends it back as X-XSRF-TOKEN.
+  const setCookie = [].concat(res.getHeader('set-cookie') || [])
+  const xsrf = setCookie
+    .map((cookie) => String(cookie).split(';')[0])
+    .find((pair) => pair.startsWith('XSRF-TOKEN='))
+  if (xsrf) {
+    bru.setVar('xsrfToken', decodeURIComponent(xsrf.slice('XSRF-TOKEN='.length)))
+  }
+}
+
+docs {
+  # monki-focus server: smoke collection and living docs
+
+  Run order is the `seq` of each request. See README.md for the rules every
+  request follows and how to add one.
+}

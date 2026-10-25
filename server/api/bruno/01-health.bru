@@ -1,0 +1,35 @@
+meta {
+  name: Health (readiness)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/health
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq ok
+  res.body.checks.database.status: eq ok
+}
+
+tests {
+  test('reports the deployed version and git sha', () => {
+    expect(res.body.version).to.be.a('string').and.not.be.empty
+    expect(res.body.sha).to.be.a('string').and.not.be.empty
+  })
+
+  test('is never framed and carries a strict CSP', () => {
+    expect(res.getHeader('x-frame-options')).to.equal('DENY')
+    expect(res.getHeader('content-security-policy')).to.include("frame-ancestors 'none'")
+  })
+}
+
+docs {
+  `health.ready`: readiness probe (database + heap). 200 with `status`,
+  `version`, `sha` and per-check statuses, or 503 when a check fails. After a
+  deploy, `sha` equals the deployed commit.
+}

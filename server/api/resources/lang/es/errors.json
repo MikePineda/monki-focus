@@ -1,0 +1,8 @@
+{
+  "E_ROUTE_NOT_FOUND": "No encontrado",
+  "E_ROW_NOT_FOUND": "No encontrado",
+  "E_BAD_CSRF_TOKEN": "Tu sesión expiró. Recarga la página e inténtalo de nuevo",
+  "E_TOO_MANY_REQUESTS": "Demasiadas solicitudes. Espera un minuto e inténtalo de nuevo",
+  "E_CONFLICT": "Esto ya existe. Recarga e inténtalo de nuevo",
+  "E_INTERNAL_SERVER_ERROR": "Algo salió mal en el servidor. Inténtalo de nuevo en un momento"
+}

@@ -1,0 +1,14 @@
+{
+  "shared": {
+    "messages": {
+      "required": "Escribe el campo {field}",
+      "string": "El campo {field} debe ser texto",
+      "number": "El campo {field} debe ser un número",
+      "boolean": "El campo {field} debe ser verdadero o falso",
+      "email": "Escribe un correo válido",
+      "minLength": "El campo {field} necesita al menos {min} caracteres",
+      "maxLength": "El campo {field} admite como máximo {max} caracteres",
+      "enum": "Elige un valor válido para {field}"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Local development stack: Postgres 17, ntfy and the server image.
+#
+#   GIT_SHA="$(git rev-parse HEAD)" docker compose up -d --build   # everything
+#   docker compose up -d db ntfy      # services only, for `npm run dev -w server/api`
+#   docker compose down               # keep the database volume
+#   docker compose down -v            # and drop it
+#
+# Ports (127.0.0.1 only): API 3433, Postgres 5442, ntfy 8442. They never clash
+# with docker-compose.test.yml or the E2E slots. Credentials are local-dev
+# throwaways matching server/api/.env.example; the `api` service runs the
+# production image (NODE_ENV=production) with a test-only APP_KEY.
+name: monki-focus
+
+services:
+  db:
+    image: postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe
+    environment:
+      POSTGRES_USER: monkifocus
+      POSTGRES_PASSWORD: monkifocus
+      POSTGRES_DB: monkifocus
+      POSTGRES_INITDB_ARGS: --data-checksums
+    ports:
+      - '127.0.0.1:5442:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U monkifocus -d monkifocus']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Anonymous publishing is fine locally; production declares users, tokens
+  # and ACLs through NTFY_AUTH_* (docs/self-hosting.md, S9).
+  ntfy:
+    image: binwiederhier/ntfy:v2.33.1@sha256:29bc952294d58957f6ca6638eca9a653a33555989224edbdf4bb9433ee606497
+    command: serve
+    environment:
+      NTFY_BASE_URL: http://127.0.0.1:8442
+      NTFY_ENABLE_SIGNUP: 'false'
+      NTFY_ENABLE_LOGIN: 'false'
+      NTFY_WEB_ROOT: disable
+    ports:
+      - '127.0.0.1:8442:80'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:80/v1/health | grep -q healthy']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      target: runtime
+      args:
+        GIT_SHA: ${GIT_SHA:-}
+    image: monki-focus-server:local
+    depends_on:
+      db:
+        condition: service_healthy
+      ntfy:
+        condition: service_healthy
+    environment:
+      LOG_LEVEL: info
+      # Local-only key (gitleaks allowlists the marker); never reuse it.
+      APP_KEY: test-key-not-real-dev-compose-only
+      APP_URL: http://localhost:3433
+      SESSION_DRIVER: cookie
+      LIMITER_STORE: database
+      MIGRATE_ON_START: 'true'
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: monkifocus
+      DB_PASSWORD: monkifocus
+      DB_DATABASE: monkifocus
+      NTFY_BASE_URL: http://ntfy:80
+      NTFY_PUBLIC_URL: http://127.0.0.1:8442
+    ports:
+      - '127.0.0.1:3433:3333'
+
+volumes:
+  db-data:
