@@ -123,6 +123,15 @@ plugin from `gradle/libs.versions.toml` so the compiler version is the catalog's
   early, cancelling bumps the revision. Import and export use the Storage
   Access Framework with the extension's JSON format; an invalid file imports
   nothing and a looser one waits like any edit.
+- **Starter preset**: `RuleChangeService.ensureStored` stores the bundled
+  starter once (source `preset`), pinned to the device zone of that moment,
+  on the first start and when protection is armed; the pinned zone then
+  governs, never each process's device zone. A stored set that cannot be
+  decoded shows "rules unavailable" on Status and Rules (the service fails
+  closed; Exit and unlink still works).
+- **Disclosure version**: bumping `OnboardingProgressCodec.DISCLOSURE_VERSION`
+  shows the new disclosure to armed users without disarming them; "Not now"
+  leads to Exit and unlink.
 
 ## Release
 

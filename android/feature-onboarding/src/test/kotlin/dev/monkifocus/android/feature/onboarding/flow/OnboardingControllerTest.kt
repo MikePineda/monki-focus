@@ -53,4 +53,15 @@ class OnboardingControllerTest {
         assertNull(OnboardingController(store).handle(OnboardingEvent.Next, ready))
         assertEquals(0, store.saves)
     }
+
+    @Test
+    fun agreeing_again_is_saved_and_ends_onboarding() {
+        val store = MemoryStore(OnboardingProgress(step = OnboardingStep.DISCLOSURE))
+
+        OnboardingController(store).reconsent()
+
+        assertTrue(store.stored.disclosureAccepted)
+        assertTrue(store.stored.completed)
+        assertTrue(!OnboardingStateMachine.needsReconsent(store.stored, armedByUser = true))
+    }
 }

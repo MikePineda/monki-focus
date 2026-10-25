@@ -22,6 +22,7 @@ import dev.monkifocus.android.feature.onboarding.flow.OnboardingEffect
 import dev.monkifocus.android.feature.onboarding.flow.OnboardingEvent
 import dev.monkifocus.android.feature.onboarding.flow.OnboardingMode
 import dev.monkifocus.android.feature.onboarding.flow.OnboardingProgress
+import dev.monkifocus.android.feature.onboarding.flow.OnboardingStateMachine
 import dev.monkifocus.android.feature.onboarding.flow.OnboardingStep
 import dev.monkifocus.android.feature.onboarding.flow.SetupSnapshot
 import dev.monkifocus.android.feature.onboarding.platform.SetupIntents
@@ -29,15 +30,19 @@ import dev.monkifocus.android.feature.onboarding.platform.startFirst
 import dev.monkifocus.android.feature.onboarding.status.ActiveRulesSummary
 import dev.monkifocus.android.feature.onboarding.status.ProtectionState
 import dev.monkifocus.android.feature.onboarding.status.StatusChecklist
+import dev.monkifocus.android.feature.onboarding.ui.DisclosureAgainScreen
 import dev.monkifocus.android.feature.onboarding.ui.LIVE_STEPS
 import dev.monkifocus.android.feature.onboarding.ui.OnboardingScreen
 import dev.monkifocus.android.feature.onboarding.ui.StatusUi
 import dev.monkifocus.android.feature.rules.ui.RulesRoute
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowState
 import dev.monkifocus.android.service.accessibility.ui.ExitAndUnlinkScreen
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.ZoneId
 import dev.monkifocus.android.core.ui.R as CoreUiR
 
 /**
@@ -54,7 +59,7 @@ import dev.monkifocus.android.core.ui.R as CoreUiR
  * again on every resume and every second while a step waits on a switch.
  */
 class MainActivity : ComponentActivity() {
-    private enum class Route { HOME, ONBOARDING, RULES, EXIT }
+    private enum class Route { HOME, ONBOARDING, DISCLOSURE_AGAIN, RULES, EXIT }
 
     private var route by mutableStateOf(Route.HOME)
     private var snapshot by mutableStateOf(SetupSnapshot.NOTHING)
@@ -62,6 +67,8 @@ class MainActivity : ComponentActivity() {
     private var protectionState by mutableStateOf(ProtectionState.SETUP_UNFINISHED)
     private var progress by mutableStateOf(OnboardingProgress())
     private var rulesSummary by mutableStateOf<ActiveRulesSummary?>(null)
+    private var rulesUnavailable by mutableStateOf(false)
+    private var armed by mutableStateOf(false)
     private var askedForNotice = false
 
     private val graph: AppGraph get() = (application as MonkiApplication).graph
@@ -82,10 +89,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         progress = graph.onboarding.progress
+        storeStarterRules()
         refresh()
         route =
             when {
                 intent?.getBooleanExtra(EXTRA_OPEN_EXIT, false) == true -> Route.EXIT
+                OnboardingStateMachine.needsReconsent(progress, armed) -> Route.DISCLOSURE_AGAIN
                 needsOnboarding() -> Route.ONBOARDING
                 else -> Route.HOME
             }
@@ -101,8 +110,17 @@ class MainActivity : ComponentActivity() {
                 }
                 LaunchedEffect(route) {
                     if (route == Route.HOME) {
-                        val rules = withContext(Dispatchers.Default) { graph.ruleChanges.state() }
-                        rulesSummary = ActiveRulesSummary.of(rules.effective, rules.pending?.effectiveFrom)
+                        val rules =
+                            try {
+                                withContext(Dispatchers.Default) { graph.ruleChanges.state() }
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                // An undecodable stored set: the service fails closed; Status and Exit and unlink stay usable.
+                                null
+                            }
+                        rulesUnavailable = rules == null
+                        rulesSummary = rules?.let { ActiveRulesSummary.of(it.effective, it.pending?.effectiveFrom) }
                     }
                 }
                 BackHandler(enabled = route == Route.RULES || route == Route.EXIT) { goHome() }
@@ -112,6 +130,18 @@ class MainActivity : ComponentActivity() {
                 when (route) {
                     Route.EXIT -> {
                         ExitAndUnlinkScreen(exitFlow = graph.protection.exitFlow, onDone = ::goHome, onRearm = ::startSetup)
+                    }
+
+                    Route.DISCLOSURE_AGAIN -> {
+                        DisclosureAgainScreen(
+                            onAgree = {
+                                graph.onboarding.reconsent()
+                                progress = graph.onboarding.progress
+                                goHome()
+                            },
+                            // Declining never disarms silently: Exit and unlink explains how protection ends.
+                            onNotNow = { route = Route.EXIT },
+                        )
                     }
 
                     Route.RULES -> {
@@ -134,9 +164,10 @@ class MainActivity : ComponentActivity() {
                             status =
                                 StatusUi(
                                     protection = protectionState,
-                                    checklist = StatusChecklist.of(snapshot, protectionWanted()),
+                                    checklist = StatusChecklist.of(snapshot, StatusChecklist.protectionWanted(armed, progress.mode)),
                                     rules = rulesSummary,
                                     noticePermitted = home.noticePermitted,
+                                    rulesUnavailable = rulesUnavailable,
                                 ),
                             onFix = ::fix,
                             onRequestNotice = ::askForNotice,
@@ -163,7 +194,7 @@ class MainActivity : ComponentActivity() {
 
     private fun refresh() {
         val current = probe.snapshot()
-        val armed = graph.protection.preferences.armedByUser
+        armed = graph.protection.preferences.armedByUser
         val exit = graph.protection.exitFlow.state
         snapshot = current
         home = HomeStatus.of(current.accessibilityService, armed, exit, current.notifications)
@@ -178,8 +209,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun needsOnboarding(): Boolean = !graph.protection.preferences.armedByUser && !progress.completed
-
-    private fun protectionWanted(): Boolean = progress.mode == OnboardingMode.PROTECTION
 
     private fun goHome() {
         route = Route.HOME
@@ -234,16 +263,15 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * A Status fix button. The accessibility screens open only once the
-     * disclosure was accepted; before that the button leads to onboarding,
-     * which shows the disclosure first.
+     * A Status fix button, through the onboarding rules like any step's own
+     * button: what onboarding would not open yet (accessibility before the
+     * disclosure, anything but usage access and notifications with
+     * statistics only) leads to onboarding instead.
      */
     private fun fix(step: OnboardingStep) {
-        if (step == OnboardingStep.ACCESSIBILITY && !progress.disclosureAccepted) {
-            startSetup()
-        } else {
-            open(step)
-        }
+        val effect = graph.onboarding.handle(OnboardingEvent.Act(step), snapshot)
+        progress = graph.onboarding.progress
+        if (effect is OnboardingEffect.Open) open(effect.step) else startSetup()
     }
 
     /**
@@ -289,8 +317,22 @@ class MainActivity : ComponentActivity() {
     private fun turnOnProtection() {
         val exitFlow = graph.protection.exitFlow
         if (exitFlow.state is ExitFlowState.Ended) exitFlow.allowRearm()
+        storeStarterRules()
         graph.protection.armByUser()
         goHome()
+    }
+
+    /**
+     * Stores the bundled starter once, pinned to the device zone of this
+     * moment (idempotent), so the engine's pinned zone governs from then on
+     * instead of each process's device zone. Runs on the first start and when
+     * protection is armed; until it lands the service applies the same
+     * starter. A failure leaves the starter in force and is tried again on the
+     * next start.
+     */
+    private fun storeStarterRules() {
+        val zone = ZoneId.systemDefault().id
+        graph.protection.io.launch { runCatching { graph.ruleChanges.ensureStored(zone) } }
     }
 
     companion object {

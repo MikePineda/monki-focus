@@ -6,6 +6,7 @@ object RulesTestTags {
     const val SCREEN = "rules.screen"
     const val BACK = "rules.back"
     const val MESSAGE = "rules.message"
+    const val UNAVAILABLE = "rules.unavailable"
     const val PENDING = "rules.pending"
     const val CANCEL_PENDING = "rules.pending.cancel"
     const val SUBREDDIT_FIELD = "rules.subreddit.field"

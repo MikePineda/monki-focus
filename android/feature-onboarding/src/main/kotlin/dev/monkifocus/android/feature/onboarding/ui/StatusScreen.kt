@@ -103,7 +103,16 @@ fun StatusScreen(
                         )
                     }
                     Checklist(status.checklist, onFix)
-                    status.rules?.let { RulesLine(it) }
+                    if (status.rulesUnavailable) {
+                        Text(
+                            text = stringResource(R.string.status_rules_unavailable),
+                            color = colors.statusCritical,
+                            style = typography.body,
+                            modifier = Modifier.testTag(StatusTestTags.RULES_UNAVAILABLE),
+                        )
+                    } else {
+                        status.rules?.let { RulesLine(it) }
+                    }
                     MonkiSecondaryButton(
                         text = stringResource(R.string.status_edit_rules),
                         onClick = onEditRules,

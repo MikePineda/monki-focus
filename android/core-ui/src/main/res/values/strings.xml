@@ -337,4 +337,12 @@
     <string name="surface_youtube_watch">YouTube video</string>
     <string name="surface_youtube_search">YouTube search</string>
     <string name="surface_youtube_library">YouTube library</string>
+
+    <!-- Review fixes: re-consent, unreadable rules, catalog-only list text. -->
+    <string name="onboarding_disclosure_not_now_note">Not now does not turn protection off — Exit and unlink does.</string>
+    <string name="onboarding_disclosure_changed">What monki-focus says about Accessibility has changed. Read it again; your protection stays on meanwhile.</string>
+    <string name="status_rules_unavailable">Your rules cannot be read right now, so protection stays strict. Status and Exit and unlink still work.</string>
+    <string name="rules_unavailable">Your rules cannot be read right now, so nothing can be changed here. Protection stays strict, and Exit and unlink still works.</string>
+    <string name="rules_subreddit_name">r/%1$s</string>
+    <string name="rules_detail_separator">" · "</string>
 </resources>

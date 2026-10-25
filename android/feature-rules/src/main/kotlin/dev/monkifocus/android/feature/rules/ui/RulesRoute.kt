@@ -22,6 +22,7 @@ import dev.monkifocus.android.feature.rules.change.RulesMessage
 import dev.monkifocus.android.feature.rules.change.RulesState
 import dev.monkifocus.android.feature.rules.transfer.ImportedRuleset
 import dev.monkifocus.android.feature.rules.transfer.RulesetTransfer
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -49,14 +50,23 @@ fun RulesRoute(
     val resolver = LocalContext.current.contentResolver
     var state by remember { mutableStateOf<RulesState?>(null) }
     var message by remember { mutableStateOf<RulesMessage?>(null) }
-    LaunchedEffect(service) { state = offMain { service.state() } }
+    var unavailable by remember { mutableStateOf(false) }
+
+    /** Runs rule-set work off the main thread; a stored set that cannot be read shows "unavailable" (the service fails closed). */
+    suspend fun <T : Any> guarded(work: suspend () -> T): T? {
+        val result = readable { offMain(work) }
+        if (result == null) unavailable = true
+        return result
+    }
+
+    LaunchedEffect(service) { state = guarded { service.state() } }
 
     fun settle(outcome: RuleChangeOutcome) {
         message = RulesMessage.of(outcome)
         when (outcome) {
             is RuleChangeOutcome.Applied -> state = outcome.state
             is RuleChangeOutcome.Pending -> state = outcome.state
-            is RuleChangeOutcome.Rejected -> scope.launch { state = offMain { service.state() } }
+            is RuleChangeOutcome.Rejected -> scope.launch { guarded { service.state() }?.let { state = it } }
         }
     }
 
@@ -77,7 +87,7 @@ fun RulesRoute(
                 when (imported) {
                     null -> message = RulesMessage.FileFailed
                     is ImportedRuleset.Invalid -> message = RulesMessage.ImportInvalid(imported.code, imported.location)
-                    is ImportedRuleset.Valid -> settle(offMain { service.edit(seen, RulesetSource.IMPORT) { imported.ruleset } })
+                    is ImportedRuleset.Valid -> guarded { service.edit(seen, RulesetSource.IMPORT) { imported.ruleset } }?.let(::settle)
                 }
             }
         }
@@ -90,20 +100,36 @@ fun RulesRoute(
                 onBack = onBack,
                 onEdit = { transform ->
                     val seen = state
-                    if (seen != null) scope.launch { settle(offMain { service.edit(seen, transform = transform) }) }
+                    if (seen != null) scope.launch { guarded { service.edit(seen, transform = transform) }?.let(::settle) }
                 },
                 onCancelPending = {
                     scope.launch {
-                        state = offMain { service.cancelPending() }
-                        message = RulesMessage.Cancelled
+                        guarded { service.cancelPending() }?.let {
+                            state = it
+                            message = RulesMessage.Cancelled
+                        }
                     }
                 },
                 onExport = { state?.configured?.let { exporter.launch(RulesetTransfer.fileName(it)) } },
                 onImport = { importer.launch(arrayOf(RulesetTransfer.MIME_TYPE)) },
             ),
         modifier = modifier,
+        unavailable = unavailable,
     )
 }
+
+/**
+ * [work], or null when it failed: a stored rule set that cannot be decoded
+ * throws from the repository. Cancellation still propagates.
+ */
+private suspend fun <T : Any> readable(work: suspend () -> T): T? =
+    try {
+        work()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        null
+    }
 
 /** Rule-set work (encoding, schema validation, the engine) runs off the main thread. */
 private suspend fun <T> offMain(work: suspend () -> T): T = withContext(Dispatchers.Default) { work() }

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.monkifocus.android.core.ui.MonkiTheme
 import dev.monkifocus.android.feature.onboarding.flow.OnboardingStep
+import dev.monkifocus.android.feature.onboarding.flow.RestrictedSettings
 import dev.monkifocus.android.feature.onboarding.flow.SetupSnapshot
 import dev.monkifocus.android.feature.onboarding.status.ActiveRulesSummary
 import dev.monkifocus.android.feature.onboarding.status.ProtectionState
@@ -31,8 +32,10 @@ class StatusScreenTest {
         protection: ProtectionState,
         snapshot: SetupSnapshot,
         rules: ActiveRulesSummary? = null,
+        rulesUnavailable: Boolean = false,
     ) {
-        val status = StatusUi(protection, StatusChecklist.of(snapshot, protectionWanted = true), rules, snapshot.notifications)
+        val status =
+            StatusUi(protection, StatusChecklist.of(snapshot, protectionWanted = true), rules, snapshot.notifications, rulesUnavailable)
         compose.setContent {
             MonkiTheme {
                 StatusScreen(
@@ -94,5 +97,28 @@ class StatusScreenTest {
         compose.onNodeWithText("Rules on: 9").performScrollTo().assertExists()
         compose.onNodeWithText("Bedtime", substring = true).assertExists()
         compose.onNodeWithText("A change waits until", substring = true).assertExists()
+    }
+
+    @Test
+    fun unreadable_rules_are_said_and_exit_still_works() {
+        show(ProtectionState.ACTIVE, SetupSnapshot.NOTHING.copy(notifications = true, accessibilityService = true), rulesUnavailable = true)
+
+        compose.onNodeWithTag(StatusTestTags.RULES_UNAVAILABLE).performScrollTo().assertExists()
+        compose.onNodeWithTag(StatusTestTags.RULES).assertDoesNotExist()
+        compose.onNodeWithTag(StatusTestTags.EXIT).performScrollTo().performClick()
+
+        assertEquals(listOf("exit"), calls)
+    }
+
+    @Test
+    fun restricted_settings_get_their_own_fix_while_they_may_block_the_switch() {
+        show(
+            ProtectionState.SERVICE_OFF,
+            SetupSnapshot.NOTHING.copy(notifications = true, restrictedSettings = RestrictedSettings.PROBABLY_RESTRICTED),
+        )
+
+        compose.onNodeWithTag(StatusTestTags.fix(OnboardingStep.RESTRICTED_SETTINGS)).performScrollTo().performClick()
+
+        assertEquals(listOf("fix:RESTRICTED_SETTINGS"), calls)
     }
 }

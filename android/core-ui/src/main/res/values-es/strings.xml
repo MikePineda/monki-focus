@@ -329,4 +329,12 @@
     <string name="surface_youtube_watch">Video de YouTube</string>
     <string name="surface_youtube_search">Búsqueda de YouTube</string>
     <string name="surface_youtube_library">Biblioteca de YouTube</string>
+
+    <!-- Review fixes: re-consent, unreadable rules, catalog-only list text. -->
+    <string name="onboarding_disclosure_not_now_note">Ahora no no apaga la protección: eso lo hace Salir y desvincular.</string>
+    <string name="onboarding_disclosure_changed">Lo que monki-focus explica sobre la Accesibilidad cambió. Léelo de nuevo; mientras tanto tu protección sigue activa.</string>
+    <string name="status_rules_unavailable">Ahora no se pueden leer tus reglas, así que la protección sigue estricta. Estado y Salir y desvincular siguen funcionando.</string>
+    <string name="rules_unavailable">Ahora no se pueden leer tus reglas, así que aquí no se puede cambiar nada. La protección sigue estricta y Salir y desvincular sigue funcionando.</string>
+    <string name="rules_subreddit_name">r/%1$s</string>
+    <string name="rules_detail_separator">" · "</string>
 </resources>

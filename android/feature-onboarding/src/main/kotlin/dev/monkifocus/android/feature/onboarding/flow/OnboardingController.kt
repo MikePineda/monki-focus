@@ -27,6 +27,11 @@ class OnboardingController(
         update(OnboardingStateMachine.restart(progress, snapshot))
     }
 
+    /** An armed user agreed to the disclosure shown again (see [OnboardingStateMachine.needsReconsent]). */
+    fun reconsent() {
+        update(OnboardingStateMachine.reconsented(progress))
+    }
+
     private fun update(next: OnboardingProgress) {
         if (next == progress) return
         progress = next

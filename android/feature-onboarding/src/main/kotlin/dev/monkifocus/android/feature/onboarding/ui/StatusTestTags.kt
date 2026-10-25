@@ -13,6 +13,7 @@ object StatusTestTags {
     const val EDIT_RULES = "status.edit_rules"
     const val EXIT = "status.exit"
     const val RULES = "status.rules"
+    const val RULES_UNAVAILABLE = "status.rules.unavailable"
 
     fun item(step: OnboardingStep): String = "status.item.${step.name.lowercase()}"
 

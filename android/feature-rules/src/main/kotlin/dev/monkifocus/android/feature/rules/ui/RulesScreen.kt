@@ -51,7 +51,8 @@ import dev.monkifocus.android.feature.rules.edit.SubredditName
  * budget (mode and switch editable), the allowed reddit communities,
  * bedtime, work hours, and import / export. Every change is a pure edit
  * handed to [RulesActions.onEdit]; nothing here writes the rule set. While
- * [state] is null the rules are loading.
+ * [state] is null the rules are loading; when they cannot be read
+ * ([unavailable]) nothing is editable and Back still works.
  */
 @Composable
 fun RulesScreen(
@@ -59,6 +60,7 @@ fun RulesScreen(
     message: RulesMessage?,
     actions: RulesActions,
     modifier: Modifier = Modifier,
+    unavailable: Boolean = false,
 ) {
     val colors = MonkiTheme.colors
     Surface(modifier = modifier.fillMaxSize().testTag(RulesTestTags.SCREEN), color = colors.surface0) {
@@ -90,7 +92,14 @@ fun RulesScreen(
                         modifier = Modifier.testTag(RulesTestTags.MESSAGE).semantics { liveRegion = LiveRegionMode.Polite },
                     )
                 }
-                if (state != null) {
+                if (unavailable) {
+                    Text(
+                        text = stringResource(R.string.rules_unavailable),
+                        color = colors.statusCritical,
+                        style = MonkiTheme.typography.body,
+                        modifier = Modifier.testTag(RulesTestTags.UNAVAILABLE),
+                    )
+                } else if (state != null) {
                     PendingSection(state, actions)
                     RuleList(state, actions)
                     Subreddits(state.configured, actions)
@@ -163,7 +172,7 @@ private fun RuleList(
                     RulesText.schedule(row.schedule),
                     row.dailyBudgetMinutes?.let { stringResource(R.string.rules_budget, it) },
                     if (row.waiting) stringResource(R.string.rules_waiting) else null,
-                ).joinToString(" · ")
+                ).joinToString(stringResource(R.string.rules_detail_separator))
             Text(text = details, color = colors.ink2, style = typography.bodySm)
         }
         HorizontalDivider(color = colors.line)
@@ -181,7 +190,12 @@ private fun Subreddits(
     if (allowed.isEmpty()) Body(stringResource(R.string.rules_subreddits_empty))
     allowed.forEach { (rule, name) ->
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "r/$name", color = MonkiTheme.colors.ink1, style = MonkiTheme.typography.body, modifier = Modifier.weight(1f))
+            Text(
+                text = stringResource(R.string.rules_subreddit_name, name),
+                color = MonkiTheme.colors.ink1,
+                style = MonkiTheme.typography.body,
+                modifier = Modifier.weight(1f),
+            )
             MonkiQuietButton(
                 text = stringResource(R.string.rules_subreddits_remove, name),
                 onClick = { actions.onEdit { RulesetEdits.removeRule(it, rule.id) } },
