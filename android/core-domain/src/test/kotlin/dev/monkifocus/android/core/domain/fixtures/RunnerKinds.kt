@@ -2,14 +2,15 @@
 package dev.monkifocus.android.core.domain.fixtures
 
 /**
- * Fixture kinds `:core-domain` runs: every kind of `packages/rules` except the
- * analytics kind (`activity`, a later work package) and `unlock-token`
- * (vectors live in `packages/protocol`). A new kind fails [RunnerCoverageTest].
+ * Fixture kinds `:core-domain` runs: every kind of `packages/rules`, analytics
+ * (`activity`) included, except `unlock-token` (vectors live in
+ * `packages/protocol`). A new kind fails [RunnerCoverageTest].
  */
 object RunnerKinds {
-    val RUN_HERE = listOf("decision", "specificity", "url-normalize", "schedule", "escalation", "rule-change", "candidates", "invalid")
+    val RUN_HERE =
+        listOf("decision", "specificity", "url-normalize", "schedule", "escalation", "rule-change", "candidates", "activity", "invalid")
 
-    val RUN_ELSEWHERE = listOf("activity", "unlock-token")
+    val RUN_ELSEWHERE = listOf("unlock-token")
 
     /** `fixtures/` directories that are not kinds: `detectors/` holds the UI dumps `:detectors` replays. */
     val NOT_KINDS = listOf("detectors")

@@ -9,20 +9,20 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-/** SEMANTICS.md §12: a runner per non-analytics kind, loud failures, nothing skipped. */
+/** SEMANTICS.md §12: a runner per kind (analytics included), loud failures, nothing skipped. */
 class RunnerCoverageTest {
     @get:Rule
     val temporary = TemporaryFolder()
 
     @Test
-    fun runs_every_non_analytics_fixture_kind_the_rules_package_declares() {
+    fun runs_every_fixture_kind_the_rules_package_declares() {
         val declared = FixtureLoader.declaredKinds.filter { it !in RunnerKinds.RUN_ELSEWHERE }
 
         assertEquals(declared.sorted(), RunnerKinds.RUN_HERE.sorted())
     }
 
     @Test
-    fun runs_every_non_analytics_fixture_directory_that_exists() {
+    fun runs_every_fixture_directory_that_exists() {
         val directories =
             RulesPackage
                 .directory("fixtures")
@@ -31,6 +31,12 @@ class RunnerCoverageTest {
                 .filter { it !in RunnerKinds.RUN_ELSEWHERE && it !in RunnerKinds.NOT_KINDS }
 
         assertEquals(directories.sorted(), RunnerKinds.RUN_HERE.sorted())
+    }
+
+    @Test
+    fun the_analytics_kind_has_a_runner_here() {
+        assertTrue(RunnerKinds.RUN_HERE.contains("activity"))
+        assertEquals(listOf("unlock-token"), RunnerKinds.RUN_ELSEWHERE)
     }
 
     @Test
