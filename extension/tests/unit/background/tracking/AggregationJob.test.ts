@@ -145,6 +145,39 @@ describe('aggregation job', () => {
     expect(JSON.stringify(entries)).not.toContain('headline')
   })
 
+  it('while_the_mac_aggregates_blocks_stay_local_and_are_not_queued_for_sync', async () => {
+    let macAggregates = true
+    const harness = await startTracking({
+      now: '2026-01-05T09:20:00Z',
+      syncBlocks: () => Promise.resolve(!macAggregates),
+    })
+    await seed(harness, makeEvent({ timestamp: START, duration: 60 }))
+
+    await harness.module.aggregate()
+
+    expect(await harness.blocks.between(...DAY)).toEqual([
+      expect.objectContaining({ blockStart: START, seconds: 60 }),
+    ])
+    expect(await new Outbox(harness.db).peek(10)).toEqual([])
+
+    macAggregates = false
+    await seed(harness, makeEvent({ timestamp: '2026-01-05T09:10:00Z', duration: 30 }))
+    await harness.module.aggregate()
+    expect((await new Outbox(harness.db).peek(10)).length).toBeGreaterThan(0)
+  })
+
+  it('a_dedupe_flag_that_cannot_be_read_keeps_the_extension_syncing', async () => {
+    const harness = await startTracking({
+      now: '2026-01-05T09:20:00Z',
+      syncBlocks: () => Promise.reject(new Error('storage gone')),
+    })
+    await seed(harness, makeEvent({ timestamp: START, duration: 60 }))
+
+    await harness.module.aggregate()
+
+    expect((await new Outbox(harness.db).peek(10)).length).toBe(1)
+  })
+
   it('aggregation_purges_raw_events_past_retention', async () => {
     const harness = await startTracking({ now: '2026-03-01T12:00:00Z' })
     await seed(harness, makeEvent({ timestamp: '2026-01-05T09:00:00Z' }))

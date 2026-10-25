@@ -20,6 +20,22 @@ describe('extensionManifest', () => {
     expect(extensionManifest({ mode: 'development' })).not.toHaveProperty('key')
   })
 
+  it('permissions_are_the_documented_minimum', () => {
+    // Snapshot of 02 §1.3. `nativeMessaging` (added with the macOS bridge, M5)
+    // lets the worker talk to monki-bridge; Chromium only starts that host for
+    // the extension ids listed in the host manifest's allowed_origins.
+    expect(extensionManifest({ mode: 'production' }).permissions).toEqual([
+      'storage',
+      'unlimitedStorage',
+      'tabs',
+      'idle',
+      'alarms',
+      'declarativeNetRequestWithHostAccess',
+      'scripting',
+      'nativeMessaging',
+    ])
+  })
+
   it('host_permissions_cover_only_the_built_in_sites', () => {
     const manifest = extensionManifest({ mode: 'production' })
     expect(manifest.host_permissions).toEqual([...SITE_HOST_PERMISSIONS])

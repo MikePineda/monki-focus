@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { activityWatchBucketId } from '@monki-focus/analytics'
+import { activityWatchBucketId, type ActivityEvent } from '@monki-focus/analytics'
 import type { RulesCatalog } from '@monki-focus/engine'
 import type { Browser } from 'wxt/browser'
 import type { Clock } from '../../shared/clock'
@@ -49,6 +49,10 @@ export interface TrackingModuleDependencies {
   setTimer?: Timer
   /** Zone for days if the stored rule set's zone does not resolve. */
   fallbackTimeZone?: string
+  /** Sees every pulse once it is stored (the native bridge mirrors it to the Mac app). */
+  onHeartbeat?: (next: ActivityEvent | null, closeAt: string | null) => void
+  /** Whether blocks are queued for sync (false while the Mac app aggregates). */
+  syncBlocks?: () => Promise<boolean>
 }
 
 /** The read side the command router exposes (`stats.*`, `privacy.*`). */
@@ -117,8 +121,21 @@ export function createTrackingModule(deps: TrackingModuleDependencies): Tracking
       catalog,
       deviceId: device,
       bucketId,
+      ...(deps.syncBlocks ? { syncBlocks: deps.syncBlocks } : {}),
     })
-    const tracker = new ActivityTracker(clock, probe, recorder)
+    const onHeartbeat = deps.onHeartbeat
+    const tracker = new ActivityTracker(
+      clock,
+      probe,
+      onHeartbeat === undefined
+        ? recorder
+        : {
+            async record(next, closeAt) {
+              await recorder.record(next, closeAt)
+              onHeartbeat(next, closeAt)
+            },
+          }
+    )
     const localData = new LocalDataService({
       db,
       clock,

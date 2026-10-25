@@ -29,6 +29,12 @@ export interface AggregationJobDependencies {
   catalog: RulesCatalog
   deviceId: string
   bucketId: string
+  /**
+   * Whether changed blocks go to the outbox for sync. False while the Mac
+   * app aggregates this device (plan §3.4 dedupe); the local blocks and
+   * stats are kept either way. Always true when omitted.
+   */
+  syncBlocks?: () => Promise<boolean>
 }
 
 function blockFloor(epochSeconds: number): number {
@@ -47,7 +53,8 @@ function clipFrom(event: ActivityEvent, fromSeconds: number): ActivityEvent | nu
 /**
  * Turns raw events into 5-minute blocks with the analytics core (`categorise`
  * then `toBlocks`) and keeps them in the block store; changed blocks go to
- * the outbox; raw events past retention are purged. Each run recomputes the
+ * the outbox (unless the Mac app aggregates this device); raw events past
+ * retention are purged. Each run recomputes the
  * blocks from one block before the last run's watermark up to now, so heartbeats that
  * extended an event after the previous run are counted, and a second run
  * over the same events writes the same blocks. Runs never overlap.
@@ -94,7 +101,8 @@ export class AggregationJob {
       utcInstantOf(toSeconds),
       blocks
     )
-    await deps.outbox.enqueueBlocks(changed, now)
+    const sync = (await deps.syncBlocks?.().catch(() => true)) ?? true
+    if (sync) await deps.outbox.enqueueBlocks(changed, now)
     await deps.local.set({
       [AGGREGATED_THROUGH_STORAGE_NAME]: utcInstantOf(blockFloor(nowSeconds)),
     })

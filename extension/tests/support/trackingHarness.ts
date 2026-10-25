@@ -44,6 +44,9 @@ export async function startTracking(options: {
   /** Already open in the focused window when the worker starts. */
   activeTab?: FakeTabState
   load?: () => Promise<typeof TrackingModuleExports>
+  /** The native bridge hooks (`NativeBridgeModule`). */
+  onHeartbeat?: TrackingModuleExports.TrackingModuleDependencies['onHeartbeat']
+  syncBlocks?: TrackingModuleExports.TrackingModuleDependencies['syncBlocks']
 }): Promise<TrackingHarness> {
   const { createTrackingModule } = await (
     options.load ?? (() => import('../../src/background/tracking/TrackingModule'))
@@ -66,6 +69,8 @@ export async function startTracking(options: {
     openDb: async () => db,
     setTimer: timer.set,
     fallbackTimeZone: options.timeZone ?? 'UTC',
+    ...(options.onHeartbeat ? { onHeartbeat: options.onHeartbeat } : {}),
+    ...(options.syncBlocks ? { syncBlocks: options.syncBlocks } : {}),
   })
   module.start()
   await module.ready()
