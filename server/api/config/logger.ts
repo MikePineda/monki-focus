@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import env from '#start/env'
 import app from '@adonisjs/core/services/app'
-import { logRedaction, logSerializers } from '#logging/log_redaction'
+import { LOG_PRIVACY } from '#logging/log_redaction'
 import { defineConfig, syncDestination, targets } from '@adonisjs/core/logger'
 
 const loggerConfig = defineConfig({
@@ -14,11 +14,10 @@ const loggerConfig = defineConfig({
       level: env.get('LOG_LEVEL'),
 
       /**
-       * Tokens, codes, capabilities, credentials and emails are censored
-       * before a line is written (app/logging/log_redaction.ts).
+       * Tokens, codes, capabilities, credentials, headers and emails are
+       * censored before a line is written (app/logging/log_redaction.ts).
        */
-      redact: logRedaction,
-      serializers: logSerializers,
+      ...LOG_PRIVACY,
 
       /** Synchronous writes outside production, so test output is never lost. */
       destination: !app.inProduction ? await syncDestination() : undefined,

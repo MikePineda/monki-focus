@@ -3,15 +3,22 @@ import env from '#start/env'
 import { defineConfig, stores } from '@adonisjs/limiter'
 
 /**
- * Rate limits live in Postgres (`rate_limits`), so they hold across
- * replicas and restarts without Redis. The test suite uses memory.
+ * The Postgres store (`rate_limits`). `clearExpiredByTimeout` deletes
+ * expired rows every 5 minutes, so keys from one-off IPs never pile up.
+ */
+export const databaseStoreOptions = {
+  tableName: 'rate_limits',
+  clearExpiredByTimeout: true,
+}
+
+/**
+ * Rate limits live in Postgres, so they hold across replicas and restarts
+ * without Redis. The test suite uses memory.
  */
 const limiterConfig = defineConfig({
   default: env.get('LIMITER_STORE'),
   stores: {
-    database: stores.database({
-      tableName: 'rate_limits',
-    }),
+    database: stores.database(databaseStoreOptions),
     memory: stores.memory({}),
   },
 })

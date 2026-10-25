@@ -2,6 +2,12 @@
 import { runHealthChecks } from '#start/health'
 import type { HttpContext } from '@adonisjs/core/http'
 import { currentBuildInfo } from '#services/build_info'
+import { HealthReportCache } from '#services/health_report_cache'
+
+/** One readiness run per second at most, whoever asks (monotonic clock). */
+const readiness = new HealthReportCache<Awaited<ReturnType<typeof runHealthChecks>>>(() =>
+  performance.now()
+)
 
 type CheckStatus = 'ok' | 'warning' | 'error'
 
@@ -20,7 +26,7 @@ export interface HealthReport {
 export default class HealthChecksController {
   /** Readiness: 200 when every check passes (warnings included), 503 otherwise. */
   async ready({ response, logger }: HttpContext): Promise<HealthReport> {
-    const [report, build] = await Promise.all([runHealthChecks(), currentBuildInfo()])
+    const [report, build] = await Promise.all([readiness.get(runHealthChecks), currentBuildInfo()])
 
     const checks: HealthReport['checks'] = {}
     for (const check of report.checks) {

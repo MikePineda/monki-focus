@@ -14,6 +14,10 @@ process.env.NODE_ENV = 'test'
 import 'reflect-metadata'
 import { Ignitor, prettyPrintError } from '@adonisjs/core/ignitor'
 import { configure, processCLIArgs, run } from '@japa/runner'
+import { markJapaProcess } from '#services/japa_process'
+
+// The only switch that opens the test-support routes without E2E_MODE.
+markJapaProcess()
 
 const APP_ROOT = new URL('../', import.meta.url)
 

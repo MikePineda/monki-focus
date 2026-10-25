@@ -19,6 +19,7 @@ const env = await Env.create(new URL('../', import.meta.url), envSchema)
 const problems = crossFieldProblems({
   NODE_ENV: env.get('NODE_ENV'),
   E2E_MODE: env.get('E2E_MODE'),
+  HOST: env.get('HOST'),
   APP_URL: env.get('APP_URL'),
 })
 if (problems.length > 0) {

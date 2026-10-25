@@ -18,6 +18,8 @@
 */
 
 import { Env } from '@adonisjs/core/env'
+import { parseAddressRanges } from '#http/address_ranges'
+import { isLoopbackHost, isLoopbackUrl } from '#http/loopback_address'
 
 /** `1.2.3` or `1.2.3-beta.1`: what clients send after `<platform>/`. */
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/
@@ -39,6 +41,17 @@ function optionalHeaderName(name: string, value?: string) {
   if (!value) return undefined
   if (!HEADER_NAME.test(value)) throw new Error(`${name} must be an HTTP header name`)
   return value.toLowerCase()
+}
+
+/** Optional comma-separated CIDRs or addresses, kept as the raw string (parsed by its reader). */
+function optionalAddressRanges(name: string, value?: string) {
+  if (!value?.trim()) return undefined
+  try {
+    parseAddressRanges(value)
+  } catch (error) {
+    throw new Error(`${name}: ${(error as Error).message}`)
+  }
+  return value.trim()
 }
 
 /** An optional integer within [min, max]. */
@@ -82,6 +95,7 @@ export const envSchema = {
   SESSION_DRIVER: Env.schema.enum(['cookie', 'memory'] as const),
   LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const),
   CLIENT_IP_HEADER: optionalHeaderName,
+  CLIENT_IP_HEADER_FROM: optionalAddressRanges,
   E2E_MODE: Env.schema.boolean.optional(),
 
   /*
@@ -174,17 +188,17 @@ export const ENV_NAMES = Object.keys(envSchema) as Array<keyof typeof envSchema>
 export function crossFieldProblems(values: {
   NODE_ENV: string
   E2E_MODE?: boolean
+  HOST: string
   APP_URL: string
 }): string[] {
   const problems: string[] = []
-  // Test-support routes (fake clock, scheduler tick) must never reach users.
-  if (values.NODE_ENV === 'production' && values.E2E_MODE && isPublicUrl(values.APP_URL)) {
-    problems.push('E2E_MODE is only allowed on a loopback APP_URL in production mode')
+  // Test-support routes (fake clock, scheduler tick) and test-grade settings
+  // must never be reachable from another machine, whatever NODE_ENV says.
+  const testGrade = values.NODE_ENV === 'test' || values.E2E_MODE === true
+  if (testGrade && !(isLoopbackHost(values.HOST) && isLoopbackUrl(values.APP_URL))) {
+    problems.push(
+      'NODE_ENV=test and E2E_MODE need a loopback HOST and APP_URL (127.0.0.0/8, ::1 or localhost)'
+    )
   }
   return problems
-}
-
-function isPublicUrl(url: string) {
-  const host = new URL(url).hostname
-  return !['localhost', '127.0.0.1', '::1', '[::1]'].includes(host)
 }

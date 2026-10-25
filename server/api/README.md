@@ -59,6 +59,8 @@ global transaction per test, HTTP server). Test names read like specs.
   `node`, has no volume and probes `/api/health` with Node's fetch.
 - `docker/entrypoint.mjs` migrates when `MIGRATE_ON_START=true`, seeds when
   `SEED_USERS=true`, then starts the server in the same process.
-- Behind a CDN or proxy, set `CLIENT_IP_HEADER` to the header your proxy
-  overwrites (for example `cf-connecting-ip`); it is trusted only from
-  loopback or private peers.
+- Behind a CDN, set `CLIENT_IP_HEADER` (for example `cf-connecting-ip`) and
+  `CLIENT_IP_HEADER_FROM` (the CDN's CIDRs); the header is trusted only from
+  those ranges and must be stripped at the edge (docs/RUNBOOK.md).
+- `NODE_ENV=test` and `E2E_MODE` refuse to boot unless `HOST` and `APP_URL`
+  are loopback.
