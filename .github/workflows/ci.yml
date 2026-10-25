@@ -385,6 +385,25 @@ jobs:
             -destination 'platform=macOS' \
             CODE_SIGN_IDENTITY=-
 
+      # The Debug helper takes its socket from MONKI_BRIDGE_SOCKET_PATH (for
+      # the end-to-end tests); a Release helper must not even contain the name.
+      - name: Release monki-bridge has no test-only socket override
+        if: steps.component.outputs.present == 'true'
+        working-directory: macos
+        run: |
+          xcodebuild build \
+            -scheme "$MACOS_SCHEME" \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/release" \
+            CODE_SIGN_IDENTITY=-
+          helper="$RUNNER_TEMP/release/Build/Products/Release/MonkiFocus.app/Contents/Helpers/monki-bridge"
+          test -x "$helper"
+          if strings "$helper" | grep -q MONKI_BRIDGE_SOCKET_PATH; then
+            echo "the Release monki-bridge still reads MONKI_BRIDGE_SOCKET_PATH" >&2
+            exit 1
+          fi
+
   docker:
     name: docker
     needs: changes
