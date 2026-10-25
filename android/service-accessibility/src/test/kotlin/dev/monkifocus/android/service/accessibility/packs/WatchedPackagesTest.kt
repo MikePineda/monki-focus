@@ -25,4 +25,15 @@ class WatchedPackagesTest {
 
         assertEquals(setOf("org.example.browser"), watched.unsupported)
     }
+
+    @Test
+    fun a_browser_installed_later_is_watched_on_the_next_resolution_and_a_removed_one_dropped() {
+        val before = WatchedPackages.of(configured, listOf(CHROME), OURS, RulesData.packs)
+        val installed = WatchedPackages.of(configured, listOf(CHROME, "org.example.browser"), OURS, RulesData.packs)
+        val removed = WatchedPackages.of(configured, listOf(CHROME), OURS, RulesData.packs)
+
+        assertTrue("org.example.browser" !in before.all)
+        assertTrue("org.example.browser" in installed.unsupported)
+        assertEquals(before, removed)
+    }
 }

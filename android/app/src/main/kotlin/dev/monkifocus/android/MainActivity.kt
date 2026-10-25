@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
         status.value =
             HomeStatus.of(
                 serviceEnabled = graph.accessibilityServiceEnabled(),
+                armedByUser = graph.protection.preferences.armedByUser,
                 exit = graph.protection.exitFlow.state,
                 noticePermitted = NotificationManagerCompat.from(this).areNotificationsEnabled(),
             )
@@ -96,12 +97,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Protection is turned on only once the notice can be posted: until then the permission is asked first. */
+    /**
+     * "Turn on protection": the consent gate. Only once the notice can be
+     * posted (the permission is asked first) is protection armed, and only
+     * here: a service turned on straight from system Settings enforces
+     * nothing until this ran.
+     */
     private fun turnOnProtection() {
         if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) {
             askForNotice()
             return
         }
+        (application as MonkiApplication).graph.protection.armByUser()
         runCatching { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
     }
 

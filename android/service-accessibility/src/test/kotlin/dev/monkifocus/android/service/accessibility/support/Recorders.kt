@@ -21,6 +21,10 @@ internal class RecordingPerformer : ActionPerformer {
         ) : Call
 
         data object Clear : Call
+
+        data class OpenApp(
+            val notificationSettings: Boolean,
+        ) : Call
     }
 
     val calls = mutableListOf<Call>()
@@ -29,6 +33,10 @@ internal class RecordingPerformer : ActionPerformer {
     var onTop = false
 
     override fun isOnTop(): Boolean = onTop
+
+    override fun openApp(notificationSettings: Boolean) {
+        calls += Call.OpenApp(notificationSettings)
+    }
 
     override fun back() {
         calls += Call.Back

@@ -33,4 +33,14 @@ sealed interface OverlayContent {
         val exitRemainingSeconds: Int?,
         val guardianLinked: Boolean,
     ) : OverlayContent
+
+    /**
+     * A small card at the top that blocks nothing (touches around it reach
+     * the app): [StatusCard.SETUP] while the user has not armed protection
+     * in our app, [StatusCard.NOTICE_OFF] once per session when protection
+     * runs without notifications.
+     */
+    data class Card(
+        val card: StatusCard,
+    ) : OverlayContent
 }

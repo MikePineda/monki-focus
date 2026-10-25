@@ -28,7 +28,7 @@ class HomeScreenTest {
 
     @Test
     fun protection_running_without_the_notice_shows_the_banner_status_and_request() {
-        show(HomeStatus.of(serviceEnabled = true, exit = ExitFlowState.Armed, noticePermitted = false))
+        show(HomeStatus.of(serviceEnabled = true, armedByUser = true, exit = ExitFlowState.Armed, noticePermitted = false))
 
         compose.onNodeWithTag(OverlayTestTags.NOTICE_OFF).assertIsDisplayed()
         compose.onNodeWithText("Protection notice: off").assertIsDisplayed()
@@ -37,7 +37,7 @@ class HomeScreenTest {
 
     @Test
     fun with_the_notice_on_the_status_says_so_and_no_banner_shows() {
-        show(HomeStatus.of(serviceEnabled = true, exit = ExitFlowState.Armed, noticePermitted = true))
+        show(HomeStatus.of(serviceEnabled = true, armedByUser = true, exit = ExitFlowState.Armed, noticePermitted = true))
 
         compose.onNodeWithText("Protection notice: on").assertIsDisplayed()
         compose.onNodeWithTag(OverlayTestTags.NOTICE_OFF).assertDoesNotExist()
@@ -45,11 +45,15 @@ class HomeScreenTest {
 
     @Test
     fun the_banner_follows_whether_protection_is_active() {
-        assertEquals(false, HomeStatus.of(serviceEnabled = false, exit = ExitFlowState.Armed, noticePermitted = false).noticeOffBanner)
-        assertEquals(false, HomeStatus.of(serviceEnabled = true, exit = ExitFlowState.Ended(1), noticePermitted = false).noticeOffBanner)
-        assertEquals(
-            true,
-            HomeStatus.of(serviceEnabled = true, exit = ExitFlowState.Waiting(1, boot = 1), noticePermitted = false).noticeOffBanner,
-        )
+        val notArmed = HomeStatus.of(serviceEnabled = true, armedByUser = false, exit = ExitFlowState.Armed, noticePermitted = false)
+        assertEquals("not armed: nothing runs, no banner", false, notArmed.noticeOffBanner)
+
+        fun banner(
+            enabled: Boolean,
+            exit: ExitFlowState,
+        ) = HomeStatus.of(serviceEnabled = enabled, armedByUser = true, exit = exit, noticePermitted = false).noticeOffBanner
+        assertEquals(false, banner(enabled = false, exit = ExitFlowState.Armed))
+        assertEquals(false, banner(enabled = true, exit = ExitFlowState.Ended(1)))
+        assertEquals(true, banner(enabled = true, exit = ExitFlowState.Waiting(1, boot = 1)))
     }
 }

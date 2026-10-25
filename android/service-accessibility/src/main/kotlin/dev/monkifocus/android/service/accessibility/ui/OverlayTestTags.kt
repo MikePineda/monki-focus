@@ -10,4 +10,5 @@ object OverlayTestTags {
     const val EXIT_START = "protection.exit.start"
     const val NOTICE_OFF = "protection.notice_off"
     const val REARM = "protection.exit.rearm"
+    const val STATUS_CARD = "protection.status_card"
 }

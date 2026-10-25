@@ -16,10 +16,11 @@ data class HomeStatus(
     companion object {
         fun of(
             serviceEnabled: Boolean,
+            armedByUser: Boolean,
             exit: ExitFlowState,
             noticePermitted: Boolean,
         ): HomeStatus {
-            val active = serviceEnabled && exit !is ExitFlowState.Ended
+            val active = serviceEnabled && armedByUser && exit !is ExitFlowState.Ended
             return HomeStatus(noticePermitted, NoticeVisibility.of(active, noticePermitted) == NoticeVisibility.BANNER)
         }
     }

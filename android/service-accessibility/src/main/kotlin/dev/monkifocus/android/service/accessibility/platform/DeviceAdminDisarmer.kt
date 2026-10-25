@@ -19,6 +19,7 @@ class DeviceAdminDisarmer(
     context: Context,
     private val admin: ComponentName,
     private val notifier: ProtectionNotifier,
+    private val preferences: ProtectionPreferences,
 ) : ProtectionDisarmer {
     private val policies: DevicePolicyManager? = context.getSystemService(DevicePolicyManager::class.java)
 
@@ -28,6 +29,8 @@ class DeviceAdminDisarmer(
     }
 
     override fun stopProtection() {
+        // Protection comes back only through "Turn on protection" in our app.
+        preferences.armedByUser = false
         notifier.reconcile(protectionActive = false, content = NoticeContent(guardianLinked = false, exitPending = false))
     }
 }

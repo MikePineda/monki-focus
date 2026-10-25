@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Handler
 import android.os.SystemClock
+import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -85,6 +86,16 @@ internal class AndroidActionPerformer(
         } else if (!asking) {
             handler.removeCallbacks(sample)
         }
+    }
+
+    override fun openApp(notificationSettings: Boolean) {
+        val intent =
+            if (notificationSettings) {
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, service.packageName)
+            } else {
+                service.packageManager.getLaunchIntentForPackage(service.packageName) ?: return
+            }
+        runCatching { service.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
 
     override fun isOnTop(): Boolean = if (inActivity) relay.activityVisible else overlay.attached

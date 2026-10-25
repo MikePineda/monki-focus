@@ -26,4 +26,7 @@ interface ActionPerformer {
      * reopening the app never dodges the gate.
      */
     fun isOnTop(): Boolean
+
+    /** Opens our app, or with [notificationSettings] its notification settings. */
+    fun openApp(notificationSettings: Boolean)
 }

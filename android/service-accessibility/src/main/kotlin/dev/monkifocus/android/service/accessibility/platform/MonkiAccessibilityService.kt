@@ -69,6 +69,9 @@ class MonkiAccessibilityService : AccessibilityService() {
     private var refresher: Job? = null
     private var packs: List<DetectorPack> = emptyList()
     private var unsupportedBrowsers: Set<String> = emptySet()
+
+    @Volatile
+    private var configuredPackages: List<String> = emptyList()
     private var disabledRecorded = false
     private var ending = false
 
@@ -84,6 +87,17 @@ class MonkiAccessibilityService : AccessibilityService() {
         Runnable {
             pipeline?.flushDeferred(SystemClock.elapsedRealtime(), System.currentTimeMillis(), ::readScreen)
             schedule()
+        }
+
+    /** An app was installed or removed: the device's browsers are resolved again. */
+    private val packagesChanged =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                graph?.let { refreshBrowsers(it) }
+            }
         }
 
     private val screenOff =
@@ -140,6 +154,8 @@ class MonkiAccessibilityService : AccessibilityService() {
                 ourPackage = packageName,
                 packs = { packs },
                 unsupportedBrowsers = { unsupportedBrowsers },
+                armedByUser = { shared.preferences.armedByUser },
+                noticePermitted = { shared.inputs.notifier.permitted() },
             )
         reader = screenReader
         performer = androidPerformer
@@ -147,6 +163,14 @@ class MonkiAccessibilityService : AccessibilityService() {
         shared.gateRelay.onAction = ::onUserAction
         shared.exitFlow.disarmer = ServiceDisarmer()
         ContextCompat.registerReceiver(this, screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED)
+        val packageChanges =
+            IntentFilter().apply {
+                addAction(Intent.ACTION_PACKAGE_ADDED)
+                addAction(Intent.ACTION_PACKAGE_REMOVED)
+                addDataScheme(PACKAGE_SCHEME)
+            }
+        ContextCompat.registerReceiver(this, packagesChanged, packageChanges, ContextCompat.RECEIVER_NOT_EXPORTED)
+        pipeline?.onConnected()
         reconcileNotice()
         load(shared, configured = serviceInfo?.packageNames?.toList().orEmpty())
     }
@@ -210,6 +234,7 @@ class MonkiAccessibilityService : AccessibilityService() {
                 val bundled = runCatching { inputs.bundledPacks() }.getOrDefault(emptyMap())
                 val bundledPacks = runCatching { ActivePacks(inputs.packLoader).load(bundled, emptyMap(), now) }.getOrDefault(emptyList())
                 val starter = runCatching { inputs.starterRuleset() }.getOrNull()
+                configuredPackages = configured
                 val watched = runCatching { WatchedPackages.of(configured, browsersOnDevice(), packageName, bundledPacks) }.getOrNull()
                 handler.post {
                     packs = bundledPacks
@@ -227,6 +252,7 @@ class MonkiAccessibilityService : AccessibilityService() {
                 while (isActive) {
                     val ruleset: Ruleset? = runCatching { inputs.activeRuleset(instantOf(System.currentTimeMillis())) }.getOrNull()
                     collision?.refresh()
+                    resolveBrowsers()
                     handler.post {
                         if (ruleset != null) snapshots.loaded(ruleset) else snapshots.failed()
                         shared.guardianLinked = snapshots.snapshot?.guardianLinked == true
@@ -234,6 +260,17 @@ class MonkiAccessibilityService : AccessibilityService() {
                     delay(REFRESH_MS)
                 }
             }
+    }
+
+    /** Resolves the device's browsers again, off the main thread (package changes). */
+    private fun refreshBrowsers(shared: ProtectionGraph) {
+        shared.io.launch { resolveBrowsers() }
+    }
+
+    /** Blocking: the browsers of the device now, applied on the main thread. */
+    private fun resolveBrowsers() {
+        val watched = runCatching { WatchedPackages.of(configuredPackages, browsersOnDevice(), packageName, packs) }.getOrNull() ?: return
+        handler.post { if (pipeline != null) watch(watched) }
     }
 
     /** The stored escalation, retried with a growing pause; null when it never reads. */
@@ -278,7 +315,7 @@ class MonkiAccessibilityService : AccessibilityService() {
     private fun reconcileNotice() {
         val shared = graph ?: return
         val exit = shared.exitFlow.state
-        val active = pipeline != null && exit !is ExitFlowState.Ended
+        val active = pipeline != null && exit !is ExitFlowState.Ended && shared.preferences.armedByUser
         val notifier = shared.inputs.notifier
         notifier.reconcile(protectionActive = active, content = NoticeContent.of(shared.guardianLinked, exit))
         shared.gateRelay.setNoticeOff(NoticeVisibility.of(active, notifier.permitted()) == NoticeVisibility.BANNER)
@@ -287,7 +324,8 @@ class MonkiAccessibilityService : AccessibilityService() {
     /** Only from `onUnbind`: once per connection, never after a deliberate exit. */
     private fun recordDisabled() {
         val shared = graph ?: return
-        if (disabledRecorded || ending || shared.exitFlow.protectionEnded) return
+        // Never armed in our app: there was no protection to bypass.
+        if (disabledRecorded || ending || shared.exitFlow.protectionEnded || !shared.preferences.armedByUser) return
         disabledRecorded = true
         shared.bypasses.record(BypassKind.ACCESSIBILITY_DISABLED, System.currentTimeMillis())
     }
@@ -310,6 +348,7 @@ class MonkiAccessibilityService : AccessibilityService() {
             shared.gateRelay.setNoticeOff(false)
         }
         runCatching { unregisterReceiver(screenOff) }
+        runCatching { unregisterReceiver(packagesChanged) }
     }
 
     /** The end of "Exit and unlink" while the service runs: everything off, then the service itself. */
@@ -320,12 +359,14 @@ class MonkiAccessibilityService : AccessibilityService() {
                     this@MonkiAccessibilityService,
                     it.inputs.deviceAdmin,
                     it.inputs.notifier,
+                    it.preferences,
                 ).disarmDeviceAdmin()
             }
         }
 
         override fun stopProtection() {
             ending = true
+            graph?.preferences?.armedByUser = false
             performer?.clear()
             reconcileNotice()
             disableSelf()
@@ -336,6 +377,7 @@ class MonkiAccessibilityService : AccessibilityService() {
         const val REFRESH_MS = 60_000L
         const val ESCALATION_ATTEMPTS = 3
         const val RETRY_MS = 500L
+        const val PACKAGE_SCHEME = "package"
 
         /** Any http URL: only which apps can open it matters. */
         const val BROWSER_PROBE_URL = "http://example.org/"
