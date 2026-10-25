@@ -6,6 +6,7 @@ import dev.monkifocus.android.feature.onboarding.flow.OnboardingStep
 /** Compose test tags of the onboarding and Status screens. */
 object OnboardingTestTags {
     const val SCREEN = "onboarding.screen"
+    const val DISCLOSURE_AGAIN = "onboarding.disclosure_again"
     const val BACK = "onboarding.back"
     const val NEXT = "onboarding.next"
     const val AGREE = "onboarding.disclosure.agree"

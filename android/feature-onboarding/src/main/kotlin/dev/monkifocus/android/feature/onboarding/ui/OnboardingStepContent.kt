@@ -170,16 +170,7 @@ private fun Disclosure(
     progress: OnboardingProgress,
     onEvent: (OnboardingEvent) -> Unit,
 ) {
-    Title(R.string.onboarding_disclosure_title)
-    Body(R.string.onboarding_disclosure_intro)
-    Heading(R.string.onboarding_disclosure_reads_title)
-    Body(R.string.onboarding_disclosure_reads_apps)
-    Body(R.string.onboarding_disclosure_reads_url)
-    Heading(R.string.onboarding_disclosure_never_title)
-    Body(R.string.onboarding_disclosure_never_store)
-    Body(R.string.onboarding_disclosure_never_send)
-    Body(R.string.onboarding_disclosure_never_other)
-    Body(R.string.onboarding_disclosure_leave)
+    DisclosureText()
     if (progress.disclosureAccepted) return
     MonkiInkButton(
         text = stringResource(R.string.onboarding_disclosure_agree),
@@ -201,6 +192,7 @@ private fun Disclosure(
             muted = true,
         )
     }
+    NotNowNote()
 }
 
 @Composable
@@ -288,16 +280,6 @@ private fun Title(text: Int) {
         text = stringResource(text),
         color = MonkiTheme.colors.ink1,
         style = MonkiTheme.typography.title,
-        modifier = Modifier.semantics { heading() },
-    )
-}
-
-@Composable
-private fun Heading(text: Int) {
-    Text(
-        text = stringResource(text),
-        color = MonkiTheme.colors.ink1,
-        style = MonkiTheme.typography.heading,
         modifier = Modifier.semantics { heading() },
     )
 }

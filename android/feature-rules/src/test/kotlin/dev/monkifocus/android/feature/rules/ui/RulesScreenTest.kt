@@ -10,6 +10,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import dev.monkifocus.android.core.domain.ports.RulesetChange
+import dev.monkifocus.android.core.domain.ports.RulesetRepository
+import dev.monkifocus.android.core.domain.ports.StoredRuleset
 import dev.monkifocus.android.core.domain.rules.RuleMode
 import dev.monkifocus.android.core.domain.rules.Ruleset
 import dev.monkifocus.android.core.domain.rules.SurfaceTarget
@@ -29,6 +32,7 @@ import dev.monkifocus.android.feature.rules.support.RulesetFactory.aRule
 import dev.monkifocus.android.feature.rules.support.RulesetFactory.aRuleset
 import dev.monkifocus.android.feature.rules.support.RulesetFactory.withBudget
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -159,6 +163,37 @@ class RulesScreenTest {
         val active = runBlocking { repository.active(NOW) }
         assertEquals("what applies now keeps bedtime on", true, active?.ruleset?.bedtime?.enabled)
         assertEquals(false, runBlocking { repository.pending(NOW) }?.ruleset?.bedtime?.enabled)
+    }
+
+    @Test
+    fun an_undecodable_stored_set_shows_rules_unavailable_and_back_still_works() {
+        val unreadable =
+            object : RulesetRepository {
+                override suspend fun active(now: String): StoredRuleset = throw SerializationException("undecodable")
+
+                override suspend fun pending(now: String): StoredRuleset? = null
+
+                override suspend fun commit(
+                    change: RulesetChange,
+                    now: String,
+                ): String = error("nothing is written")
+            }
+        val service = RuleChangeService(unreadable, RulesData.catalog, RulesetCheck.of(RulesData.validator), { ruleset }, MutableClock(NOW))
+        var back = 0
+        compose.setContent { MonkiTheme { RulesRoute(service, { RulesData.validator }, onBack = { back += 1 }) } }
+
+        compose.waitUntil(TIMEOUT_MS) { compose.onAllNodesWithTag(RulesTestTags.UNAVAILABLE).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag(RulesTestTags.EXPORT).assertDoesNotExist()
+        compose.onNodeWithTag(RulesTestTags.BACK).performClick()
+
+        assertEquals(1, back)
+    }
+
+    @Test
+    fun allowed_communities_are_named_through_the_catalog() {
+        show(RulesState(RulesetEdits.allowSubreddit(ruleset, "AskScience"), null))
+
+        compose.onNodeWithText("r/AskScience").performScrollTo().assertExists()
     }
 
     private companion object {

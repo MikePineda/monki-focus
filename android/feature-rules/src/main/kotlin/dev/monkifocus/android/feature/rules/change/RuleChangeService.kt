@@ -54,6 +54,24 @@ class RuleChangeService(
     suspend fun state(): RulesState = lock.withLock { read(now()) }
 
     /**
+     * Stores the bundled starter as the first revision (source `preset`),
+     * pinned to [deviceZone] as it is at this moment, when nothing is stored
+     * yet; from then on the stored zone governs every decision, whatever the
+     * device zone does (SEMANTICS.md §6.3). Idempotent: answers whether it
+     * stored anything. Called on the app's first start and when protection
+     * is armed.
+     */
+    suspend fun ensureStored(deviceZone: String): Boolean =
+        lock.withLock {
+            val now = now()
+            if (repository.active(now) != null || repository.pending(now) != null) return@withLock false
+            val base = starter()
+            val starter = if (isResolvableTimeZone(deviceZone)) base.copy(timeZone = deviceZone, pendingTimeZone = null) else base
+            repository.commit(RulesetChange(starter, starter, null, RulesetSource.PRESET), now)
+            true
+        }
+
+    /**
      * Proposes [proposal] as the configured rule set. [baseRevision] is the
      * `revision` of the configured set the screen edited (optimistic lock).
      * The service assigns the revision and `updatedAt`; `pendingTimeZone`

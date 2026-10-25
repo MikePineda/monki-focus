@@ -18,7 +18,8 @@ import dev.monkifocus.android.feature.onboarding.flow.OnboardingStep.WELCOME
  *
  * - no system screen (prompt or Settings) opens before the accessibility
  *   disclosure is accepted, and with statistics only nothing but usage
- *   access does;
+ *   access and notifications does (Status fix buttons go through [reduce]
+ *   too);
  * - a required step (disclosure, notifications, accessibility) cannot be
  *   left forward until it is done; optional ones can be skipped;
  * - [OnboardingEffect.Arm] comes only from the last step and only while
@@ -28,6 +29,7 @@ object OnboardingStateMachine {
     private val REQUIRED = listOf(DISCLOSURE, NOTIFICATIONS, ACCESSIBILITY)
     private val STATS_ONLY_PATH = listOf(WELCOME, DISCLOSURE, USAGE_ACCESS, TURN_ON)
     private val SYSTEM_SCREENS = setOf(RESTRICTED_SETTINGS, NOTIFICATIONS, ACCESSIBILITY, USAGE_ACCESS, BATTERY, DEVICE_ADMIN)
+    private val STATS_ONLY_SCREENS = setOf(NOTIFICATIONS, USAGE_ACCESS)
 
     /** The steps the user walks through, in order. */
     fun path(
@@ -191,8 +193,29 @@ object OnboardingStateMachine {
         step in SYSTEM_SCREENS &&
             when (progress.mode) {
                 OnboardingMode.PROTECTION -> progress.disclosureAccepted
-                OnboardingMode.STATS_ONLY -> progress.disclosureDeclined && step == USAGE_ACCESS
+                OnboardingMode.STATS_ONLY -> progress.disclosureDeclined && step in STATS_ONLY_SCREENS
             }
+
+    /**
+     * Protection is on but this version of the disclosure was never agreed
+     * to (it changed, or protection was armed before it existed): it is shown
+     * again. Protection stays armed meanwhile; declining leads to Exit and
+     * unlink, which is what turns it off.
+     */
+    fun needsReconsent(
+        progress: OnboardingProgress,
+        armedByUser: Boolean,
+    ): Boolean = armedByUser && !progress.disclosureAccepted
+
+    /** The disclosure agreed to again by an armed user: onboarding counts as done. */
+    fun reconsented(progress: OnboardingProgress): OnboardingProgress =
+        progress.copy(
+            step = TURN_ON,
+            disclosureAccepted = true,
+            disclosureDeclined = false,
+            mode = OnboardingMode.PROTECTION,
+            completed = true,
+        )
 
     private fun act(
         progress: OnboardingProgress,
