@@ -4,29 +4,30 @@ import Foundation
 import MonkiCore
 import Testing
 
-/// SEMANTICS.md §12: a runner per non-analytics kind, loud failures, nothing skipped.
+/// SEMANTICS.md §12: a runner per kind, loud failures, nothing skipped.
 @Suite("fixture runner coverage")
 struct RunnerCoverageTests {
     /// Kinds MonkiCore runs; each has a `@Test(arguments:)` runner in this directory.
     static let runHere = [
         "decision", "specificity", "url-normalize", "schedule", "escalation", "rule-change", "candidates", "invalid",
+        "activity",
     ]
 
-    /// Kinds other packages run: analytics (`activity`, a later work package) and `unlock-token` (packages/protocol).
-    static let runElsewhere = ["activity", "unlock-token"]
+    /// Kinds other packages run: `unlock-token` (packages/protocol, verified by the token verifier).
+    static let runElsewhere = ["unlock-token"]
 
     /// `fixtures/` directories that are not kinds: `detectors/` holds the Android UI dumps.
     static let notKinds = ["detectors"]
 
-    @Test("runs every non-analytics fixture kind the rules package declares")
-    func runsEveryNonAnalyticsFixtureKindTheRulesPackageDeclares() throws {
+    @Test("runs every fixture kind the rules package declares")
+    func runsEveryFixtureKindTheRulesPackageDeclares() throws {
         let declared = try FixtureLoader.declaredKinds().filter { !Self.runElsewhere.contains($0) }
 
         #expect(declared.sorted() == Self.runHere.sorted())
     }
 
-    @Test("runs every non-analytics fixture directory that exists")
-    func runsEveryNonAnalyticsFixtureDirectoryThatExists() throws {
+    @Test("runs every fixture directory that exists")
+    func runsEveryFixtureDirectoryThatExists() throws {
         let directories = try FileManager.default
             .contentsOfDirectory(at: RulesPackage.url("fixtures"), includingPropertiesForKeys: [.isDirectoryKey])
             .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
@@ -34,6 +35,12 @@ struct RunnerCoverageTests {
             .filter { !Self.runElsewhere.contains($0) && !Self.notKinds.contains($0) }
 
         #expect(directories.sorted() == Self.runHere.sorted())
+    }
+
+    @Test("the activity kind is run here")
+    func theActivityKindIsRunHere() {
+        #expect(Self.runHere.contains("activity"))
+        #expect(!Self.runElsewhere.contains("activity"))
     }
 
     @Test("every kind run here has fixtures and unique ids")
