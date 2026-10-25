@@ -279,12 +279,26 @@ them at enrolment.
   token they signed has expired, plus a day (unlock 4 h, policy 30 days).
   `--force` deletes them now: tokens they signed stop verifying on devices
   that refresh `/keys`.
-- **APP_KEY changed.** Stored private keys no longer decrypt and the server
-  refuses to start ("cannot be decrypted with APP_KEY"). Restore the old
-  `APP_KEY`; if it is lost, run
-  `node ace signing-key:rotate --purpose=<purpose> --unendorsed` (after
-  `signing-key:prune --force` if a retired key exists) for each purpose
-  and enrol every device again, since nothing can endorse the new keys.
+- **APP_KEY.** Production refuses to start with an `APP_KEY` shorter
+  than 32 characters (`node ace generate:key`). Keep it in the deploy
+  panel and back it up apart from the database: it is the only thing that
+  decrypts the stored signing keys.
+- **Changing APP_KEY loses the stored keys.** They no longer decrypt and
+  the server refuses to start ("cannot be decrypted with APP_KEY"). There
+  is no re-encryption step: restore the old `APP_KEY` if you can. If it is
+  lost (or you changed it on purpose), the keys are gone: run
+  `node ace signing-key:prune --force`, then
+  `node ace signing-key:rotate --purpose=<purpose> --unendorsed` for each
+  purpose, and enrol every device again, since no key is left to endorse
+  the new ones.
+- **Erasure is logical only.** Retiring a key sets its
+  `private_key_encrypted` to NULL and pruning deletes the row, but the old
+  ciphertext survives in Postgres dead tuples until `VACUUM`, in the WAL
+  and replicas, and in every backup taken before. It stays protected by
+  `APP_KEY`; anyone holding an old backup **and** `APP_KEY` can still
+  recover a retired key. Treat backups as secret, expire them, and after a
+  suspected compromise follow the compromise steps below rather than
+  relying on erasure.
 - **Compromise.** A leaked key cannot be rotated away (its holder could
   endorse a key of their own): rotate with `--unendorsed`, prune with
   `--force` and enrol every device again.

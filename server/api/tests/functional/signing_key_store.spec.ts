@@ -197,4 +197,24 @@ test.group('Signing key store', () => {
       assert.equal(error.reason, 'env_key_unavailable')
     }
   })
+  test('test_a_replica_drops_the_retired_private_key_once_it_loads_the_new_one', async ({
+    assert,
+  }) => {
+    const web = new SigningKeyStore()
+    await web.ensureKeys(NOW)
+    const before = await web.signingKey('unlock')
+    const policy = await web.signingKey('policy')
+    assert.deepEqual(web.cachedKids(), [before.kid, policy.kid].sort())
+
+    // Another process (ace, another replica) rotates the unlock key.
+    const rotation = await new SigningKeyStore().rotate('unlock', NOW + 60, IDENTITY, {
+      successor: 'generate',
+      endorse: true,
+    })
+    const after = await web.signingKey('unlock')
+
+    assert.equal(after.kid, rotation.kid)
+    assert.deepEqual(web.cachedKids(), [rotation.kid, policy.kid].sort())
+    assert.notInclude(web.cachedKids(), before.kid)
+  })
 })
