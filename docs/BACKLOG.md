@@ -34,3 +34,6 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-10-25 Server: QR pairing with a 128-bit secret in the URL fragment next to the code, so a scanned QR skips the 6-digit guess space (the typed code stays for manual entry).
 - 2026-10-25 Server (S6): the ntfy publisher must claim outbox rows `FOR UPDATE SKIP LOCKED` (and re-read the topic) so a topic rotation never races an in-flight send to the old topic.
 - 2026-10-25 Server (S6): the `BypassAlerts` implementation must skip `guardian_*` kinds; their guardian notices are already queued by the link flows.
+- 2026-10-25 Bridge: verify the app's peer is the bundled `monki-bridge` (LOCAL_PEERPID + code signature) once a stable signing identity exists; M5 checks the uid only.
+- 2026-10-25 Bridge: send the extension's emergency overrides as `bypass.event` (map the local outbox payload to the device API shape) and wire `rules.snapshot`, `unlock.token` (verified) and `focusSession.state` in the worker (M6/M7).
+- 2026-10-25 Bridge: list the Chrome Web Store extension id in `NativeHostManifest` once the store listing exists, and add the onboarding "Install connector" step (M8).

@@ -61,10 +61,15 @@ struct NativeMessageFrameTests {
         #expect(try NativeMessageFrame.encode(payload).count == payload.count + 4)
     }
 
-    @Test("the app-unavailable reply is the documented JSON")
-    func theAppUnavailableReplyIsTheDocumentedJSON() throws {
-        let reply = try JSONSerialization.jsonObject(with: BridgeReply.appUnavailable) as? [String: String]
+    @Test("the app-unavailable reply is a full envelope")
+    func theAppUnavailableReplyIsAFullEnvelope() throws {
+        let reply = try StrictJSONParser.parse(BridgeReply.appUnavailable)
 
-        #expect(reply == ["type": "app.unavailable"])
+        #expect(
+            reply
+                == .object([
+                    "v": .number(1), "id": .string("app-unavailable"), "type": .string("app.unavailable"),
+                    "payload": .object([:]),
+                ]))
     }
 }

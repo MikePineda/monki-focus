@@ -6,4 +6,15 @@ public enum NativeMessageFrameError: Error, Equatable, Sendable {
     case truncatedHeader(byteCount: Int)
     /// The payload (declared or actual) is over `NativeMessageFrame.maxPayloadBytes`.
     case payloadTooLarge(byteCount: Int)
+    /// The stream ended before the declared payload length.
+    case truncatedPayload(expected: Int, actual: Int)
+
+    /// The stable code of `packages/protocol/fixtures/bridge/frames`.
+    public var code: String {
+        switch self {
+        case .truncatedHeader: "truncated_header"
+        case .payloadTooLarge: "payload_too_large"
+        case .truncatedPayload: "truncated_payload"
+        }
+    }
 }

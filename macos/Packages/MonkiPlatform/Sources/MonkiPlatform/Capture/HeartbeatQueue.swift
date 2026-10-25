@@ -10,6 +10,10 @@ import MonkiCore
 /// and never overlap. Nothing reaches the store until `flush()`: every
 /// `flushInterval` (10 s) once `startPeriodicFlush` runs, and on demand at
 /// sleep, quit and AFK. A failed write is kept and retried by the next flush.
+///
+/// A bucket fed by heartbeats made elsewhere (the extension's web tab
+/// heartbeats over the bridge, `heartbeat(_:bucketId:)`) skips the emitter
+/// and merges straight into its buffer with that source's own pulsetime.
 @MainActor
 public final class HeartbeatQueue {
     private struct Lane {
@@ -29,10 +33,16 @@ public final class HeartbeatQueue {
 
     /// Creates the bucket if needed and seeds it with its latest stored
     /// event, so capture that resumes within pulsetime extends it.
-    public func register(_ bucket: BucketDescriptor) throws {
+    /// `pulsetime` overrides the queue's for this bucket.
+    public func register(_ bucket: BucketDescriptor, pulsetime: Int? = nil) throws {
         try store.register(bucket)
         lanes[bucket.id] = Lane(
-            buffer: try HeartbeatBuffer(pulsetime: pulsetime, last: store.lastEvent(bucketId: bucket.id)))
+            buffer: try HeartbeatBuffer(
+                pulsetime: pulsetime ?? self.pulsetime, last: store.lastEvent(bucketId: bucket.id)))
+    }
+
+    public func isRegistered(_ bucketId: String) -> Bool {
+        lanes[bucketId] != nil
     }
 
     /// The latest event end over every registered bucket: the capture timeline's floor.
@@ -49,6 +59,22 @@ public final class HeartbeatQueue {
         guard var lane = lanes[bucketId] else { return }
         apply(lane.emitter.observe(data, at: instant), to: &lane)
         lanes[bucketId] = lane
+    }
+
+    /// Merges a heartbeat made elsewhere into the bucket (ActivityWatch
+    /// semantics with the bucket's pulsetime); returns false when the bucket
+    /// is not registered or the heartbeat was rejected.
+    @discardableResult
+    public func heartbeat(_ event: ActivityEvent, bucketId: String) -> Bool {
+        guard var lane = lanes[bucketId] else { return false }
+        do {
+            try lane.buffer.heartbeat(event)
+        } catch {
+            CaptureLog.failure("heartbeat rejected", error)
+            return false
+        }
+        lanes[bucketId] = lane
+        return true
     }
 
     /// The wall clock jumped forward: every bucket's state closes at `stop`
