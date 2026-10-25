@@ -1,0 +1,14 @@
+{
+  "shared": {
+    "messages": {
+      "required": "Enter the {field}",
+      "string": "The {field} must be text",
+      "number": "The {field} must be a number",
+      "boolean": "The {field} must be true or false",
+      "email": "Enter a valid email address",
+      "minLength": "The {field} needs at least {min} characters",
+      "maxLength": "The {field} can have at most {max} characters",
+      "enum": "Choose a valid {field}"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Ephemeral services for the server's tests: Postgres 17 and ntfy, data in
+# tmpfs, no volumes, so every `down -v` is a clean slate.
+#
+#   Japa (default ports 5443 / 8443, matching server/api/.env.test):
+#     npm run test:services -w server/api        # up -d --wait
+#     npm run test:services:down -w server/api   # down -v
+#   E2E: scripts/e2e.sh runs one copy per slot with its own project name
+#   (-p) and ports (TEST_DB_PORT / TEST_NTFY_PORT).
+#
+# Ports never clash with docker-compose.yml (5442 / 8442) or the E2E slots
+# (5434-5441 / 8434-8441). Bound to 127.0.0.1 only. Images are pinned by
+# digest, the same ones CI uses.
+name: monki-focus-test
+
+services:
+  db:
+    image: postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe
+    environment:
+      POSTGRES_USER: monkifocus
+      POSTGRES_PASSWORD: monkifocus
+      POSTGRES_DB: monkifocus_test
+    ports:
+      - '127.0.0.1:${TEST_DB_PORT:-5443}:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U monkifocus -d monkifocus_test']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  ntfy:
+    image: binwiederhier/ntfy:v2.33.1@sha256:29bc952294d58957f6ca6638eca9a653a33555989224edbdf4bb9433ee606497
+    command: serve
+    environment:
+      NTFY_BASE_URL: http://127.0.0.1:${TEST_NTFY_PORT:-8443}
+      NTFY_ENABLE_SIGNUP: 'false'
+      NTFY_ENABLE_LOGIN: 'false'
+      NTFY_WEB_ROOT: disable
+    ports:
+      - '127.0.0.1:${TEST_NTFY_PORT:-8443}:80'
+    tmpfs:
+      - /var/cache/ntfy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O- http://127.0.0.1:80/v1/health | grep -q healthy']
+      interval: 2s
+      timeout: 3s
+      retries: 30
