@@ -2,6 +2,8 @@
 import { test } from '@japa/runner'
 import { Secret } from '@adonisjs/core/helpers'
 import { crossFieldProblems, envSchema } from '#start/env_schema'
+import { exportPkcs8 } from '#domain/keys/signing_key_material'
+import { testOnlyKey } from '#tests/support/test_only_keys'
 
 /** Runs one variable's validator the way Env.create does at boot. */
 function validate<Name extends keyof typeof envSchema>(name: Name, value: string | undefined) {
@@ -145,6 +147,29 @@ test.group('Environment schema', () => {
     assert.isUndefined(validate('CLIENT_IP_HEADER_FROM', '  '))
     for (const bad of ['loopback', '203.0.113.0/33', 'example.org', '203.0.113.0/24;rm']) {
       assert.throws(() => validate('CLIENT_IP_HEADER_FROM', bad), /CLIENT_IP_HEADER_FROM/, bad)
+    }
+  })
+  test('test_unlock_signing_key_and_its_kid_go_together_and_never_print', ({ assert }) => {
+    const key = testOnlyKey('test-key-not-real-unlock-a')
+    const other = testOnlyKey('test-key-not-real-unlock-b')
+    const base = { NODE_ENV: 'production', HOST: '0.0.0.0', APP_URL: 'https://focus.example.org' }
+    const pkcs8 = exportPkcs8(key)
+
+    assert.lengthOf(crossFieldProblems({ ...base }), 0)
+    assert.lengthOf(
+      crossFieldProblems({ ...base, UNLOCK_SIGNING_KEY: pkcs8, UNLOCK_SIGNING_KEY_ID: key.kid }),
+      0
+    )
+    for (const values of [
+      { UNLOCK_SIGNING_KEY: pkcs8 },
+      { UNLOCK_SIGNING_KEY_ID: key.kid },
+      { UNLOCK_SIGNING_KEY: pkcs8, UNLOCK_SIGNING_KEY_ID: other.kid },
+      { UNLOCK_SIGNING_KEY: `${pkcs8.slice(0, -4)}AAAA`, UNLOCK_SIGNING_KEY_ID: key.kid },
+    ]) {
+      const problems = crossFieldProblems({ ...base, ...values })
+      assert.lengthOf(problems, 1, Object.keys(values).join('+'))
+      assert.match(problems[0], /UNLOCK_SIGNING_KEY/)
+      assert.notInclude(problems[0], pkcs8.slice(-24))
     }
   })
 })

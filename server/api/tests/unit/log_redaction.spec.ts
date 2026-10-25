@@ -4,6 +4,10 @@ import { Writable } from 'node:stream'
 import app from '@adonisjs/core/services/app'
 import { Logger } from '@adonisjs/core/logger'
 import { LOG_PRIVACY, LOG_REDACT_CENSOR } from '#logging/log_redaction'
+import { exportPkcs8 } from '#domain/keys/signing_key_material'
+import { issueTime } from '#domain/unlock/time_token_issuer'
+import { SigningKeyError } from '#services/signing_key_store'
+import { testOnlyKey } from '#tests/support/test_only_keys'
 
 /** A logger with the exact privacy options of config/logger.ts, writing JSON lines into memory. */
 function capturingLogger() {
@@ -185,5 +189,72 @@ test.group('Log redaction', () => {
 
     assert.include(output(), '"job":"deadman"')
     assert.include(output(), '"platform":"android"')
+  })
+  test('test_signing_keys_tokens_and_nonces_never_reach_the_log', ({ assert }) => {
+    const { logger, output } = capturingLogger()
+    const material = testOnlyKey('test-key-not-real-unlock-a')
+    const pkcs8 = exportPkcs8(material)
+    const nonce = 'AAECAwQFBgcICQoLDA0ODw'
+    const time = issueTime(
+      { deviceUuid: '6f1c2d3e-4b5a-4c6d-8e7f-90a1b2c3d4e5', nonce, boot: '41' },
+      [],
+      {
+        issuer: 'https://focus.example.org',
+        profile: 'release',
+        signingKey: material,
+        now: 1_767_603_600,
+      }
+    )
+    if (!time.ok) throw new Error(time.reason)
+    const token = time.value.token
+
+    logger.info(
+      {
+        privateKey: pkcs8,
+        private_key_encrypted: pkcs8,
+        secretKey: material.secretKey,
+        pkcs8,
+        seed: pkcs8,
+        signingKey: material,
+        key: material,
+        token,
+        unlockToken: token,
+        policy_token: token,
+        timeToken: token,
+        endorsement: token,
+        nonce,
+        footer: token,
+        response: { timeToken: token, nonce },
+        rotation: { kid: material.kid, signingKey: { secretKey: material.secretKey } },
+      },
+      'tokens issued'
+    )
+    logger.error(
+      { err: new SigningKeyError('undecryptable', `signing key ${material.kid} failed`) },
+      'boot'
+    )
+
+    assert.notInclude(output(), pkcs8)
+    assert.notInclude(output(), pkcs8.slice(-24))
+    assert.notInclude(output(), token)
+    assert.notInclude(output(), nonce)
+    assert.include(output(), material.kid)
+    assert.include(output(), 'tokens issued')
+  })
+
+  test('test_a_private_key_object_never_serialises_its_secret', ({ assert }) => {
+    const { logger, output } = capturingLogger()
+    const material = testOnlyKey('test-key-not-real-unlock-a')
+
+    logger.info(
+      { material: { kid: material.kid, purpose: material.purpose, k: material.secretKey } },
+      'k'
+    )
+
+    assert.notInclude(output(), exportPkcs8(material).slice(-24))
+    assert.notInclude(
+      output(),
+      Buffer.from(exportPkcs8(material), 'base64url').subarray(-32).toString('hex')
+    )
   })
 })

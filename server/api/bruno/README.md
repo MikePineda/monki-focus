@@ -9,8 +9,9 @@ answers.
 | ---------------- | --------------------------------------------------------------------------- |
 | `01-health`      | `GET /api/health`: 200, database up, `version` + `sha`, CSP and frame guard |
 | `02-health-live` | `GET /api/health/live`: the process answers                                 |
+| `03-keys`        | `GET /api/v1/keys`: one active key per purpose, public material only        |
 
-Later work packages add `03-config`, `04-keys`, the smoke user's login, its
+Later work packages add `04-config`, the smoke user's login, its
 reads and logout, and a device heartbeat with the smoke device token.
 
 ## Run it

@@ -225,7 +225,7 @@ To be written with work package S9:
 
 - deploy and rollback;
 - environment variables and secrets;
-- signing-key rotation (`unlock-signing`, `policy-signing`);
+- signing-key rotation (see [Signing keys](#signing-keys) below);
 - ntfy configuration and topic rotation;
 - backups and restore drill;
 - health checks and monitoring.
@@ -246,6 +246,49 @@ header the CDN writes (`cf-connecting-ip` for Cloudflare):
   directly could pick its own rate-limit bucket.
 - Keep the ranges current when the CDN publishes changes. IPv6 clients share
   a bucket per /64.
+
+### Signing keys
+
+The server signs with two Ed25519 keys (`docs/protocol/unlock-tokens.md`
+§2): `unlock` (unlock and time tokens) and `policy` (policy tokens). Their
+public halves and kids are published at `GET /api/v1/keys`; devices pin
+them at enrolment.
+
+- **First boot.** With `UNLOCK_SIGNING_KEY` and `UNLOCK_SIGNING_KEY_ID`
+  empty, the server generates both keys and stores each private key
+  encrypted with `APP_KEY` (AES-256-GCM, bound to its kid) in
+  `signing_keys`. To keep the unlock key out of the database instead, set
+  both variables (an Ed25519 private key as unpadded base64url PKCS#8 DER,
+  and its kid): its public half is stored, its private half never is. Both
+  or neither; the server refuses to start otherwise. The policy key is
+  always generated.
+- **Precedence.** When `UNLOCK_SIGNING_KEY` is set it must be the active
+  unlock key: if the database already has another active unlock key, the
+  server refuses to start rather than strand every enrolled device. Switch
+  with `node ace signing-key:rotate --purpose=unlock --from-env` (the
+  current key endorses it), or unset both variables.
+- **Rotation.** `node ace signing-key:rotate --purpose=unlock|policy`
+  retires the active key (its private key is erased) and has it sign an
+  endorsement of a new key, which becomes active. Devices adopt the new key
+  offline through the endorsement; the retired key keeps verifying until
+  it is pruned. A purpose has at most two verifiable keys, so a rotation is
+  refused while a retired key of that purpose is still published. After
+  rotating away from an env-supplied unlock key, remove
+  `UNLOCK_SIGNING_KEY` and `UNLOCK_SIGNING_KEY_ID` before restarting.
+- **Pruning.** `node ace signing-key:prune` deletes retired keys once every
+  token they signed has expired, plus a day (unlock 4 h, policy 30 days).
+  `--force` deletes them now: tokens they signed stop verifying on devices
+  that refresh `/keys`.
+- **APP_KEY changed.** Stored private keys no longer decrypt and the server
+  refuses to start ("cannot be decrypted with APP_KEY"). Restore the old
+  `APP_KEY`; if it is lost, run
+  `node ace signing-key:rotate --purpose=<purpose> --unendorsed` (after
+  `signing-key:prune --force` if a retired key exists) for each purpose
+  and enrol every device again, since nothing can endorse the new keys.
+- **Compromise.** A leaked key cannot be rotated away (its holder could
+  endorse a key of their own): rotate with `--unendorsed`, prune with
+  `--force` and enrol every device again.
+- Commands and logs print kids only, never key material.
 
 ### MIGRATE_ON_START and overlapping containers
 
