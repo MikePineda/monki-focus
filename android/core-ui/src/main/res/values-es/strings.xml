@@ -2,7 +2,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!-- Spanish catalog: same keys as values/strings.xml (parity test). -->
 <resources>
-    <string name="home_scaffold_message">monki-focus se está preparando. Las reglas de bloqueo llegan en las próximas actualizaciones.</string>
     <string name="action_close">Cerrar</string>
 
     <!-- Countdown (core-ui). -->

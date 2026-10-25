@@ -7,7 +7,6 @@
 -->
 <resources>
     <string name="app_name" translatable="false">monki-focus</string>
-    <string name="home_scaffold_message">monki-focus is getting ready. Blocking rules arrive in the next updates.</string>
     <string name="action_close">Close</string>
 
     <!-- Countdown (core-ui). -->

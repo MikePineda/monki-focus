@@ -53,8 +53,7 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
-
-    testImplementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.core)
 }
 
 // The manifest test reads the source manifest directly.

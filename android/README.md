@@ -92,6 +92,38 @@ plugin from `gradle/libs.versions.toml` so the compiler version is the catalog's
 - Never log accessibility node text (`scripts/ci/check-android-logging.sh`);
   release builds strip `android.util.Log` with R8.
 
+## Onboarding, Status and rules
+
+- **Onboarding** (`:feature-onboarding`) is `OnboardingStateMachine`, pure
+  and resumable (`OnboardingProgressCodec` in its own preferences file):
+  welcome, the accessibility **prominent disclosure** ("I agree" / "Not
+  now", which offers statistics only), restricted settings (Android 13+,
+  only where the app-op or the installer says the switch may be greyed
+  out), notifications, the accessibility service
+  (`ACTION_ACCESSIBILITY_DETAILS_SETTINGS` with our component, then the
+  list), usage access, battery, device admin, "Turn on protection". No
+  system screen opens before the disclosure is accepted; only the
+  disclosure, notifications and the service are required; `armedByUser` is
+  set by the last step only. The permissions are read again on every resume
+  and every second while a step waits on a switch.
+- **Battery**: the optional step sends
+  `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (the manifest declares the
+  permission; allowed for this build, distributed outside Google Play; a Play
+  build would drop it and keep the optimisation-list link) and shows the
+  maker's steps summarised from dontkillmyapp.com, with a link to its page.
+- **Status** is the home screen: protection state, the permission checklist
+  with a fix button per missing item (required ones on top), the rules in
+  force, "Edit rules", "Turn on protection" while it is not on, and "Exit and
+  unlink", always.
+- **Rules** (`:feature-rules`): every save goes through `RuleChangeService`,
+  the twin of the extension's: `effectiveRuleSet` judges it (tighten now,
+  loosen at the next local midnight), the proposal and what applies today
+  are validated before anything is stored, a stale screen is refused, a third
+  time zone is refused while one waits and the waiting one is never dropped
+  early, cancelling bumps the revision. Import and export use the Storage
+  Access Framework with the extension's JSON format; an invalid file imports
+  nothing and a looser one waits like any edit.
+
 ## Release
 
 The version is `VERSION_NAME` in `gradle.properties`, bumped by release-please
