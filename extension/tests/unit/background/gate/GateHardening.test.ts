@@ -289,16 +289,28 @@ describe('gate hardening', () => {
       expect((await harness.escalation.get(REDDIT_GROUP)).phase).not.toBe('active')
     })
 
-    it('a_correction_of_a_second_is_not_a_rewind', async () => {
+    it('an_ntp_step_of_up_to_30_seconds_is_not_a_rewind', async () => {
       const harness = gateHarness()
       await commitIntention(harness, 5)
       harness.clock.advanceSeconds(60)
       await harness.controller.checkClock()
 
-      harness.clock.advanceSeconds(-1)
+      harness.clock.advanceSeconds(-30)
       await harness.controller.checkClock()
 
       expect((await harness.escalation.get(REDDIT_GROUP)).phase).toBe('active')
+    })
+
+    it('a_step_back_of_more_than_30_seconds_is_a_rewind', async () => {
+      const harness = gateHarness()
+      await commitIntention(harness, 5)
+      harness.clock.advanceSeconds(120)
+      await harness.controller.checkClock()
+
+      harness.clock.advanceSeconds(-31)
+      await harness.controller.checkClock()
+
+      expect((await harness.escalation.get(REDDIT_GROUP)).phase).not.toBe('active')
     })
 
     it('an_active_override_ends_when_the_clock_goes_back', async () => {

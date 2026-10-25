@@ -2,8 +2,11 @@
 
 /** `storage.local` key of the highest wall clock the gate has seen (epoch ms). */
 export const WALL_CLOCK_FLOOR_NAME = 'gate.wallClockFloor'
-/** Clock corrections smaller than this (NTP slewing, jitter) are not a rewind. */
-export const REWIND_TOLERANCE_MS = 2_000
+/**
+ * Clock corrections up to this are not a rewind: NTP steps the clock back by
+ * seconds after a sleep or a wake, and that must not end an intention.
+ */
+export const REWIND_TOLERANCE_MS = 30_000
 
 interface StorageArea {
   get(key: string): Promise<Record<string, unknown>>
