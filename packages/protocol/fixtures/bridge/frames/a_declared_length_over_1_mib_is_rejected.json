@@ -1,0 +1,5 @@
+{
+  "name": "a_declared_length_over_1_mib_is_rejected",
+  "bytesHex": "01001000",
+  "error": "payload_too_large"
+}

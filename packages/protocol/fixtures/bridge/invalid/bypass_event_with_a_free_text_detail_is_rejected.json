@@ -1,0 +1,19 @@
+{
+  "name": "bypass_event_with_a_free_text_detail_is_rejected",
+  "direction": "extension-to-app",
+  "reason": "invalid_payload",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "bypass.event",
+    "payload": {
+      "dedupeKey": "bypass-3",
+      "kind": "emergency_override",
+      "occurredAt": "2026-01-05T09:03:00Z",
+      "details": {
+        "scope": "rule",
+        "site": "example.com"
+      }
+    }
+  }
+}

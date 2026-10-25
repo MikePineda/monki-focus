@@ -1,0 +1,14 @@
+{
+  "name": "envelope_with_an_extra_key_is_rejected",
+  "direction": "extension-to-app",
+  "reason": "invalid_envelope",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "browser.focus",
+    "payload": {
+      "focused": true
+    },
+    "url": "https://example.com/"
+  }
+}

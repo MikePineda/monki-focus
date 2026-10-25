@@ -1,0 +1,20 @@
+{
+  "name": "browser_activity_incognito_heartbeat_keeps_only_the_domain",
+  "direction": "extension-to-app",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "browser.activity",
+    "payload": {
+      "timestamp": "2026-01-05T09:02:00Z",
+      "duration": 0,
+      "data": {
+        "domain": "example.org",
+        "path": "/",
+        "surface": null,
+        "audible": false,
+        "incognito": true
+      }
+    }
+  }
+}

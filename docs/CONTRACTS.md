@@ -4,20 +4,20 @@ The platforms share data contracts, not code. Each contract has one source of
 truth in the repo and a conformance suite that every consumer runs. A change to
 a contract is a change to its fixtures first.
 
-| Contract                        | Source of truth (planned)                                                                   | Work package | Status  |
-| ------------------------------- | ------------------------------------------------------------------------------------------- | ------------ | ------- |
-| Rule set schema v1              | `packages/rules/schema/v1/*.schema.json`                                                    | 0.2          | planned |
-| Surfaces and site profiles      | `packages/rules/data/surfaces.json`, `data/sites/*.json`                                    | 0.2          | planned |
-| Decision fixtures               | `packages/rules/fixtures/` (`given/when/then`, one `id` per spec)                           | 0.2          | planned |
-| Analytics fixtures              | `packages/rules/fixtures/analytics/*.json`                                                  | 0.2, E3      | planned |
-| Unlock token (PASETO v4.public) | `packages/protocol` schemas and `fixtures/unlock-tokens/`, `docs/protocol/unlock-tokens.md` | 0.3          | planned |
-| Signed policy token             | `packages/protocol` (separate `typ` and key)                                                | 0.3, S3      | planned |
-| Device API                      | `packages/protocol/openapi.yaml` (`/api/v1`, `X-Client-Version`)                            | 0.3, S4      | active  |
-| Native messaging bridge         | `macos` bridge contract (length-prefixed JSON, five methods)                                | M5           | planned |
-| Dashboard API: accounts         | `server/api/start/routes.ts`, this file ([Dashboard API](#dashboard-api-server))            | S2           | active  |
-| Dashboard API: devices          | `server/api/start/routes.ts`, this file ([Devices](#devices-dashboard))                     | S4           | active  |
-| Dashboard API: guardians        | `server/api/start/routes.ts`, this file ([Guardians](#guardians-dashboard))                 | S5           | active  |
-| Rules feed signature            | detached Ed25519 signature, offline `rules-signing` key                                     | 0.2          | planned |
+| Contract                        | Source of truth (planned)                                                                                | Work package | Status  |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------ | ------- |
+| Rule set schema v1              | `packages/rules/schema/v1/*.schema.json`                                                                 | 0.2          | planned |
+| Surfaces and site profiles      | `packages/rules/data/surfaces.json`, `data/sites/*.json`                                                 | 0.2          | planned |
+| Decision fixtures               | `packages/rules/fixtures/` (`given/when/then`, one `id` per spec)                                        | 0.2          | planned |
+| Analytics fixtures              | `packages/rules/fixtures/analytics/*.json`                                                               | 0.2, E3      | planned |
+| Unlock token (PASETO v4.public) | `packages/protocol` schemas and `fixtures/unlock-tokens/`, `docs/protocol/unlock-tokens.md`              | 0.3          | planned |
+| Signed policy token             | `packages/protocol` (separate `typ` and key)                                                             | 0.3, S3      | planned |
+| Device API                      | `packages/protocol/openapi.yaml` (`/api/v1`, `X-Client-Version`)                                         | 0.3, S4      | active  |
+| Native messaging bridge         | `packages/protocol/schema/bridge`, `fixtures/bridge/`, this file ([Native messaging](#native-messaging)) | M5           | active  |
+| Dashboard API: accounts         | `server/api/start/routes.ts`, this file ([Dashboard API](#dashboard-api-server))                         | S2           | active  |
+| Dashboard API: devices          | `server/api/start/routes.ts`, this file ([Devices](#devices-dashboard))                                  | S4           | active  |
+| Dashboard API: guardians        | `server/api/start/routes.ts`, this file ([Guardians](#guardians-dashboard))                              | S5           | active  |
+| Rules feed signature            | detached Ed25519 signature, offline `rules-signing` key                                                  | 0.2          | planned |
 
 ## Rules
 
@@ -111,9 +111,70 @@ later package. Implemented (S3, S4): `GET /keys`, `POST /device/enroll`,
 
 ## Native messaging
 
-To be written by work package M5: message framing, size limit, the
-`status`, `ping`, `trusted_time`, `signed_policy` and `report_event` methods,
-`allowed_origins`, peer validation.
+The extension talks to the macOS app through `monki-bridge`, the native
+messaging host `dev.monkifocus.bridge` at
+`MonkiFocus.app/Contents/Helpers/monki-bridge`. The source of truth is
+`packages/protocol/schema/bridge` (JSON Schema 2020-12, one file per message
+type plus the envelope and the two directions) and the conformance suite
+`packages/protocol/fixtures/bridge` (`valid/`, `invalid/` with a rejection
+code each, `frames/`), run by the protocol package (Ajv), the extension
+(`BridgeContract.test.ts`, Ajv standalone validators) and MonkiCore
+(`BridgeContractFixturesTests`, hand-written strict decoder).
+
+- **Transport**: browser ↔ `monki-bridge` over stdio, each message a 4-byte
+  length in native byte order and that much UTF-8 JSON; `monki-bridge` ↔ app
+  over the Unix socket `~/Library/Application Support/monki-focus/bridge.sock`,
+  one compact JSON message per line (NDJSON). A Unix socket, not XPC: a helper
+  the browser starts cannot look up a Mach service without launchd.
+- **Size**: at most 1 MiB (1048576 bytes) serialised, both ways; a larger
+  length prefix is refused before the payload is read.
+- **Envelope**: `{ v: 1, id, type, payload }`, nothing else; `id` matches
+  `^[A-Za-z0-9._:-]{1,64}$` and is opaque; `payload` is always an object.
+- **Messages**:
+
+  | Direction          | Type                 | Payload                                                                        |
+  | ------------------ | -------------------- | ------------------------------------------------------------------------------ |
+  | extension → app    | `hello`              | `extensionVersion`, `schemaVersion: 1`, `browser` (`brave`, `chrome`, `other`) |
+  | extension → app    | `browser.focus`      | `focused`                                                                      |
+  | extension → app    | `browser.activity`   | one web tab heartbeat `{ timestamp, duration, data }` (no query or fragment)   |
+  | extension → app    | `bypass.event`       | the device API `BypassEvent` of kind `emergency_override`                      |
+  | app → extension    | `hello.ack`          | `aggregator: "mac"`, `appVersion`, `schemaVersion: 1`                          |
+  | app → extension    | `rules.snapshot`     | `issuedAt`, `ruleset` (validated against the rules schema before use)          |
+  | app → extension    | `unlock.token`       | `token`: a PASETO v4.public token the extension verifies itself                |
+  | app → extension    | `focusSession.state` | `active`, `endsAt` (an instant when active, `null` otherwise)                  |
+  | bridge → extension | `app.unavailable`    | `{}`; `monki-bridge` sends it and exits when the app is not running            |
+
+  Nothing the extension may send changes rules or unlocks anything, and the
+  app has no command channel: it accepts only the four extension types.
+
+- **Validation order** (every validator returns the same code):
+  `too_large`, `invalid_json`, `invalid_envelope`, `unsupported_version`,
+  `unknown_type`, `wrong_direction`, `payload_not_object`, `invalid_payload`.
+  `monki-bridge` checks only the envelope and the direction and relays the
+  original bytes; the app and the extension check the payload too. A
+  malformed message ends `monki-bridge` (status 1) or closes that one app
+  connection; an invalid message from the app is ignored by the extension,
+  and the extension never sends one.
+- **Dedupe** (plan §3.4): after `hello.ack { aggregator: "mac" }` the
+  extension stops queueing its own blocks for sync and keeps its local
+  stats; a disconnect or `app.unavailable` turns its sync back on. The app
+  merges `browser.activity` into its `web.tab.current` bucket
+  `monki-web-<browser>_<host>` (pulsetime 45 s) and drops heartbeats more
+  than 5 minutes off its own clock.
+- **Who may connect**: the host manifest's `allowed_origins` lists exact
+  extension ids (the store id and the development id pinned by
+  `EXTENSION_DEV_PUBLIC_KEY`); there is no `externally_connectable`. The
+  socket is 0600 in a 0700 folder owned by the user, the app closes any peer
+  whose `getpeereid` uid differs, accepts at most 4 connections and
+  `monki-bridge` checks the app's uid the same way.
+- **Client**: the extension reconnects after every disconnect with a
+  1-60 s jittered exponential backoff, and works on its own without the host.
+- **Manifest locations** (user level): Brave
+  `~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts/`,
+  Chrome `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/`
+  (sources in `macos/Packages/MonkiPlatform/Sources/MonkiPlatform/Bridge/BrowserHostFolder.swift`).
+- **Never logged**: payloads, URLs, titles, tokens, message ids; logs carry
+  fixed messages and rejection codes only.
 
 ## Dashboard API (server)
 

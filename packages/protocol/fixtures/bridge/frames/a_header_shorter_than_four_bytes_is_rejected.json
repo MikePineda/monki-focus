@@ -1,0 +1,5 @@
+{
+  "name": "a_header_shorter_than_four_bytes_is_rejected",
+  "bytesHex": "0a00",
+  "error": "truncated_header"
+}

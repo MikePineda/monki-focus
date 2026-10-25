@@ -1,0 +1,10 @@
+{
+  "name": "app_unavailable_has_an_empty_payload",
+  "direction": "app-to-extension",
+  "message": {
+    "v": 1,
+    "id": "app-unavailable",
+    "type": "app.unavailable",
+    "payload": {}
+  }
+}

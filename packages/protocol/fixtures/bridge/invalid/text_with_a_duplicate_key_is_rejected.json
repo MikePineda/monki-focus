@@ -1,0 +1,6 @@
+{
+  "name": "text_with_a_duplicate_key_is_rejected",
+  "direction": "extension-to-app",
+  "reason": "invalid_json",
+  "text": "{\"v\":1,\"v\":1,\"id\":\"a\",\"type\":\"browser.focus\",\"payload\":{\"focused\":true}}"
+}

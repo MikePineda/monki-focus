@@ -1,0 +1,14 @@
+{
+  "name": "extension_cannot_send_a_focus_session_state",
+  "direction": "extension-to-app",
+  "reason": "wrong_direction",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "focusSession.state",
+    "payload": {
+      "active": false,
+      "endsAt": null
+    }
+  }
+}

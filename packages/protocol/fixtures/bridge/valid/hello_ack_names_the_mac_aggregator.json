@@ -1,0 +1,14 @@
+{
+  "name": "hello_ack_names_the_mac_aggregator",
+  "direction": "app-to-extension",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "hello.ack",
+    "payload": {
+      "aggregator": "mac",
+      "appVersion": "0.1.0",
+      "schemaVersion": 1
+    }
+  }
+}

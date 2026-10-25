@@ -1,0 +1,14 @@
+{
+  "name": "focus_session_not_running_with_an_end_is_rejected",
+  "direction": "app-to-extension",
+  "reason": "invalid_payload",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "focusSession.state",
+    "payload": {
+      "active": false,
+      "endsAt": "2026-01-05T09:30:00Z"
+    }
+  }
+}

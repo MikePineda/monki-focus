@@ -1,0 +1,6 @@
+{
+  "name": "top_level_string_is_rejected",
+  "direction": "app-to-extension",
+  "reason": "invalid_envelope",
+  "message": "app.unavailable"
+}

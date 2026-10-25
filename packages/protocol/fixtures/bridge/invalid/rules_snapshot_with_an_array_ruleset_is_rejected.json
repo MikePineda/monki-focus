@@ -1,0 +1,14 @@
+{
+  "name": "rules_snapshot_with_an_array_ruleset_is_rejected",
+  "direction": "app-to-extension",
+  "reason": "invalid_payload",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "rules.snapshot",
+    "payload": {
+      "issuedAt": "2026-01-05T09:05:00Z",
+      "ruleset": []
+    }
+  }
+}

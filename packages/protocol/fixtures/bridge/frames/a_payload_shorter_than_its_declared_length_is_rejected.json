@@ -1,0 +1,5 @@
+{
+  "name": "a_payload_shorter_than_its_declared_length_is_rejected",
+  "bytesHex": "0a0000007b7d",
+  "error": "truncated_payload"
+}

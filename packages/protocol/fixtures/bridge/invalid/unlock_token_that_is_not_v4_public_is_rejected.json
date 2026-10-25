@@ -1,0 +1,13 @@
+{
+  "name": "unlock_token_that_is_not_v4_public_is_rejected",
+  "direction": "app-to-extension",
+  "reason": "invalid_payload",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "unlock.token",
+    "payload": {
+      "token": "v2.local.c3ludGhldGlj"
+    }
+  }
+}

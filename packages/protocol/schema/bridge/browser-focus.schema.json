@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:bridge-browser-focus:v1",
+  "title": "browser.focus (extension to app)",
+  "description": "A browser window gained or lost focus. Nothing about the window or its tabs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["focused"],
+  "properties": {
+    "focused": {
+      "type": "boolean"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:bridge-extension-to-app:v1",
+  "title": "monki-focus native messaging: extension to app (v1)",
+  "description": "What the macOS app (and monki-bridge, at the envelope level) accepts from the extension. Nothing here changes rules or grants an unlock: the extension reports, the app never takes commands.",
+  "allOf": [
+    {
+      "$ref": "urn:monki-focus:protocol:bridge-envelope:v1"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["hello", "browser.focus", "browser.activity", "bypass.event"]
+        }
+      }
+    }
+  ]
+}

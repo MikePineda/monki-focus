@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:bridge-focus-session-state:v1",
+  "title": "focusSession.state (app to extension)",
+  "description": "Whether a focus session the user started on the Mac is running, and when it ends. Active: endsAt is a UTC instant; inactive: endsAt is null.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["active", "endsAt"],
+  "properties": {
+    "active": {
+      "type": "boolean"
+    },
+    "endsAt": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "if": {
+    "type": "object",
+    "properties": {
+      "active": {
+        "const": true
+      }
+    }
+  },
+  "then": {
+    "type": "object",
+    "properties": {
+      "endsAt": {
+        "type": "string"
+      }
+    }
+  },
+  "else": {
+    "type": "object",
+    "properties": {
+      "endsAt": {
+        "type": "null"
+      }
+    }
+  }
+}

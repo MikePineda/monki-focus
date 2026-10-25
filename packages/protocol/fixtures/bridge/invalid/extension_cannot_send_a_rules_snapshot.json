@@ -1,0 +1,14 @@
+{
+  "name": "extension_cannot_send_a_rules_snapshot",
+  "direction": "extension-to-app",
+  "reason": "wrong_direction",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "rules.snapshot",
+    "payload": {
+      "issuedAt": "2026-01-05T09:05:00Z",
+      "ruleset": {}
+    }
+  }
+}

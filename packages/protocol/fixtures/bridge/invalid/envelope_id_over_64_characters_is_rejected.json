@@ -1,0 +1,11 @@
+{
+  "name": "envelope_id_over_64_characters_is_rejected",
+  "direction": "app-to-extension",
+  "reason": "invalid_envelope",
+  "message": {
+    "v": 1,
+    "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "type": "app.unavailable",
+    "payload": {}
+  }
+}

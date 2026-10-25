@@ -1,0 +1,13 @@
+{
+  "name": "focus_session_running_until_an_instant",
+  "direction": "app-to-extension",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "focusSession.state",
+    "payload": {
+      "active": true,
+      "endsAt": "2026-01-05T09:30:00Z"
+    }
+  }
+}

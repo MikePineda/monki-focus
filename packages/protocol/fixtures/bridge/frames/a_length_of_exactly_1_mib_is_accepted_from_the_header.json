@@ -1,0 +1,5 @@
+{
+  "name": "a_length_of_exactly_1_mib_is_accepted_from_the_header",
+  "bytesHex": "00001000",
+  "error": "truncated_payload"
+}

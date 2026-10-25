@@ -1,0 +1,17 @@
+{
+  "name": "rules_snapshot_carries_a_ruleset_object",
+  "direction": "app-to-extension",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "rules.snapshot",
+    "payload": {
+      "issuedAt": "2026-01-05T09:05:00Z",
+      "ruleset": {
+        "schemaVersion": 1,
+        "timeZone": "Etc/UTC",
+        "rules": []
+      }
+    }
+  }
+}

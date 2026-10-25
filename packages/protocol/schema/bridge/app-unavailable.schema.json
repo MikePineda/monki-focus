@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:bridge-app-unavailable:v1",
+  "title": "app.unavailable (monki-bridge to extension)",
+  "description": "Written by monki-bridge itself when the macOS app is not running (its socket is missing or refuses the connection). monki-bridge exits right after it; the extension keeps working on its own and reconnects later.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

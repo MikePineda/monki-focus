@@ -1,0 +1,13 @@
+{
+  "name": "extension_cannot_send_an_unlock_token",
+  "direction": "extension-to-app",
+  "reason": "wrong_direction",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "unlock.token",
+    "payload": {
+      "token": "v4.public.c3ludGhldGljLW5vdC1hLXJlYWwtdG9rZW4.eyJraWQiOiJ0ZXN0LW9ubHkifQ"
+    }
+  }
+}

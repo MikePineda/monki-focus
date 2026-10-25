@@ -1,0 +1,20 @@
+{
+  "name": "browser_activity_heartbeat_on_a_surface",
+  "direction": "extension-to-app",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "browser.activity",
+    "payload": {
+      "timestamp": "2026-01-05T09:00:30Z",
+      "duration": 30,
+      "data": {
+        "domain": "youtube.com",
+        "path": "/shorts",
+        "surface": "youtube.shorts",
+        "audible": true,
+        "incognito": false
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "unknown_type_from_the_app_is_rejected",
+  "direction": "app-to-extension",
+  "reason": "unknown_type",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "rules.update",
+    "payload": {}
+  }
+}

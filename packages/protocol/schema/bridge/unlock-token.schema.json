@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:bridge-unlock-token:v1",
+  "title": "unlock.token (app to extension)",
+  "description": "A guardian-signed PASETO v4.public unlock token the app received, handed on as is. Untrusted on arrival: the extension verifies it itself (docs/protocol/unlock-tokens.md) and ignores it when verification fails. The bridge never mints or widens unlocks.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["token"],
+  "properties": {
+    "token": {
+      "type": "string",
+      "maxLength": 4096,
+      "pattern": "^v4\\.public\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"
+    }
+  }
+}
