@@ -12,6 +12,9 @@ import {
 import { VALIDITY_ALARM, ValidityAlarm } from '../background/decisions/ValidityAlarm'
 import { delayedFeedDecisions } from '../background/e2e/DecisionDelay'
 import { SiteTabs } from '../background/feeds/SiteTabs'
+import { browserKind } from '../background/native/BrowserKind'
+import { extensionVersion } from '../background/native/ExtensionVersion'
+import { createNativeBridgeModule } from '../background/native/NativeBridgeModule'
 import { UserStylesheetInjector } from '../background/feeds/UserStylesheetInjector'
 import { createGateModule, type GateModule } from '../background/gate/GateModule'
 import { PreferenceService } from '../background/preferences/PreferenceService'
@@ -77,6 +80,19 @@ export default defineBackground(() => {
     onChange: decisionsChanged,
   })
 
+  // The bridge to the macOS app (when installed): it mirrors heartbeats to
+  // the app and, while the app aggregates this device, stops block sync.
+  const bridge = createNativeBridgeModule({
+    connectNative: (hostName) => browser.runtime.connectNative(hostName),
+    readLastError: () => browser.runtime.lastError,
+    extensionVersion: extensionVersion(browser.runtime),
+    browserKind: browserKind(navigator),
+    session: browser.storage.session,
+    windows: browser.windows,
+    alarms: browser.alarms,
+    clock: systemClock,
+  })
+
   // One connection for tracking and the gate; a failed open is retried, never cached.
   const db = new DbConnection(() => openMonkiDb())
   const tracking = createTrackingModule({
@@ -86,6 +102,10 @@ export default defineBackground(() => {
     catalog,
     rulesets,
     openDb: () => db.get(),
+    onHeartbeat: (next, closeAt) => {
+      bridge.onHeartbeat(next, closeAt)
+    },
+    syncBlocks: () => bridge.syncBlocks(),
   })
 
   const gate = createGateModule({
@@ -178,4 +198,5 @@ export default defineBackground(() => {
   void restrictions.check().catch(() => undefined)
   tracking.start()
   gate.start()
+  bridge.start()
 })

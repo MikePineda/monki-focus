@@ -24,13 +24,19 @@ First E2E run on a machine: `npx playwright install chromium`.
 
 - `development` and `e2e` add `manifest.key` from the env var
   `EXTENSION_DEV_PUBLIC_KEY` (base64 DER public key, no PEM armour) when it is
-  set, which pins the unpacked extension id (needed later for native messaging
-  `allowed_origins`). Without it the unpacked id is derived from the folder
-  path and varies between machines; tests never hard-code it.
+  set, which pins the unpacked extension id (the native messaging host only
+  answers ids in its `allowed_origins`). Without it the unpacked id is derived
+  from the folder path and varies between machines; tests never hard-code it.
 - `production` (`build`, `zip`) never carries a `key`; the store assigns the id.
 
 Only the public key is ever used. The private key (`.pem`) never enters the
-repo (`*.pem` is gitignored).
+repo (`*.pem` is gitignored). The pinned id is the first 128 bits of the
+SHA-256 of the key, one letter `a`-`p` per nibble
+(`config/extensionId.ts`); print it with
+`EXTENSION_DEV_PUBLIC_KEY=... npm run extension-id -w @monki-focus/extension`
+and give it to the macOS app (`macos/README.md`, "Browser bridge"). A fresh
+key pair for development: `openssl genrsa 2048 > dev.pem` and
+`openssl rsa -in dev.pem -pubout -outform DER | base64`.
 
 ## Layout
 
@@ -400,6 +406,34 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   `preferences.set` (`ui.theme`, `ui.language`, `privacy.storeTitles`,
   `tracking.countAudibleWhileIdle`, `ui.chartView.<chart>`); every page
   follows theme and language changes live.
+
+## Native bridge to the macOS app (M5)
+
+`src/background/native/` connects the worker to the macOS app through the
+native messaging host `dev.monkifocus.bridge` (`monki-bridge`; contract in
+`docs/CONTRACTS.md`, "Native messaging"). It needs the `nativeMessaging`
+permission; without the host or the app the extension works exactly as
+before.
+
+- `NativeBridgeClient` calls `connectNative`, sends `hello` (extension
+  version, schema version, browser from `BrowserKind`), and reconnects after
+  every disconnect with a 1-60 s jittered backoff (`ReconnectBackoff`; any
+  alarm catches up a retry whose timer died with the worker).
+- `hello.ack { aggregator: "mac" }` sets `bridge.aggregator` in
+  `storage.session` (`AggregatorFlag`): the aggregation job then keeps its
+  blocks local and stops queueing them for sync (plan §3.4); a disconnect or
+  `app.unavailable` clears it.
+- `BridgeActivityForwarder` mirrors each stored heartbeat to the app as
+  `browser.activity` (plus the closing heartbeat at a tab switch), with
+  exactly what the local store keeps: never a query, a fragment or an
+  unrequested title.
+- Every message both ways is validated by `BridgeMessageValidator` with
+  validators Ajv generates at build time from
+  `@monki-focus/protocol/schema/bridge` (`virtual:monki-bridge-validator`);
+  an invalid inbound message is ignored, an invalid outbound one is never
+  posted. `unlock.token` is handed on unverified (`onPush`) and must be
+  verified before it unlocks anything; `rules.snapshot`, `unlock.token` and
+  `focusSession.state` are not acted on yet (M6/M7).
 
 ## Live smoke before release
 

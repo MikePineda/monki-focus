@@ -54,6 +54,10 @@ export function extensionManifest({ mode, devPublicKey }: ManifestInputs): UserM
       'alarms',
       'declarativeNetRequestWithHostAccess',
       'scripting',
+      // The bridge to the macOS app (`dev.monkifocus.bridge`). Required, not
+      // optional: the extension has not shipped, so no update disables it for
+      // a new warning, and the host only answers ids in its allowed_origins.
+      'nativeMessaging',
     ],
     host_permissions: [...SITE_HOST_PERMISSIONS],
     // Asked per origin when the user adds a friction/block rule for another site.
