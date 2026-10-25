@@ -1,85 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { decide, instantOf, type RulesCatalog } from '@monki-focus/engine'
 import type { EscalationState, Ruleset } from '@monki-focus/rules/pure'
+import { validateEscalationState } from 'virtual:monki-escalation-validator'
 
-const PHASES = new Set([
-  'idle',
-  'pausing',
-  'asking',
-  'active',
-  'timed_out',
-  'override_waiting',
-  'override_active',
-])
-const FRICTION_TYPES = new Set(['countdown', 'breath', 'reflect', 'type-intention'])
-const INSTANT_FIELDS = [
-  'lastAttemptAt',
-  'lastActivityAt',
-  'pauseEndsAt',
-  'intentionExpiresAt',
-  'overrideReadyAt',
-  'overrideEndsAt',
-] as const
-const STATE_FIELDS = new Set([
-  'targetGroup',
-  'phase',
-  'attemptCount',
-  'brokenCount',
-  'lastFrictionType',
-  'gate',
-  'pendingExtension',
-  ...INSTANT_FIELDS,
-])
-/** The schema's caps (`escalation.schema.json#state`). */
-const MAX_ATTEMPTS = 1000
-const MAX_BROKEN = 16
-const MAX_PAUSE_SECONDS = 60
+/** Entries proven valid before the cache starts over. */
 const MAX_PROVEN = 2000
 /** Any page: the probe only makes `decide` run its input guard over the entry. */
 const PROBE_URL = 'https://example.com/'
 
-function isCount(value: unknown, max: number): boolean {
-  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max
-}
-
-function isGate(value: unknown): boolean {
-  if (value === null) return true
-  if (typeof value !== 'object') return false
-  const gate = value as Record<string, unknown>
-  return (
-    Object.keys(gate).length === 5 &&
-    isCount(gate.level, 3) &&
-    isCount(gate.pauseSeconds, MAX_PAUSE_SECONDS) &&
-    FRICTION_TYPES.has(gate.frictionType as string) &&
-    typeof gate.requiresTypedIntention === 'boolean' &&
-    typeof gate.requiresGuardianKey === 'boolean'
-  )
-}
-
-/** The shape of one stored entry (the parts the engine's guard does not read). */
+/** One stored entry against `escalation.schema.json#/$defs/state` (precompiled at build time). */
 export function hasEscalationShape(value: unknown): value is EscalationState {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
-  const state = value as Record<string, unknown>
-  return (
-    Object.keys(state).every((key) => STATE_FIELDS.has(key)) &&
-    typeof state.targetGroup === 'string' &&
-    state.targetGroup.length > 0 &&
-    PHASES.has(state.phase as string) &&
-    isCount(state.attemptCount, MAX_ATTEMPTS) &&
-    isCount(state.brokenCount, MAX_BROKEN) &&
-    (state.lastFrictionType === null || FRICTION_TYPES.has(state.lastFrictionType as string)) &&
-    isGate(state.gate) &&
-    typeof state.pendingExtension === 'boolean' &&
-    INSTANT_FIELDS.every((field) => state[field] === null || typeof state[field] === 'string')
-  )
+  return validateEscalationState(value)
 }
 
 /**
- * Whether a stored escalation entry may reach `decide`. The rules schema
- * validator compiles with `new Function`, which an MV3 service worker's CSP
- * forbids, so the shape is checked here and the instants by the engine's
- * own input guard: an entry is valid when `decide`, given only that entry,
- * does not fail closed where it does not fail closed without it.
+ * Whether a stored escalation entry may reach `decide`. The shape is the
+ * rules package's schema, compiled at build time like the rule set
+ * validator (MV3 forbids Ajv's run-time `new Function`). The schema's
+ * `date-time` format still admits instants the engine refuses (a leap
+ * second), so an entry is then probed with the engine's own input guard:
+ * it is valid when `decide`, given only that entry, does not fail closed
+ * where it does not fail closed without it.
  */
 export function escalationEntryGuard(
   catalog: RulesCatalog,

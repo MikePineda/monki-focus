@@ -9,7 +9,8 @@ import type { Plugin } from 'vite'
 
 /** Import id of the precompiled rule set validator. */
 export const RULESET_VALIDATOR_MODULE = 'virtual:monki-ruleset-validator'
-const RESOLVED_ID = `\0${RULESET_VALIDATOR_MODULE}`
+/** Import id of the precompiled validator of one stored escalation state. */
+export const ESCALATION_VALIDATOR_MODULE = 'virtual:monki-escalation-validator'
 
 /** The custom keywords of the rules schemas and the check each one calls at run time. */
 const CUSTOM_KEYWORDS = [
@@ -35,7 +36,8 @@ const standaloneCode = (standaloneModule as unknown as { default: typeof standal
 const addFormats = formatsModule.default
 
 /**
- * Generates the ES module source of a validator for `ruleset` documents.
+ * Generates the ES module source of precompiled validators, one export per
+ * entry of `exported` (export name to schema id or `id#/$defs/…` pointer).
  *
  * Ajv compiles schemas with `new Function`, which the MV3 content security
  * policy forbids in every extension context, so the extension cannot build
@@ -47,7 +49,7 @@ const addFormats = formatsModule.default
  * `RulesetValidation.test.ts` runs the rules package's `invalid` fixtures
  * through it and through the shared validator and expects the same verdicts.
  */
-export function rulesetValidatorSource(): string {
+function validatorSource(exported: Record<string, string>): string {
   const ajv = new Ajv2020({
     strict: true,
     strictRequired: false,
@@ -71,7 +73,7 @@ export function rulesetValidatorSource(): string {
     })
   }
   for (const schema of bundledSchemas) ajv.addSchema(schema)
-  const generated = standaloneCode(ajv, { validateRuleset: schemaIdOf('ruleset') })
+  const generated = standaloneCode(ajv, exported)
 
   const imports = new Map<string, string>()
   const body = generated.replace(/require\("([^"]+)"\)/g, (_match, specifier: string) => {
@@ -97,17 +99,41 @@ export function rulesetValidatorSource(): string {
   return `${header.join('\n')}\n${body.replace(/^"use strict";/, '')}\n`
 }
 
-/** Serves `virtual:monki-ruleset-validator` to the extension build and to Vitest. */
+/** `validateRuleset` for `ruleset` documents (options page and service worker). */
+export function rulesetValidatorSource(): string {
+  return validatorSource({ validateRuleset: schemaIdOf('ruleset') })
+}
+
+/**
+ * `validateEscalationState` for one stored state
+ * (`escalation.schema.json#/$defs/state`), in its own module so the pages
+ * that only validate rule sets do not carry it.
+ */
+export function escalationValidatorSource(): string {
+  return validatorSource({ validateEscalationState: `${schemaIdOf('escalation')}#/$defs/state` })
+}
+
+const SOURCES: Readonly<Record<string, () => string>> = {
+  [RULESET_VALIDATOR_MODULE]: rulesetValidatorSource,
+  [ESCALATION_VALIDATOR_MODULE]: escalationValidatorSource,
+}
+
+/** Serves the precompiled validator modules to the extension build and to Vitest. */
 export function rulesetValidatorPlugin(): Plugin {
-  let source: string | undefined
+  const sources = new Map<string, string>()
   return {
     name: 'monki-ruleset-validator',
     resolveId(id) {
-      return id === RULESET_VALIDATOR_MODULE ? RESOLVED_ID : null
+      return Object.hasOwn(SOURCES, id) ? `\0${id}` : null
     },
     load(id) {
-      if (id !== RESOLVED_ID) return null
-      source ??= rulesetValidatorSource()
+      const module = id.startsWith('\0') ? id.slice(1) : null
+      if (module === null || !Object.hasOwn(SOURCES, module)) return null
+      let source = sources.get(module)
+      if (source === undefined) {
+        source = (SOURCES[module] as () => string)()
+        sources.set(module, source)
+      }
       return source
     },
   }
