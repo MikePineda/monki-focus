@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { UserManifest } from 'wxt'
+import { NATIVE_MESSAGING_PERMISSION } from '../src/shared/NativeMessagingPermission'
 
 export interface ManifestInputs {
   /**
@@ -54,11 +55,11 @@ export function extensionManifest({ mode, devPublicKey }: ManifestInputs): UserM
       'alarms',
       'declarativeNetRequestWithHostAccess',
       'scripting',
-      // The bridge to the macOS app (`dev.monkifocus.bridge`). Required, not
-      // optional: the extension has not shipped, so no update disables it for
-      // a new warning, and the host only answers ids in its allowed_origins.
-      'nativeMessaging',
     ],
+    // The bridge to the macOS app (`dev.monkifocus.bridge`), asked only when
+    // the user clicks "Connect the Mac app" in the options page: users
+    // without the Mac app never see its install warning.
+    optional_permissions: [NATIVE_MESSAGING_PERMISSION],
     host_permissions: [...SITE_HOST_PERMISSIONS],
     // Asked per origin when the user adds a friction/block rule for another site.
     optional_host_permissions: ['<all_urls>'],

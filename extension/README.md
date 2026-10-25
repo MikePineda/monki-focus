@@ -411,18 +411,23 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
 
 `src/background/native/` connects the worker to the macOS app through the
 native messaging host `dev.monkifocus.bridge` (`monki-bridge`; contract in
-`docs/CONTRACTS.md`, "Native messaging"). It needs the `nativeMessaging`
-permission; without the host or the app the extension works exactly as
-before.
+`docs/CONTRACTS.md`, "Native messaging"). It needs the optional
+`nativeMessaging` permission, which the user grants with "Connect the Mac
+app" in the options (Preferences) and can give back there; without it, the
+host or the app the extension works exactly as before.
 
-- `NativeBridgeClient` calls `connectNative`, sends `hello` (extension
-  version, schema version, browser from `BrowserKind`), and reconnects after
-  every disconnect with a 1-60 s jittered backoff (`ReconnectBackoff`; any
-  alarm catches up a retry whose timer died with the worker).
+- `NativeBridgeClient` does nothing without the permission (no
+  `connectNative`, no timer) and follows `permissions.onAdded`/`onRemoved`.
+  With it, it calls `connectNative`, sends `hello` (extension version,
+  schema version, browser from `BrowserKind`), and reconnects after every
+  disconnect with a 1-60 s jittered backoff (`ReconnectBackoff`), slowing to
+  one attempt every 10 minutes after three "host not found" disconnects; any
+  alarm catches up a retry whose timer died with the worker.
 - `hello.ack { aggregator: "mac" }` sets `bridge.aggregator` in
-  `storage.session` (`AggregatorFlag`): the aggregation job then keeps its
-  blocks local and stops queueing them for sync (plan §3.4); a disconnect or
-  `app.unavailable` clears it.
+  `storage.session` (`AggregatorFlag`), but the flag is inert until M6:
+  `syncBlocks()` stays true, so the extension keeps queueing its blocks for
+  sync (the Mac app has no uploader yet, and a same-user process could forge
+  the ack).
 - `BridgeActivityForwarder` mirrors each stored heartbeat to the app as
   `browser.activity` (plus the closing heartbeat at a tab switch), with
   exactly what the local store keeps: never a query, a fragment or an

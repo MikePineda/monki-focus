@@ -160,6 +160,17 @@ describe('background entrypoint', () => {
     await expect.poll(() => fakeBrowser.alarms.get('pulse')).toMatchObject({ periodInMinutes: 0.5 })
   })
 
+  it('background_never_starts_the_mac_bridge_without_the_native_messaging_permission', async () => {
+    const connectNative = vi.fn()
+    Object.assign(fakeBrowser.runtime, { connectNative })
+
+    background.main()
+    await expect.poll(() => fakeBrowser.alarms.get('pulse')).toBeDefined()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(connectNative).not.toHaveBeenCalled()
+  })
+
   it('background_answers_stats_today_with_an_empty_day', async () => {
     background.main()
 

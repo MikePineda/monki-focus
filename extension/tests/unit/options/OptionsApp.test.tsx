@@ -18,6 +18,7 @@ import { bundledRulesCatalog } from '../../../src/shared/bundledRulesCatalog'
 import type { WeekStats } from '../../../src/shared/StatsContract'
 import { makeRuleset } from '../../factories/makeRuleset'
 import { fakePermissions, handlerClient } from '../../support/fakeCommandClient'
+import { fakeOptionalPermissions } from '../../support/fakeOptionalPermissions'
 import { ManualClock } from '../../support/ManualClock'
 import { renderWithI18n } from '../../support/renderWithI18n'
 
@@ -35,7 +36,7 @@ async function storedEffective(): Promise<Ruleset> {
   return (await fakeBrowser.storage.local.get(RULESET_KEY))[RULESET_KEY] as Ruleset
 }
 
-async function renderOptions(hash = '#rules') {
+async function renderOptions(hash = '#rules', grantedPermissions: readonly string[] = []) {
   await fakeBrowser.storage.local.set({ [RULESET_KEY]: makeRuleset() })
   const rules = new RuleChangeService({
     rulesets: new RulesetStore({ storage: fakeBrowser.storage.local, deviceTimeZone: () => 'UTC' }),
@@ -63,16 +64,18 @@ async function renderOptions(hash = '#rules') {
   })
   const download = vi.fn()
   const permissions = fakePermissions()
+  const optionalPermissions = fakeOptionalPermissions(grantedPermissions)
   renderWithI18n(
     <OptionsApp
       client={client}
       permissions={permissions}
+      optionalPermissions={optionalPermissions}
       download={download}
       version="0.1.0"
       initialHash={hash}
     />
   )
-  return { deleteAll, exportData, download, permissions }
+  return { deleteAll, exportData, download, permissions, optionalPermissions }
 }
 
 async function editExampleBudget(minutes: string) {
@@ -270,6 +273,41 @@ describe('options: preferences', () => {
     const checkbox = await screen.findByRole('checkbox', { name: en['preferences.storeTitles'] })
     expect(checkbox).not.toBeChecked()
     expect(checkbox).toHaveAccessibleDescription(en['preferences.storeTitles.description'])
+  })
+
+  it('connecting_the_mac_app_asks_for_native_messaging_only_on_click', async () => {
+    const { optionalPermissions } = await renderOptions('#preferences')
+
+    const connect = await screen.findByRole('button', { name: en['preferences.macApp.connect'] })
+    expect(optionalPermissions.request).not.toHaveBeenCalled()
+    await userEvent.click(connect)
+
+    expect(optionalPermissions.request).toHaveBeenCalledWith({ permissions: ['nativeMessaging'] })
+    expect(await screen.findByText(en['preferences.macApp.connected'])).toBeInTheDocument()
+  })
+
+  it('disconnecting_the_mac_app_gives_the_permission_back', async () => {
+    const { optionalPermissions } = await renderOptions('#preferences', ['nativeMessaging'])
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: en['preferences.macApp.disconnect'] })
+    )
+
+    expect(optionalPermissions.remove).toHaveBeenCalledWith({ permissions: ['nativeMessaging'] })
+    expect(
+      await screen.findByRole('button', { name: en['preferences.macApp.connect'] })
+    ).toBeInTheDocument()
+  })
+
+  it('a_refused_request_says_so_and_keeps_the_extension_on_its_own', async () => {
+    const { optionalPermissions } = await renderOptions('#preferences')
+    optionalPermissions.request.mockResolvedValueOnce(false)
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: en['preferences.macApp.connect'] })
+    )
+
+    expect(await screen.findByText(en['preferences.macApp.denied'])).toBeInTheDocument()
   })
 })
 

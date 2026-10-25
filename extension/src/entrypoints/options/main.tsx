@@ -13,6 +13,7 @@ void startPage({
     <OptionsApp
       client={client}
       permissions={browser.permissions}
+      optionalPermissions={browser.permissions}
       download={downloadFile}
       version={browser.runtime.getManifest().version}
     />
