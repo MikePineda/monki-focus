@@ -133,9 +133,11 @@ jobs:
     permissions:
       contents: read
     services:
-      # Only started when the server changed: an empty image skips the service.
+      # Always started: this job runs every workspace's tests (turbo, no
+      # filter), and the server suite needs Postgres even when only a shared
+      # package such as packages/protocol changed.
       postgres:
-        image: ${{ needs.changes.outputs.server == 'true' && 'postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe' || '' }}
+        image: postgres:17@sha256:b8faeff7712663c2773a190181e1246e37e364b887611c04658c28b44e2408fe
         env:
           POSTGRES_USER: monkifocus
           POSTGRES_PASSWORD: monkifocus
