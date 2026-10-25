@@ -8,9 +8,10 @@ import MonkiCore
 /// with the browser's window events), merged with the extension's pulsetime
 /// and written with the rest of the batch.
 ///
-/// A heartbeat more than `maxSkewSeconds` away from the app's clock is
-/// dropped: it cannot be a live heartbeat of this machine and would only
-/// distort the timeline.
+/// A heartbeat more than `maxSkewSeconds` away from the app's clock, or
+/// longer than the pulsetime, is dropped: the extension only ever sends
+/// zero-length probes, so anything else cannot be a live heartbeat of this
+/// machine and would only forge or distort the timeline.
 @MainActor
 public final class BrowserActivityRecorder {
     /// The extension's production pulsetime (`TrackingTiming`, 45 s).
@@ -52,7 +53,8 @@ public final class BrowserActivityRecorder {
     @discardableResult
     public func record(_ heartbeat: BrowserActivityPayload, from browser: HelloPayload.Browser) -> Bool {
         let now = Int(wall.now().timeIntervalSince1970.rounded(.down))
-        guard let start = try? epochSecondsOf(heartbeat.timestamp),
+        guard heartbeat.duration <= Self.browserPulsetimeSeconds,
+            let start = try? epochSecondsOf(heartbeat.timestamp),
             abs(start + heartbeat.duration - now) <= maxSkewSeconds
         else {
             BridgeLog.event("browser heartbeat outside the clock window dropped")

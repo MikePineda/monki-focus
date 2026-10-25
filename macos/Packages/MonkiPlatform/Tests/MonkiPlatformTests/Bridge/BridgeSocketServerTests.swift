@@ -23,11 +23,12 @@ final class BridgeSocketServerTests {
     private static let focus = #"{"v":1,"id":"f1","type":"browser.focus","payload":{"focused":true}}"#
 
     @discardableResult
-    private func start(maxConnections: Int = 4, peers: any PeerIdentity = SocketPeerIdentity()) throws
-        -> BridgeSocketServer
-    {
+    private func start(
+        maxConnections: Int = 4, limits: BridgeConnectionLimits = BridgeConnectionLimits(),
+        peers: any PeerIdentity = SocketPeerIdentity()
+    ) throws -> BridgeSocketServer {
         let server = BridgeSocketServer(
-            configuration: .init(socketPath: folder.socketPath, maxConnections: maxConnections),
+            configuration: .init(socketPath: folder.socketPath, maxConnections: maxConnections, limits: limits),
             handler: handler, peers: peers)
         try server.start()
         self.server = server
@@ -113,20 +114,122 @@ final class BridgeSocketServerTests {
         #expect(handler.messages.isEmpty)
     }
 
-    @Test("connections over the limit are refused")
-    func connectionsOverTheLimitAreRefused() async throws {
+    @Test("when every connection said hello, a newcomer over the limit is refused")
+    func whenEveryConnectionSaidHelloANewcomerOverTheLimitIsRefused() async throws {
         let server = try start(maxConnections: 2)
         let first = try BridgeTestClient(path: folder.socketPath)
         let second = try BridgeTestClient(path: folder.socketPath)
-        #expect(try await eventually { server.connectionCount == 2 })
-
-        let third = try BridgeTestClient(path: folder.socketPath)
-
-        #expect(try third.waitForClose())
         first.send(Self.hello)
         second.send(Self.hello)
         #expect(try first.nextMessage() != nil)
         #expect(try second.nextMessage() != nil)
+
+        let third = try BridgeTestClient(path: folder.socketPath)
+
+        #expect(try third.waitForClose())
+        #expect(server.connectionCount == 2)
+        first.send(Self.focus)
+        #expect(try await eventually { self.handler.messages.count == 3 })
+    }
+
+    @Test("silent squatters cannot lock the real helper out")
+    func silentSquattersCannotLockTheRealHelperOut() async throws {
+        let server = try start(maxConnections: 2)
+        let squatters = [try BridgeTestClient(path: folder.socketPath), try BridgeTestClient(path: folder.socketPath)]
+        #expect(try await eventually { server.connectionCount == 2 })
+
+        let helper = try BridgeTestClient(path: folder.socketPath)
+        helper.send(Self.hello)
+
+        #expect(try helper.nextMessage() == .helloAck(HelloAckPayload(appVersion: "0.1.0")))
+        #expect(try squatters[0].waitForClose())
+    }
+
+    @Test("a connection that never says hello is closed after the hello timeout")
+    func aConnectionThatNeverSaysHelloIsClosedAfterTheHelloTimeout() throws {
+        try start(limits: BridgeConnectionLimits(helloTimeoutSeconds: 0.2))
+        let silent = try BridgeTestClient(path: folder.socketPath)
+        let focusOnly = try BridgeTestClient(path: folder.socketPath)
+
+        focusOnly.send(Self.focus)
+
+        #expect(try silent.waitForClose(timeout: .seconds(2)))
+        #expect(try focusOnly.waitForClose(timeout: .seconds(2)))
+    }
+
+    @Test("an idle connection is closed after the idle timeout")
+    func anIdleConnectionIsClosedAfterTheIdleTimeout() throws {
+        try start(limits: BridgeConnectionLimits(helloTimeoutSeconds: 5, idleTimeoutSeconds: 0.3))
+        let client = try BridgeTestClient(path: folder.socketPath)
+        client.send(Self.hello)
+        #expect(try client.nextMessage() != nil)
+
+        #expect(try client.waitForClose(timeout: .seconds(3)))
+    }
+
+    @Test("a flood is cut to the rate limit and the excess dropped, not answered")
+    func aFloodIsCutToTheRateLimitAndTheExcessDroppedNotAnswered() async throws {
+        try start(limits: BridgeConnectionLimits(messagesPerSecond: 0.001, burst: 3))
+        let client = try BridgeTestClient(path: folder.socketPath)
+
+        client.send(Data(String(repeating: Self.hello + "\n", count: 20).utf8))
+
+        for _ in 0..<3 { #expect(try client.nextMessage() != nil) }
+        #expect(try client.nextLine(timeout: .milliseconds(300)) == nil)
+        #expect(!client.isClosedByServer)
+        #expect(handler.messages.count == 3)
+    }
+
+    @Test("a broadcast skips connections that never said hello")
+    func aBroadcastSkipsConnectionsThatNeverSaidHello() async throws {
+        let server = try start()
+        let greeted = try BridgeTestClient(path: folder.socketPath)
+        let silent = try BridgeTestClient(path: folder.socketPath)
+        greeted.send(Self.hello)
+        #expect(try greeted.nextMessage() != nil)
+        #expect(try await eventually { server.connectionCount == 2 })
+        let state = FocusSessionStatePayload(endsAt: nil)
+
+        server.broadcast(.focusSessionState(state))
+
+        #expect(try greeted.nextMessage() == .focusSessionState(state))
+        #expect(try silent.nextLine(timeout: .milliseconds(300)) == nil)
+    }
+
+    @Test("a socket a running app answers on is never taken over")
+    func aSocketARunningAppAnswersOnIsNeverTakenOver() throws {
+        try start()
+        let second = BridgeSocketServer(configuration: .init(socketPath: folder.socketPath), handler: handler)
+
+        #expect(throws: BridgeSocketServer.Failure.alreadyRunning) { try second.start() }
+
+        let client = try BridgeTestClient(path: folder.socketPath)
+        client.send(Self.hello)
+        #expect(try client.nextMessage() != nil)
+    }
+
+    @Test("a folder with an ACL entry or a symlinked folder is refused")
+    func aFolderWithAnACLEntryOrASymlinkedFolderIsRefused() throws {
+        try FileManager.default.createDirectory(
+            at: folder.directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        let chmod = Process()
+        chmod.executableURL = URL(filePath: "/bin/chmod")
+        chmod.arguments = ["+a", "everyone allow list", folder.directory.path]
+        try chmod.run()
+        chmod.waitUntilExit()
+        #expect(chmod.terminationStatus == 0)
+
+        #expect(throws: BridgeSocketServer.Failure.directory) { try self.start() }
+
+        let elsewhere = TemporarySocketFolder()
+        defer { elsewhere.remove() }
+        try FileManager.default.createDirectory(
+            at: elsewhere.directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        try FileManager.default.removeItem(at: folder.directory)
+        try FileManager.default.createSymbolicLink(at: folder.directory, withDestinationURL: elsewhere.directory)
+
+        #expect(throws: BridgeSocketServer.Failure.directory) { try self.start() }
+        #expect(!FileManager.default.fileExists(atPath: elsewhere.socketPath))
     }
 
     @Test("a closed connection frees its slot")
@@ -149,7 +252,10 @@ final class BridgeSocketServerTests {
         let server = try start()
         let first = try BridgeTestClient(path: folder.socketPath)
         let second = try BridgeTestClient(path: folder.socketPath)
-        #expect(try await eventually { server.connectionCount == 2 })
+        first.send(Self.hello)
+        second.send(Self.hello)
+        #expect(try first.nextMessage() != nil)
+        #expect(try second.nextMessage() != nil)
         let state = FocusSessionStatePayload(endsAt: "2026-01-05T09:30:00Z")
 
         server.broadcast(.browserFocus(BrowserFocusPayload(focused: true)))

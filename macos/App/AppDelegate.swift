@@ -61,8 +61,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startBridge(queue: HeartbeatQueue, identity: DeviceIdentity) {
         let recorder = BrowserActivityRecorder(
             queue: queue, hostname: identity.hostname, deviceId: identity.deviceId, wall: SystemClock())
+        // One bounded hand-off to the main actor, never a task per heartbeat.
+        let inbox = BrowserActivityInbox { batch in
+            for item in batch {
+                recorder.record(item.heartbeat, from: item.browser)
+            }
+        }
         let handler = AppBridgeHandler(appVersion: Self.appVersion) { heartbeat, browser in
-            Task { @MainActor in recorder.record(heartbeat, from: browser) }
+            inbox.enqueue(heartbeat, from: browser)
         }
         do {
             let server = BridgeSocketServer(
@@ -79,6 +85,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func refreshHostManifest() {
         let ids = UserDefaults.standard.stringArray(forKey: Self.extensionIdsKey) ?? []
         guard !ids.isEmpty else { return }
+        guard HostManifestPlacement.allows(bundlePath: Bundle.main.bundleURL.path) else {
+            // A translocated, disk-image or temporary copy: the helper path would not last.
+            Self.logger.notice("host manifest not written: the app does not run from an installed location")
+            return
+        }
         let helper = Bundle.main.bundleURL.appending(path: "Contents/Helpers/monki-bridge")
         do {
             try NativeHostManifestInstaller().install(NativeHostManifest(helperPath: helper.path, extensionIds: ids))

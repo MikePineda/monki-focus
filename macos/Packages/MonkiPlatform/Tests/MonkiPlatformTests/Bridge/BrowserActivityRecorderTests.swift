@@ -59,6 +59,20 @@ struct BrowserActivityRecorderTests {
         #expect(recorder.bucket(for: .brave).client == "monki-focus-web")
     }
 
+    @Test("a heartbeat longer than the pulsetime is refused")
+    func aHeartbeatLongerThanThePulsetimeIsRefused() throws {
+        var forged = heartbeat(-46)
+        forged.duration = 46
+        var closing = heartbeat(-45)
+        closing.duration = 45
+
+        #expect(!recorder.record(forged, from: .brave))
+        #expect(recorder.record(closing, from: .brave))
+        queue.flush()
+
+        #expect(try store.events("monki-web-brave_test-host").map(\.duration) == [45])
+    }
+
     @Test("a heartbeat far from the app's clock is dropped")
     func aHeartbeatFarFromTheAppsClockIsDropped() throws {
         #expect(!recorder.record(heartbeat(-3600), from: .brave))
