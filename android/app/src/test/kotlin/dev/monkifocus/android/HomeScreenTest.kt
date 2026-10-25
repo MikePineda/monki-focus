@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import dev.monkifocus.android.core.ui.MonkiTheme
 import dev.monkifocus.android.feature.onboarding.flow.SetupSnapshot
@@ -12,6 +13,7 @@ import dev.monkifocus.android.feature.onboarding.status.ProtectionState
 import dev.monkifocus.android.feature.onboarding.status.StatusChecklist
 import dev.monkifocus.android.feature.onboarding.ui.StatusTestTags
 import dev.monkifocus.android.feature.onboarding.ui.StatusUi
+import dev.monkifocus.android.feature.stats.ui.StatsTestTags
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowState
 import dev.monkifocus.android.service.accessibility.ui.OverlayTestTags
 import org.junit.Assert.assertEquals
@@ -26,6 +28,8 @@ class HomeScreenTest {
     @get:Rule
     val compose = createComposeRule()
 
+    private var openedStats = 0
+
     private fun show(home: HomeStatus) {
         val snapshot = SetupSnapshot.NOTHING.copy(notifications = home.noticePermitted, accessibilityService = true)
         val status = StatusUi(ProtectionState.ACTIVE, StatusChecklist.of(snapshot, protectionWanted = true), null, home.noticePermitted)
@@ -39,6 +43,7 @@ class HomeScreenTest {
                     onTurnOn = {},
                     onEditRules = {},
                     onExitAndUnlink = {},
+                    onOpenStats = { openedStats++ },
                 )
             }
         }
@@ -66,6 +71,15 @@ class HomeScreenTest {
         show(HomeStatus.of(serviceEnabled = true, armedByUser = true, exit = ExitFlowState.Armed, noticePermitted = true))
 
         compose.onNodeWithTag(StatusTestTags.EXIT).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun the_statistics_are_reached_from_the_home_screen() {
+        show(HomeStatus.of(serviceEnabled = true, armedByUser = true, exit = ExitFlowState.Armed, noticePermitted = true))
+
+        compose.onNodeWithTag(StatsTestTags.ENTRY).performClick()
+
+        assertEquals(1, openedStats)
     }
 
     @Test

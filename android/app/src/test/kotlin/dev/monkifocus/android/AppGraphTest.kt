@@ -2,8 +2,10 @@
 package dev.monkifocus.android
 
 import androidx.test.core.app.ApplicationProvider
+import dev.monkifocus.android.background.work.MonkiWorkerFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -20,5 +22,14 @@ class AppGraphTest {
         assertSame(application, graph.application)
         assertSame("the graph is a singleton per process", graph, application.graph)
         assertEquals(ZoneOffset.UTC, graph.wallClock.zone)
+    }
+
+    @Test
+    fun work_manager_builds_the_workers_with_the_graph() {
+        val application = ApplicationProvider.getApplicationContext<MonkiApplication>()
+
+        assertTrue(application.workManagerConfiguration.workerFactory is MonkiWorkerFactory)
+        assertSame(application.graph.usageIngest, application.graph.workers.usageIngest)
+        assertSame(application.graph.wallClock, application.graph.workers.wallClock)
     }
 }

@@ -19,6 +19,10 @@
     permission is allowed; a Play build would have to drop it (Play limits it
     to a few app categories) and keep only the optimisation-list link.
 
+  Background work (WorkManager) uses no network constraint and no exact
+  alarm, so the network-state permission WorkManager's library manifest
+  declares is removed: the merged manifest holds no network permission.
+
   Exported components: the launcher activity, and the device-admin receiver
   guarded by BIND_DEVICE_ADMIN (only the system holds it). The accessibility
   service comes from :service-accessibility, guarded by
@@ -34,6 +38,9 @@
     <uses-permission
         android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
         tools:ignore="BatteryLife" />
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
 
     <application
         android:name=".MonkiApplication"
@@ -70,6 +77,21 @@
         <receiver
             android:name=".NoticeDismissedReceiver"
             android:exported="false" />
+
+        <!--
+          WorkManager starts on demand with MonkiApplication's worker factory
+          (Configuration.Provider), so its default initializer is removed.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
     </application>
 
 </manifest>

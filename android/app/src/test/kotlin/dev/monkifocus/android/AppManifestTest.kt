@@ -34,6 +34,19 @@ class AppManifestTest {
     }
 
     @Test
+    fun merged_manifest_requests_no_network_permission_even_with_background_work() {
+        @Suppress("DEPRECATION")
+        val requested =
+            application.packageManager
+                .getPackageInfo(application.packageName, PackageManager.GET_PERMISSIONS)
+                .requestedPermissions
+                .orEmpty()
+                .toList()
+
+        assertFalse("android.permission.ACCESS_NETWORK_STATE" in requested)
+    }
+
+    @Test
     fun app_data_is_never_backed_up() {
         assertEquals(0, application.applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
     }
