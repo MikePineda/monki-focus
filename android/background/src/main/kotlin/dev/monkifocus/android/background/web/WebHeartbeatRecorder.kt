@@ -27,19 +27,35 @@ class WebHeartbeatRecorder(
 ) {
     private val writes = Mutex()
 
+    /**
+     * A page seen at [nowEpochMillis]. When the URL bar did not show the
+     * path ([pathKnown] false: a domain-only bar) neither the segment nor the
+     * surface is kept. A segment that may carry an encoded path, a session
+     * parameter or an identifier (`%`, `;`, `/`, longer than
+     * [MAX_SEGMENT_LENGTH]) is dropped: only the domain is stored.
+     */
     fun seen(
         domain: String,
         firstSegment: String?,
         surface: String?,
+        pathKnown: Boolean,
         nowEpochMillis: Long,
     ) {
         if (!ACCEPTED_ACTIVITY.matches(domain) || nowEpochMillis < 0) return
-        val path = firstSegment?.takeIf { it.isNotEmpty() && '/' !in it }?.let { "/$it" } ?: "/"
+        val segment = firstSegment?.takeIf { pathKnown && isPlainSegment(it) }
+        val path = segment?.let { "/$it" } ?: "/"
         val beat =
             ActivityEvent(
                 timestamp = utcInstantOf(Math.floorDiv(nowEpochMillis, MILLIS_PER_SECOND)),
                 duration = 0,
-                data = EventData.WebTab(domain = domain, path = path, surface = surface, audible = false, incognito = false),
+                data =
+                    EventData.WebTab(
+                        domain = domain,
+                        path = path,
+                        surface = surface.takeIf { pathKnown },
+                        audible = false,
+                        incognito = false,
+                    ),
             )
         val toWrite = synchronized(buffer) { buffer.offer(beat) }
         if (toWrite.isEmpty()) return
@@ -57,8 +73,14 @@ class WebHeartbeatRecorder(
         }
     }
 
+    private fun isPlainSegment(segment: String): Boolean =
+        segment.isNotEmpty() && segment.length <= MAX_SEGMENT_LENGTH && segment.none { it == '%' || it == ';' || it == '/' }
+
     private companion object {
         const val MILLIS_PER_SECOND = 1_000L
+
+        /** Longer first segments are more likely identifiers than sections (`/watch`, `/r`, `/wiki`). */
+        const val MAX_SEGMENT_LENGTH = 64
 
         /** What a 5-minute block accepts as an activity key; anything else (an IP literal) is not recorded. */
         val ACCEPTED_ACTIVITY = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$")

@@ -23,7 +23,7 @@ class WebHeartbeatRecorderTest {
         runTest {
             val recorder = WebHeartbeatRecorder(store, bucket, this)
 
-            recorder.seen("video.example", "watch", "video.watch", T0)
+            recorder.seen("video.example", "watch", "video.watch", pathKnown = true, nowEpochMillis = T0)
             advanceUntilIdle()
 
             val data = store.events(bucket.id).single().data as EventData.WebTab
@@ -34,12 +34,41 @@ class WebHeartbeatRecorderTest {
         }
 
     @Test
+    fun a_domain_only_url_bar_keeps_neither_segment_nor_surface() =
+        runTest {
+            val recorder = WebHeartbeatRecorder(store, bucket, this)
+
+            recorder.seen("video.example", "shorts", "video.shorts", pathKnown = false, nowEpochMillis = T0)
+            advanceUntilIdle()
+
+            val data = store.events(bucket.id).single().data as EventData.WebTab
+            assertEquals("/", data.path)
+            assertEquals(null, data.surface)
+        }
+
+    @Test
+    fun segments_that_can_carry_identifiers_keep_only_the_domain() =
+        runTest {
+            val recorder = WebHeartbeatRecorder(store, bucket, this)
+            // The first segments UrlKey yields for https://example.com/files%2Fprivate%2Fmy-medical-report?x=1,
+            // https://example.com/;jsessionid=opaque0123/inbox and an over-long identifier.
+            val segments = listOf("files%2Fprivate%2Fmy-medical-report", ";jsessionid=opaque0123", "a".repeat(65))
+
+            segments.forEachIndexed { i, segment ->
+                recorder.seen("example.com", segment, null, pathKnown = true, nowEpochMillis = T0 + i * 120_000L)
+            }
+            advanceUntilIdle()
+
+            assertEquals(List(segments.size) { "/" }, store.events(bucket.id).map { (it.data as EventData.WebTab).path })
+        }
+
+    @Test
     fun a_key_no_block_accepts_is_never_recorded() =
         runTest {
             val recorder = WebHeartbeatRecorder(store, bucket, this)
 
-            recorder.seen("", null, null, T0)
-            recorder.seen("[::1]", null, null, T0)
+            recorder.seen("", null, null, pathKnown = true, nowEpochMillis = T0)
+            recorder.seen("[::1]", null, null, pathKnown = true, nowEpochMillis = T0)
             advanceUntilIdle()
 
             assertTrue(store.all.isEmpty())
@@ -50,7 +79,16 @@ class WebHeartbeatRecorderTest {
         runTest {
             val recorder = WebHeartbeatRecorder(store, bucket, this)
 
-            (0..30 step 3).forEach { second -> recorder.seen("news.example", null, null, T0 + second * 1_000L) }
+            (0..30 step 3).forEach { second ->
+                recorder.seen(
+                    "news.example",
+                    null,
+                    null,
+                    pathKnown = true,
+                    nowEpochMillis =
+                        T0 + second * 1_000L,
+                )
+            }
             advanceUntilIdle()
 
             val event = store.events(bucket.id).single()

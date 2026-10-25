@@ -196,7 +196,7 @@ class AppGraph(
             key: UrlKey,
             nowEpochMs: Long,
         ) {
-            webHeartbeats.seen(key.host, key.firstSegment, key.surface, nowEpochMs)
+            webHeartbeats.siteSeen(key, nowEpochMs)
         }
     }
 
