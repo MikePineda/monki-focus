@@ -5,6 +5,7 @@ import dev.monkifocus.android.core.domain.ports.IntentionOutcome
 import dev.monkifocus.android.feature.stats.model.StatsTestData.at
 import dev.monkifocus.android.feature.stats.model.StatsTestData.block
 import dev.monkifocus.android.feature.stats.model.StatsTestData.intention
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -12,6 +13,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class StatsViewModelTest {
     private val blocks = ListBlockRepository()
     private val intentions = ListIntentionRepository()

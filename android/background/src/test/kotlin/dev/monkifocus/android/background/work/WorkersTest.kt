@@ -50,7 +50,7 @@ class WorkersTest {
         TestListenableWorkerBuilder
             .from(context, W::class.java)
             .setWorkerFactory(factory)
-            .build() as W
+            .build()
 
     @Test
     fun the_ingest_worker_copies_usage_events_into_blocks() {
