@@ -17,6 +17,7 @@ import dev.monkifocus.android.background.ingest.UsageIngest
 import dev.monkifocus.android.background.packs.LoaderStoredPackCheck
 import dev.monkifocus.android.background.packs.StoredPackCheck
 import dev.monkifocus.android.background.packs.StoredPackFiles
+import dev.monkifocus.android.background.web.KnownSections
 import dev.monkifocus.android.background.web.WebHeartbeatRecorder
 import dev.monkifocus.android.background.work.BackgroundDependencies
 import dev.monkifocus.android.background.work.BackgroundScheduler
@@ -42,6 +43,7 @@ import dev.monkifocus.android.service.accessibility.platform.MonkiAccessibilityS
 import dev.monkifocus.android.service.accessibility.platform.ProtectionGraph
 import dev.monkifocus.android.service.accessibility.platform.ProtectionInputs
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import java.io.File
 import java.time.Clock
 import dev.monkifocus.android.core.ui.R as CoreUiR
@@ -97,18 +99,27 @@ class AppGraph(
                     buckets = analyticsBuckets,
                     catalog = rules.catalog,
                     deviceId = { data.settings.deviceId() },
-                    categories = { now -> analyticsRuleset(now).categories },
+                    categories = { now -> analyticsRuleset(now).categories.also(knownSections::update) },
                     browserApps = ::browserPackages,
                 ),
         )
     }
 
-    /** URL-bar readings of the accessibility service → `web.tab.current` heartbeats (domain and first segment only). */
+    /**
+     * The first path segments the statistics may keep: those the bundled site
+     * profiles or a category path rule name. Refreshed with the user's rules on
+     * every ingest and when the recorder starts.
+     */
+    private val knownSections: KnownSections by lazy { KnownSections(rules.catalog) }
+
+    /** URL-bar readings of the accessibility service → `web.tab.current` heartbeats (domain, known section only). */
     private val webHeartbeats: WebHeartbeatRecorder by lazy {
+        protection.io.launch { knownSections.update(analyticsRuleset(instantOf(wallClock.millis())).categories) }
         WebHeartbeatRecorder(
-            data.activityEvents,
-            analyticsBuckets.web,
-            protection.io,
+            store = data.activityEvents,
+            bucket = analyticsBuckets.web,
+            scope = protection.io,
+            knownSection = knownSections::allows,
         )
     }
 

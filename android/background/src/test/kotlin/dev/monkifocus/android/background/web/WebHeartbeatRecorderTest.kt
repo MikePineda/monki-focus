@@ -19,9 +19,13 @@ class WebHeartbeatRecorderTest {
     private val bucket = AndroidBuckets(created = instantOf(T0)).web
 
     @Test
-    fun a_page_is_recorded_by_domain_and_first_path_segment_only() =
+    fun a_known_section_is_recorded_by_domain_and_first_path_segment_only() =
         runTest {
-            val recorder = WebHeartbeatRecorder(store, bucket, this)
+            val recorder =
+                WebHeartbeatRecorder(store, bucket, this, knownSection = { host, segment ->
+                    host == "video.example" &&
+                        segment == "watch"
+                })
 
             recorder.seen("video.example", "watch", "video.watch", pathKnown = true, nowEpochMillis = T0)
             advanceUntilIdle()
@@ -47,9 +51,20 @@ class WebHeartbeatRecorderTest {
         }
 
     @Test
-    fun segments_that_can_carry_identifiers_keep_only_the_domain() =
+    fun a_segment_no_rule_names_keeps_only_the_domain() =
         runTest {
             val recorder = WebHeartbeatRecorder(store, bucket, this)
+
+            recorder.seen("social.example", "someone", null, pathKnown = true, nowEpochMillis = T0)
+            advanceUntilIdle()
+
+            assertEquals("/", (store.events(bucket.id).single().data as EventData.WebTab).path)
+        }
+
+    @Test
+    fun segments_that_can_carry_identifiers_keep_only_the_domain_even_when_named() =
+        runTest {
+            val recorder = WebHeartbeatRecorder(store, bucket, this, knownSection = { _, _ -> true })
             // The first segments UrlKey yields for https://example.com/files%2Fprivate%2Fmy-medical-report?x=1,
             // https://example.com/;jsessionid=opaque0123/inbox and an over-long identifier.
             val segments = listOf("files%2Fprivate%2Fmy-medical-report", ";jsessionid=opaque0123", "a".repeat(65))
