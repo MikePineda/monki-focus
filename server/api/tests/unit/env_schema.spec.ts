@@ -99,18 +99,52 @@ test.group('Environment schema', () => {
     assert.throws(() => validate('NTFY_TOPIC_PREFIX', 'a'.repeat(17)))
   })
 
-  test('test_e2e_mode_is_refused_on_a_public_production_url', ({ assert }) => {
-    const base = { NODE_ENV: 'production', E2E_MODE: true }
+  test('test_boot_is_refused_for_e2e_mode_on_all_interfaces_even_with_a_loopback_url', ({
+    assert,
+  }) => {
+    const problems = crossFieldProblems({
+      NODE_ENV: 'production',
+      E2E_MODE: true,
+      HOST: '0.0.0.0',
+      APP_URL: 'http://localhost:3434',
+    })
 
-    assert.lengthOf(crossFieldProblems({ ...base, APP_URL: 'https://focus.example.org' }), 1)
-    assert.lengthOf(crossFieldProblems({ ...base, APP_URL: 'http://127.0.0.1:3434' }), 0)
-    assert.lengthOf(
-      crossFieldProblems({ NODE_ENV: 'production', APP_URL: 'https://focus.example.org' }),
-      0
+    assert.lengthOf(problems, 1)
+    assert.match(problems[0], /loopback HOST and APP_URL/)
+  })
+
+  test('test_test_grade_settings_need_loopback_host_and_url_whatever_node_env_says', ({
+    assert,
+  }) => {
+    const refused = [
+      { NODE_ENV: 'test', HOST: '0.0.0.0', APP_URL: 'http://127.0.0.1:3333' },
+      { NODE_ENV: 'test', HOST: '127.0.0.1', APP_URL: 'https://focus.example.org' },
+      { NODE_ENV: 'development', E2E_MODE: true, HOST: '::', APP_URL: 'http://[::1]:3434' },
+      { NODE_ENV: 'production', E2E_MODE: true, HOST: '10.0.0.5', APP_URL: 'http://127.0.0.1' },
+    ]
+    for (const values of refused) {
+      assert.lengthOf(crossFieldProblems(values), 1, JSON.stringify(values))
+    }
+
+    const accepted = [
+      { NODE_ENV: 'test', HOST: '127.0.0.1', APP_URL: 'http://127.0.0.1:3333' },
+      { NODE_ENV: 'production', E2E_MODE: true, HOST: '::1', APP_URL: 'http://[::1]:3434' },
+      { NODE_ENV: 'test', E2E_MODE: true, HOST: 'localhost', APP_URL: 'http://127.0.0.2:3434' },
+      { NODE_ENV: 'production', HOST: '0.0.0.0', APP_URL: 'https://focus.example.org' },
+    ]
+    for (const values of accepted) {
+      assert.lengthOf(crossFieldProblems(values), 0, JSON.stringify(values))
+    }
+  })
+
+  test('test_client_ip_header_sources_are_cidrs_or_addresses', ({ assert }) => {
+    assert.equal(
+      validate('CLIENT_IP_HEADER_FROM', ' 203.0.113.0/24, 2001:db8::/32 '),
+      '203.0.113.0/24, 2001:db8::/32'
     )
-    assert.lengthOf(
-      crossFieldProblems({ NODE_ENV: 'test', E2E_MODE: true, APP_URL: 'https://x.example' }),
-      0
-    )
+    assert.isUndefined(validate('CLIENT_IP_HEADER_FROM', '  '))
+    for (const bad of ['loopback', '203.0.113.0/33', 'example.org', '203.0.113.0/24;rm']) {
+      assert.throws(() => validate('CLIENT_IP_HEADER_FROM', bad), /CLIENT_IP_HEADER_FROM/, bad)
+    }
   })
 })

@@ -230,6 +230,34 @@ To be written with work package S9:
 - backups and restore drill;
 - health checks and monitoring.
 
+### Client IP behind a CDN
+
+Rate limits and audit entries key on the client IP (`clientIp(ctx)`,
+`server/api/app/http/client_ip.ts`). Behind a CDN, the real client is in a
+header the CDN writes (`cf-connecting-ip` for Cloudflare):
+
+- Set `CLIENT_IP_HEADER` to that header and `CLIENT_IP_HEADER_FROM` to the
+  CDN's published ranges (comma-separated CIDRs, IPv4 and IPv6). The header
+  is trusted only when the hop the local proxy forwarded is inside those
+  ranges; with `CLIENT_IP_HEADER_FROM` empty it is never trusted.
+- The edge must strip or overwrite the header on every request, and the
+  origin must only accept connections from the CDN (for example a Traefik
+  IP allow list of the same ranges). Otherwise a client reaching the origin
+  directly could pick its own rate-limit bucket.
+- Keep the ranges current when the CDN publishes changes. IPv6 clients share
+  a bucket per /64.
+
+### MIGRATE_ON_START and overlapping containers
+
+With `MIGRATE_ON_START=true`, `docker/entrypoint.mjs` runs
+`node ace migration:run --force` before the server starts. During a
+start-first update two containers can start at once: Lucid takes a Postgres
+advisory lock, so one migrates and the other fails with "Unable to acquire
+lock" and exits non-zero. That loser is expected: Swarm restarts it, the
+retry finds nothing pending and the server starts. A container that keeps
+failing to migrate never turns healthy, so the update rolls back. With more
+than one replica, set `MIGRATE_ON_START=false` and migrate out of band.
+
 ## Incident response
 
 To be written: compromised signing key (rotate, force re-pairing), leaked
