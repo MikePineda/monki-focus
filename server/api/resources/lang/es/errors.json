@@ -14,5 +14,14 @@
   "E_TWO_FACTOR_ALREADY_ENABLED": "La verificación en dos pasos ya está activada",
   "E_TWO_FACTOR_NOT_ENABLED": "La verificación en dos pasos está desactivada",
   "E_TWO_FACTOR_NOT_PENDING": "Primero inicia la configuración de la verificación en dos pasos",
-  "E_DEVICE_LIMIT_REACHED": "Ya tienes 20 dispositivos. Quita uno antes de agregar otro"
+  "E_DEVICE_LIMIT_REACHED": "Ya tienes 20 dispositivos. Quita uno antes de agregar otro",
+  "E_INVALID_PAIRING_CODE": "Este código de vinculación no es válido. Pide uno nuevo",
+  "E_PAIRING_WITH_SELF": "No puedes ser tu propio guardián",
+  "E_GUARDIAN_LINK_EXISTS": "Ya estás vinculado con esta persona",
+  "E_GUARDIAN_REGISTRATION_REJECTED": "No es posible crear esta cuenta. Revisa el código de vinculación o inicia sesión si ya tienes una cuenta",
+  "E_GUARDIAN_TWO_FACTOR_REQUIRED": "Los guardianes necesitan la verificación en dos pasos. Debe estar activa antes de que la vinculación funcione y mientras dure",
+  "E_GUARDIAN_LINK_NOT_PENDING": "Esta vinculación ya no espera confirmación",
+  "E_GUARDIAN_LINK_NOT_ACTIVE": "Esta vinculación todavía no está activa",
+  "E_NO_REVOCATION_PENDING": "No hay ninguna solicitud de salida que cancelar",
+  "E_NOTIFICATIONS_UNAVAILABLE": "Las notificaciones no están configuradas en este servidor"
 }

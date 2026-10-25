@@ -54,6 +54,22 @@ test.group('Log redaction', () => {
     assert.include(output(), 'request handled')
   })
 
+  test('test_ntfy_topics_and_pairing_payloads_never_reach_the_log', ({ assert }) => {
+    const { logger, output } = capturingLogger()
+
+    logger.info(
+      {
+        topic: SECRET,
+        link: { ntfyTopic: SECRET, ntfy_topic: SECRET },
+        body: { qrPayload: SECRET, deepLink: SECRET, subscription: { url: SECRET } },
+      },
+      'guardian link handled'
+    )
+
+    assert.notInclude(output(), SECRET)
+    assert.include(output(), 'guardian link handled')
+  })
+
   test('test_second_factors_invitation_links_and_hashes_never_reach_the_log', ({ assert }) => {
     const { logger, output } = capturingLogger()
 

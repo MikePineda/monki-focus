@@ -31,7 +31,8 @@ test.group('Database schema', () => {
       `SELECT column_name, data_type FROM information_schema.columns
         WHERE table_name IN ('scheduler_runs', 'users', 'invitations', 'user_recovery_codes',
                              'devices', 'device_enrollment_codes', 'auth_access_tokens',
-                             'device_heartbeats', 'bypass_events')
+                             'device_heartbeats', 'bypass_events', 'guardian_links',
+                             'pairing_codes', 'notification_outbox')
           AND column_name LIKE '%_at'`
     )
 
@@ -75,8 +76,14 @@ test.group('Database schema', () => {
         'bypass_events.FOREIGN KEY (ward_user_id) REFERENCES users(id) ON DELETE CASCADE',
         'device_enrollment_codes.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
         'devices.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
+        'guardian_links.FOREIGN KEY (guardian_user_id) REFERENCES users(id) ON DELETE CASCADE',
+        'guardian_links.FOREIGN KEY (revoked_by_user_id) REFERENCES users(id) ON DELETE SET NULL',
+        'guardian_links.FOREIGN KEY (ward_user_id) REFERENCES users(id) ON DELETE CASCADE',
         'invitations.FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE CASCADE',
         'invitations.FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL',
+        'notification_outbox.FOREIGN KEY (recipient_user_id) REFERENCES users(id) ON DELETE CASCADE',
+        'pairing_codes.FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL',
+        'pairing_codes.FOREIGN KEY (ward_user_id) REFERENCES users(id) ON DELETE CASCADE',
         'scheduler_runs.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
         'user_recovery_codes.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
       ]
@@ -100,6 +107,21 @@ test.group('Database schema', () => {
         'device_enrollment_codes.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL',
         'device_heartbeats.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE',
         'unlock_tokens.FOREIGN KEY (device_uuid) REFERENCES devices(uuid) ON DELETE CASCADE',
+      ]
+    )
+  })
+
+  test('test_a_pairing_code_outlives_the_link_it_made', async ({ assert }) => {
+    const result = await db.rawQuery<{ rows: Array<{ definition: string }> }>(
+      `SELECT conrelid::regclass || '.' || pg_get_constraintdef(oid) AS definition
+         FROM pg_constraint WHERE contype = 'f' AND confrelid = 'guardian_links'::regclass
+        ORDER BY 1`
+    )
+
+    assert.deepEqual(
+      result.rows.map((row) => row.definition),
+      [
+        'pairing_codes.FOREIGN KEY (guardian_link_id) REFERENCES guardian_links(id) ON DELETE SET NULL',
       ]
     )
   })

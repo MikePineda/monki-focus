@@ -9,7 +9,10 @@ import limiter from '@adonisjs/limiter/services/main'
 import { UserFactory } from '#tests/factories/user_factory'
 import InvitationService from '#services/accounts/invitation_service'
 import Device from '#models/device'
+import GuardianLink from '#models/guardian_link'
 import { enrolledDevice } from '#tests/factories/device_factory'
+import { FACTORY_PASSPHRASE } from '#tests/factories/user_factory'
+import { guardianPair } from '#tests/factories/guardian_link_factory'
 
 /**
  * Another user's resource answers 404 (never 403, which would confirm that
@@ -24,6 +27,12 @@ interface Victim {
   user: User
   invitation: Invitation
   device: Device
+  /** An active link the victim guards (two-step verification on). */
+  guarded: GuardianLink
+  /** A pending link where the victim is the ward. */
+  pending: GuardianLink
+  /** An active link where the victim, the ward, asked to leave. */
+  leaving: GuardianLink
 }
 
 interface IsolationCase {
@@ -62,17 +71,79 @@ const cases: IsolationCase[] = [
       return device.revokedAt === null && tokens.length === 1
     },
   },
+  {
+    route: 'v1.guardian.links.update',
+    method: 'patch',
+    url: (victim) => `/api/v1/guardian/links/${victim.guarded.id}`,
+    body: { maxUnlockMinutes: 5, allowNotificationActions: false },
+    untouched: async (victim) => {
+      const link = await GuardianLink.findOrFail(victim.guarded.id)
+      return link.maxUnlockMinutes === 30 && link.allowNotificationActions
+    },
+  },
+  {
+    route: 'v1.guardian.links.confirm',
+    method: 'post',
+    url: (victim) => `/api/v1/guardian/links/${victim.pending.id}/confirm`,
+    body: { password: FACTORY_PASSPHRASE },
+    untouched: async (victim) => {
+      const link = await GuardianLink.findOrFail(victim.pending.id)
+      return link.status === 'pending'
+    },
+  },
+  {
+    route: 'v1.guardian.links.revoke',
+    method: 'post',
+    url: (victim) => `/api/v1/guardian/links/${victim.guarded.id}/revoke`,
+    untouched: async (victim) => {
+      const link = await GuardianLink.findOrFail(victim.guarded.id)
+      return link.status === 'active' && link.revocationRequestedAt === null
+    },
+  },
+  {
+    route: 'v1.guardian.links.cancel_revocation',
+    method: 'post',
+    url: (victim) => `/api/v1/guardian/links/${victim.leaving.id}/cancel-revocation`,
+    untouched: async (victim) => {
+      const link = await GuardianLink.findOrFail(victim.leaving.id)
+      return link.revocationEffectiveAt !== null
+    },
+  },
+  {
+    route: 'v1.guardian.links.rotate_topic',
+    method: 'post',
+    url: (victim) => `/api/v1/guardian/links/${victim.guarded.id}/rotate-topic`,
+    untouched: async (victim) => {
+      const link = await GuardianLink.findOrFail(victim.guarded.id)
+      return link.ntfyTopic === victim.guarded.ntfyTopic
+    },
+  },
+  {
+    route: 'v1.guardian.links.subscribe',
+    method: 'get',
+    url: (victim) => `/api/v1/guardian/links/${victim.guarded.id}/subscribe`,
+    untouched: async () => true,
+  },
+  {
+    route: 'v1.guardian.wards.summary',
+    method: 'get',
+    url: (victim) => `/api/v1/guardian/wards/${victim.guarded.wardUserId}/summary`,
+    untouched: async () => true,
+  },
 ]
 
 /** Routes whose params are not ids of a user's rows (none yet). Each needs a reason. */
 const NOT_ID_SCOPED = new Map<string, string>()
 
 async function aVictim(): Promise<Victim> {
-  const user = await UserFactory.apply('admin').create()
+  const user = await UserFactory.apply('admin', 'twoFactor').create()
   const clock = await app.container.make(Clock)
   const { invitation } = await new InvitationService().create(user, null, clock.now())
   const { device } = await enrolledDevice(user)
-  return { user, invitation, device }
+  const { link: guarded } = await guardianPair({ state: 'active', guardian: user })
+  const { link: pending } = await guardianPair({ state: 'pending', ward: user })
+  const { link: leaving } = await guardianPair({ state: 'revoking', ward: user })
+  return { user, invitation, device, guarded, pending, leaving }
 }
 
 test.group('Tenant isolation', (group) => {
@@ -82,7 +153,7 @@ test.group('Tenant isolation', (group) => {
     .with(cases)
     .run(async ({ client, assert }, entry) => {
       const victim = await aVictim()
-      const attacker = await UserFactory.apply('admin').create()
+      const attacker = await UserFactory.apply('admin', 'twoFactor').create()
 
       const request = client[entry.method](entry.url(victim))
       const response = await (entry.body ? request.json(entry.body) : request).actingAs(attacker)
@@ -138,8 +209,13 @@ test.group('Tenant isolation', (group) => {
     devices.assertStatus(200)
     assert.deepEqual(devices.body().devices, [])
 
+    const links = await client.get('/api/v1/guardian/links').actingAs(attacker)
+    links.assertStatus(200)
+    assert.deepEqual(links.body().links, [])
+
     const exported = await client.get('/api/v1/me/export').actingAs(attacker)
     exported.assertStatus(200)
+    assert.deepEqual(exported.body().guardianLinks, [])
     assert.deepEqual(exported.body().invitationsCreated, [])
     assert.deepEqual(exported.body().devices, [])
     assert.deepEqual(exported.body().bypassEvents, [])

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { DateTime } from 'luxon'
 import User from '#models/user'
 import factory from '@adonisjs/lucid/factories'
 
@@ -22,5 +23,12 @@ export const UserFactory = factory
   })
   .state('spanish', (user) => {
     user.locale = 'es'
+  })
+  /**
+   * Two-step verification marked on (what guardianship checks). No seed:
+   * tests that type codes enrol through /me/two-factor instead.
+   */
+  .state('twoFactor', (user) => {
+    user.totpEnabledAt = DateTime.utc()
   })
   .build()

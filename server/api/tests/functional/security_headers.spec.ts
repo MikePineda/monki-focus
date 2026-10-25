@@ -25,7 +25,7 @@ test.group('Shield', () => {
     const response = await client.post('/api/test/tick').withCsrfToken()
 
     response.assertStatus(200)
-    response.assertBody({ jobs: ['deadman', 'device_retention'] })
+    response.assertBody({ jobs: ['deadman', 'device_retention', 'ward_revocation_effective'] })
   })
 
   test('test_a_dashboard_get_hands_out_the_xsrf_cookie', async ({ client, assert }) => {

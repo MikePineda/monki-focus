@@ -4,7 +4,8 @@ import { stdSerializers } from '@adonisjs/core/logger'
 /**
  * What never reaches a log line. The repo rule: never log tokens, pairing
  * or enrolment codes, capabilities, credentials, signing keys or personal
- * data (account seeds, recovery codes and invitation links included).
+ * data (account seeds, recovery codes, invitation links and ntfy topics
+ * included).
  * Three layers, all wired by `LOG_PRIVACY` into config/logger.ts:
  *
  * 1. `scrubLogObject` (pino `formatters.log`): walks every logged plain
@@ -57,6 +58,12 @@ const SENSITIVE_KEYS = new Set([
   'capability',
   'capabilityurl',
   'actionurl',
+  // ntfy capability topics and what carries one (subscription links, QR payloads)
+  'topic',
+  'ntfytopic',
+  'subscription',
+  'deeplink',
+  'qrpayload',
   // Signing keys
   'privatekey',
   'privatekeyencrypted',
@@ -191,6 +198,14 @@ const CAMEL_AND_SNAKE_FIELDS = [
   'capability_url',
   'actionUrl',
   'action_url',
+  'topic',
+  'ntfyTopic',
+  'ntfy_topic',
+  'subscription',
+  'deepLink',
+  'deep_link',
+  'qrPayload',
+  'qr_payload',
   'privateKey',
   'private_key',
   'privateKeyEncrypted',

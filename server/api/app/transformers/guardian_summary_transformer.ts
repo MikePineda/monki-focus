@@ -39,7 +39,8 @@ export interface GuardianSummaryInput {
   }
   readonly bypasses: {
     readonly last7Days: number
-    readonly unresolved: number
+    /** Dead-man gaps (`heartbeat_missing`) still open, whenever they started. */
+    readonly openGaps: number
     readonly recent: readonly GuardianSummaryEvent[]
   }
 }
@@ -97,7 +98,7 @@ export function guardianSummaryResource(input: GuardianSummaryInput) {
     },
     bypasses: {
       last7Days: input.bypasses.last7Days,
-      unresolved: input.bypasses.unresolved,
+      openGaps: input.bypasses.openGaps,
       recent: input.bypasses.recent.map((event) => ({
         id: event.id,
         kind: event.kind,

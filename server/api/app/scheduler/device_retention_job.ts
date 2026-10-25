@@ -8,6 +8,7 @@ import { DEADMAN_JOB } from '#scheduler/deadman_switch_job'
 import { ENROLLMENT_CODES_TABLE } from '#services/devices/enrollment_code_service'
 import { ACCESS_TOKENS_TABLE } from '#services/devices/device_tokens'
 import { DEVICE_HEARTBEATS_TABLE } from '#services/devices/heartbeat_service'
+import { PAIRING_CODES_TABLE } from '#services/guardians/pairing_code_reservation'
 
 export const DEVICE_RETENTION_JOB = 'device_retention'
 
@@ -20,6 +21,7 @@ const BATCH = 5000
 export interface RetentionResult {
   heartbeats: number
   enrollmentCodes: number
+  pairingCodes: number
   accessTokens: number
   schedulerRuns: number
 }
@@ -29,7 +31,8 @@ export interface RetentionResult {
  *
  * - heartbeats older than HEARTBEAT_RETENTION_DAYS (default 30);
  * - enrolment codes a day after they expired (used or not; a used code's
- *   device keeps its own history);
+ *   device keeps its own history), and guardian pairing codes alike (a
+ *   used code's link keeps its own);
  * - device tokens past their expiry (the grace of a rotated token);
  * - dead-man claims older than two days (one per 5-minute window).
  *
@@ -63,6 +66,11 @@ export class DeviceRetentionJob implements ScheduledJob {
       ),
       enrollmentCodes: await deleteInBatches(
         ENROLLMENT_CODES_TABLE,
+        'expires_at < ?',
+        now.minus({ days: 1 }).toJSDate()
+      ),
+      pairingCodes: await deleteInBatches(
+        PAIRING_CODES_TABLE,
         'expires_at < ?',
         now.minus({ days: 1 }).toJSDate()
       ),
