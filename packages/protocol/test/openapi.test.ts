@@ -157,15 +157,23 @@ describe('openapi.yaml', () => {
     expect(new RegExp(token.pattern).test('oat_MQ.' + 'a'.repeat(40))).toBe(false)
   })
 
-  it('test_bypass_details_cannot_carry_a_url_or_free_text', () => {
+  it('test_bypass_details_are_an_allowlist_without_free_strings', () => {
     const event = spec.components.schemas.BypassEvent as {
-      properties: { details: { additionalProperties: { pattern: string } } }
+      properties: {
+        details: {
+          additionalProperties: unknown
+          properties: Record<string, { type: string; enum?: string[] }>
+        }
+      }
+      allOf: unknown[]
     }
-    const value = new RegExp(event.properties.details.additionalProperties.pattern)
-    expect(value.test('social.video')).toBe(true)
-    for (const leak of ['https://example.com/a', 'a title with spaces', 'user@example.com']) {
-      expect(value.test(leak)).toBe(false)
+    const details = event.properties.details
+    expect(details.additionalProperties).toBe(false)
+    for (const [key, property] of Object.entries(details.properties)) {
+      const bounded = property.type === 'integer' || Array.isArray(property.enum)
+      expect(bounded, key).toBe(true)
     }
+    expect(event.allOf.length).toBeGreaterThan(0)
   })
 
   it('test_nonce_boot_and_issuer_formats_match_the_tokens', () => {

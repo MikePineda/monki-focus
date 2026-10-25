@@ -149,7 +149,7 @@ export default class DeviceEnrollment {
     })
 
     // After the commit: the token row references the committed device.
-    const token = await this.tokens.issue(device)
+    const token = await this.tokens.issue(device, now)
     return { device, token, keys: keys.keySet }
   }
 }

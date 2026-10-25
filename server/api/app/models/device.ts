@@ -15,7 +15,10 @@ export const DEVICE_TOKEN_PREFIX = 'mfd_'
 export const DEVICE_ABILITY = 'device:*'
 
 /** Random characters behind each token (about 288 bits), plus a CRC32 checksum. */
-const DEVICE_TOKEN_SECRET_LENGTH = 48
+export const DEVICE_TOKEN_SECRET_LENGTH = 48
+
+/** `auth_access_tokens.type` of device tokens. */
+export const DEVICE_TOKEN_TYPE = 'device_token'
 
 const jsonColumn = {
   prepare: (value: unknown) => (value === null ? null : JSON.stringify(value)),
@@ -33,7 +36,7 @@ export default class Device extends BaseModel {
   static accessTokens = DbAccessTokensProvider.forModel(Device, {
     prefix: DEVICE_TOKEN_PREFIX,
     table: 'auth_access_tokens',
-    type: 'device_token',
+    type: DEVICE_TOKEN_TYPE,
     tokenSecretLength: DEVICE_TOKEN_SECRET_LENGTH,
   })
 

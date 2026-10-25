@@ -60,7 +60,7 @@ export default class DeviceApiController {
     const device = auth.use('device').getUserOrFail()
     const { events } = await request.validateUsing(bypassEventsValidator)
     const checked = events.map((event, index) => {
-      const details = checkBypassDetails(event.details)
+      const details = checkBypassDetails(event.kind, event.details)
       if (!details.ok) {
         throw new DeviceApiError('validation_failed', 422, {
           [`events.${index}.details`]: 'details',

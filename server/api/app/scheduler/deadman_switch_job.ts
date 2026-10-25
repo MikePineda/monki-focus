@@ -5,7 +5,8 @@ import type { ScheduledJob, TickContext } from '#scheduler/scheduler'
 import SchedulerRuns from '#scheduler/scheduler_runs'
 import { overdueAt, wasAnnounced, type DeadmanSubject } from '#domain/devices/deadman_rule'
 import { serverDedupeKey } from '#domain/devices/bypass_dedupe_key'
-import BypassEventRecorder, { type NewBypassEvent } from '#services/devices/bypass_event_recorder'
+import BypassEventRecorder, { BYPASS_EVENTS_TABLE } from '#services/devices/bypass_event_recorder'
+import type { RaisedBypassEvent } from '#services/devices/bypass_alerts'
 
 export const DEADMAN_JOB = 'deadman'
 
@@ -15,13 +16,19 @@ export const DEADMAN_WINDOW_MINUTES = 5
 /** Devices handled per run; the rest wait for the next window. */
 const BATCH = 500
 
-interface OverdueRow {
+export interface OverdueRow {
   id: number
   uuid: string
   user_id: number
   last_seen_at: Date
   deadman_hours: number
   announced_offline_at: Date | null
+}
+
+interface InsertedRow {
+  id: number
+  ward_user_id: number
+  occurred_at: Date
 }
 
 const toSeconds = (date: Date) => Math.floor(date.getTime() / 1000)
@@ -64,17 +71,41 @@ export class DeadmanSwitchJob implements ScheduledJob {
 
   /** Stores the alerts due at `now`; answers how many were new. */
   async raise(now: DateTime): Promise<number> {
+    return this.alert(await this.overdue(now), now)
+  }
+
+  /**
+   * Protected, unrevoked devices past their threshold that have no open
+   * `heartbeat_missing` yet, oldest first. Already alerted devices are left
+   * out, so however many devices stay silent for good, a batch always
+   * reaches the newly overdue ones.
+   */
+  async overdue(now: DateTime): Promise<OverdueRow[]> {
     const result = await db.rawQuery<{ rows: OverdueRow[] }>(
-      `SELECT id, uuid, user_id, last_seen_at, deadman_hours, announced_offline_at
-         FROM devices
-        WHERE revoked_at IS NULL AND protection_active
-          AND last_seen_at <= ?::timestamptz - make_interval(hours => deadman_hours)
-        ORDER BY last_seen_at
+      `SELECT d.id, d.uuid, d.user_id, d.last_seen_at, d.deadman_hours, d.announced_offline_at
+         FROM devices d
+        WHERE d.revoked_at IS NULL AND d.protection_active
+          AND d.last_seen_at <= ?::timestamptz - make_interval(hours => d.deadman_hours)
+          AND NOT EXISTS (
+            SELECT 1 FROM ${BYPASS_EVENTS_TABLE} e
+             WHERE e.device_id = d.id AND e.kind = 'heartbeat_missing' AND e.resolved_at IS NULL)
+        ORDER BY d.last_seen_at
         LIMIT ?`,
       [now.toJSDate(), BATCH]
     )
+    return result.rows
+  }
 
-    const events = result.rows.map((row): NewBypassEvent => {
+  /**
+   * One conditional insert per device: the event is stored only while the
+   * device row still reads as scanned (same `last_seen_at`, still
+   * protected, not revoked), under the row's lock. A heartbeat that landed
+   * after the scan (it takes the same lock first) therefore never gets a
+   * false `heartbeat_missing`.
+   */
+  async alert(rows: readonly OverdueRow[], now: DateTime): Promise<number> {
+    const raised: RaisedBypassEvent[] = []
+    for (const row of rows) {
       const subject: DeadmanSubject = {
         protectionActive: true,
         revoked: false,
@@ -82,17 +113,37 @@ export class DeadmanSwitchJob implements ScheduledJob {
         deadmanHours: row.deadman_hours,
         announcedOfflineAt: row.announced_offline_at ? toSeconds(row.announced_offline_at) : null,
       }
-      return {
-        wardUserId: row.user_id,
-        deviceId: row.id,
-        kind: 'heartbeat_missing',
-        source: 'server',
-        dedupeKey: serverDedupeKey('heartbeat_missing', row.uuid, subject.lastSeenAt),
-        occurredAt: new Date(overdueAt(subject) * 1000),
-        details: { deadmanHours: row.deadman_hours, announced: wasAnnounced(subject) },
+      const details = { deadmanHours: row.deadman_hours, announced: wasAnnounced(subject) }
+      const inserted = await db.rawQuery<{ rows: InsertedRow[] }>(
+        `INSERT INTO ${BYPASS_EVENTS_TABLE}
+           (ward_user_id, device_id, kind, source, dedupe_key, occurred_at, details, created_at)
+         SELECT d.user_id, d.id, 'heartbeat_missing', 'server', ?, ?, ?::jsonb, ?
+           FROM devices d
+          WHERE d.id = ? AND d.last_seen_at = ? AND d.revoked_at IS NULL AND d.protection_active
+            FOR UPDATE
+         ON CONFLICT (ward_user_id, dedupe_key) DO NOTHING
+         RETURNING id, ward_user_id, occurred_at`,
+        [
+          serverDedupeKey('heartbeat_missing', row.uuid, subject.lastSeenAt),
+          new Date(overdueAt(subject) * 1000),
+          JSON.stringify(details),
+          now.toJSDate(),
+          row.id,
+          row.last_seen_at,
+        ]
+      )
+      for (const stored of inserted.rows) {
+        raised.push({
+          id: stored.id,
+          wardUserId: stored.ward_user_id,
+          deviceId: row.id,
+          kind: 'heartbeat_missing',
+          source: 'server',
+          occurredAt: stored.occurred_at,
+        })
       }
-    })
-    const stored = await this.recorder.record(events, now.toJSDate())
-    return stored.length
+    }
+    await this.recorder.announce(raised)
+    return raised.length
   }
 }

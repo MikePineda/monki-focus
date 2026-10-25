@@ -36,12 +36,45 @@ export default class DeviceRegistry {
       .orderBy('id', 'desc')
   }
 
-  async update(user: User, uuid: string, changes: DeviceChanges): Promise<Device> {
-    const device = await this.findActive(user, uuid)
-    if (changes.name !== undefined) device.name = changes.name
-    if (changes.deadmanHours !== undefined) device.deadmanHours = changes.deadmanHours
-    await device.save()
-    return device
+  /**
+   * Renames a device or changes its dead-man threshold. Raising the
+   * threshold takes effect at once and is recorded in the same transaction
+   * as a `deadman_threshold_raised` server event (old and new hours) for
+   * the guardian; lowering it is only stricter and records nothing.
+   */
+  async update(user: User, uuid: string, changes: DeviceChanges, now: DateTime): Promise<Device> {
+    return db.transaction(async (trx) => {
+      const device = await this.findActive(user, uuid).useTransaction(trx).forUpdate().firstOrFail()
+      const fromHours = device.deadmanHours
+      if (changes.name !== undefined) device.name = changes.name
+      if (changes.deadmanHours !== undefined) device.deadmanHours = changes.deadmanHours
+      await device.useTransaction(trx).save()
+
+      if (device.deadmanHours > fromHours) {
+        await this.events.record(
+          [
+            {
+              wardUserId: device.userId,
+              deviceId: device.id,
+              kind: 'deadman_threshold_raised',
+              source: 'server',
+              dedupeKey: serverDedupeKey(
+                'deadman_threshold_raised',
+                device.uuid,
+                Math.floor(now.toSeconds()),
+                fromHours,
+                device.deadmanHours
+              ),
+              occurredAt: now.toJSDate(),
+              details: { fromHours, toHours: device.deadmanHours },
+            },
+          ],
+          now.toJSDate(),
+          trx
+        )
+      }
+      return device
+    })
   }
 
   async revoke(user: User, uuid: string, now: DateTime): Promise<void> {
@@ -74,6 +107,6 @@ export default class DeviceRegistry {
   }
 
   protected findActive(user: User, uuid: string) {
-    return ownedBy(Device, user).where('uuid', uuid).whereNull('revoked_at').firstOrFail()
+    return ownedBy(Device, user).where('uuid', uuid).whereNull('revoked_at')
   }
 }

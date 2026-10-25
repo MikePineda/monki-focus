@@ -65,6 +65,32 @@ test.group('Devices (dashboard)', (group) => {
     assert.equal(stored.deadmanHours, 12)
   })
 
+  test('test_raising_the_dead_man_threshold_is_recorded_for_the_guardian', async ({
+    client,
+    assert,
+  }) => {
+    const alerts = fakeBypassAlerts()
+    const { user, device } = await enrolledDevice()
+    const patch = (body: object) =>
+      expectStatus(client.patch(`/api/v1/devices/${device.uuid}`).json(body).actingAs(user), 200)
+
+    await patch({ deadmanHours: 48 })
+    await patch({ deadmanHours: 48 })
+    await patch({ deadmanHours: 2 })
+    await patch({ name: 'Renamed only' })
+
+    const events = await db
+      .from(BYPASS_EVENTS_TABLE)
+      .where('ward_user_id', user.id)
+      .where('kind', 'deadman_threshold_raised')
+    assert.lengthOf(events, 1)
+    assert.equal(events[0].source, 'server')
+    assert.equal(events[0].device_id, device.id)
+    assert.deepEqual(events[0].details, { fromHours: 6, toHours: 48 })
+    assert.match(events[0].dedupe_key, /^s:deadman_threshold_raised:/)
+    assert.deepEqual(alerts.kinds(), ['deadman_threshold_raised'])
+  })
+
   test('test_invalid_device_changes_are_refused', async ({ client, assert }) => {
     const { user, device } = await enrolledDevice()
 

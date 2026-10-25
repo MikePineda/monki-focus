@@ -84,6 +84,40 @@ test.group('Enrolment codes (dashboard)', (group) => {
     await expectStatus(enrol(client, second), 201)
   })
 
+  test('test_concurrent_code_requests_leave_one_pending_code', async ({ client, assert }) => {
+    const user = await UserFactory.create()
+
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        client.post('/api/v1/devices/enrollment-codes').actingAs(user)
+      )
+    )
+
+    assert.isTrue(responses.every((response) => response.status() === 201))
+    const pending = await db
+      .from(ENROLLMENT_CODES_TABLE)
+      .where('user_id', user.id)
+      .whereNull('used_at')
+    assert.lengthOf(pending, 1)
+  })
+
+  test('test_the_schema_refuses_a_second_pending_code_for_a_user', async ({ assert }) => {
+    const user = await UserFactory.create()
+    const row = (digit: string) => ({
+      user_id: user.id,
+      lookup_hash: digit.repeat(64),
+      code_hash: digit.repeat(64),
+      expires_at: new Date(Date.now() + 600_000),
+      created_at: new Date(),
+    })
+    await db.table(ENROLLMENT_CODES_TABLE).insert(row('a'))
+
+    await assert.rejects(
+      () => db.table(ENROLLMENT_CODES_TABLE).insert(row('b')),
+      /device_enrollment_codes_pending_user/
+    )
+  })
+
   test('test_creating_codes_is_limited_to_ten_per_hour_per_user', async ({ client }) => {
     const user = await UserFactory.create()
     for (let index = 0; index < 10; index++) await newCode(client, user)

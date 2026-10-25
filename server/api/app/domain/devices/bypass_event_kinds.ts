@@ -48,6 +48,12 @@ export const SERVER_BYPASS_KINDS = [
   'protection_disabled',
   /** The device pins a key this instance does not publish (unlock-tokens.md §2). */
   'key_pin_mismatch',
+  /**
+   * The user raised a device's dead-man threshold: recorded at once (with
+   * the old and new hours) so a device going quiet cannot silently push its
+   * alert out to 48 h.
+   */
+  'deadman_threshold_raised',
   /** A new device was enrolled on the account. */
   'device_enrolled',
   /** The user revoked a device from the dashboard. */

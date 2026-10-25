@@ -206,6 +206,82 @@ test.group('Dead-man switch', (group) => {
     assert.lengthOf(await events(user.id, 'heartbeat_missing'), 0)
   })
 
+  test('test_devices_already_alerted_never_starve_a_newly_overdue_one', async ({ assert }) => {
+    const clock = freezeTime(T0)
+    const user = await UserFactory.create()
+    const longAgo = clock.now().minus({ days: 3 }).toJSDate()
+    const rows = Array.from({ length: 501 }, (_, index) => ({
+      uuid: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      user_id: user.id,
+      name: `Silent ${index}`,
+      platform: 'android',
+      client_version: '0.1.0',
+      protection_active: true,
+      enrolled_kids: JSON.stringify({ unlock: [], policy: [] }),
+      last_seen_at: longAgo,
+      created_at: longAgo,
+      updated_at: longAgo,
+    }))
+    const silent = (await db
+      .table('devices')
+      .multiInsert(rows)
+      .returning(['id', 'uuid'])) as Array<{
+      id: number
+      uuid: string
+    }>
+    await db.table(BYPASS_EVENTS_TABLE).multiInsert(
+      silent.map((device) => ({
+        ward_user_id: user.id,
+        device_id: device.id,
+        kind: 'heartbeat_missing',
+        source: 'server',
+        dedupe_key: `s:heartbeat_missing:${device.uuid}:already`,
+        occurred_at: longAgo,
+        details: '{}',
+        created_at: longAgo,
+      }))
+    )
+    const { device: fresh } = await enrolledDevice(user, {
+      protectionActive: true,
+      lastSeenAt: clock.now().minus({ hours: 7 }),
+    })
+
+    await new DeadmanSwitchJob().raise(clock.now())
+
+    const raised = await db
+      .from(BYPASS_EVENTS_TABLE)
+      .where('device_id', fresh.id)
+      .where('kind', 'heartbeat_missing')
+    assert.lengthOf(raised, 1)
+  })
+
+  test('test_a_heartbeat_landing_between_scan_and_insert_raises_no_false_alert', async ({
+    client,
+    assert,
+  }) => {
+    const clock = freezeTime(T0)
+    const alerts = fakeBypassAlerts()
+    const { user, token } = await enrolledDevice(undefined, {
+      protectionActive: true,
+      lastSeenAt: clock.now().minus({ hours: 7 }),
+    })
+    const job = new DeadmanSwitchJob()
+
+    const overdue = await job.overdue(clock.now())
+    await expectStatus(
+      client
+        .post('/api/v1/device/heartbeat')
+        .json(await heartbeatBody())
+        .asDevice(token),
+      200
+    )
+    const stored = await job.alert(overdue, clock.now())
+
+    assert.equal(stored, 0)
+    assert.lengthOf(await events(user.id, 'heartbeat_missing'), 0)
+    assert.deepEqual(alerts.kinds(), [])
+  })
+
   test('test_the_claim_window_is_five_minutes', ({ assert }) => {
     const at = (iso: string) => deadmanPeriodKey(DateTime.fromISO(iso, { zone: 'utc' }))
 
