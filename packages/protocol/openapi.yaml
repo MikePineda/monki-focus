@@ -188,8 +188,10 @@ paths:
         `BypassEvent.kind`; the server raises its own kinds itself
         (`heartbeat_missing`, `heartbeat_resumed`, `key_pin_mismatch`,
         `protection_disabled`, `deadman_threshold_raised`,
-        `device_enrolled`, `device_revoked`), which
-        a device cannot send. A heartbeat that turns `protectionActive` off
+        `device_enrolled`, `device_revoked`, and for guardian links
+        `guardian_linked`, `guardian_revocation_requested`,
+        `guardian_revocation_cancelled`, `guardian_unlinked`,
+        `guardian_topic_rotated`), which a device cannot send. A heartbeat that turns `protectionActive` off
         raises `protection_disabled`, because the dead-man switch only
         watches protected devices.
       parameters:

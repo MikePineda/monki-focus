@@ -14,5 +14,14 @@
   "E_TWO_FACTOR_ALREADY_ENABLED": "Two-step verification is already on",
   "E_TWO_FACTOR_NOT_ENABLED": "Two-step verification is off",
   "E_TWO_FACTOR_NOT_PENDING": "Start the two-step verification setup first",
-  "E_DEVICE_LIMIT_REACHED": "You already have 20 devices. Remove one before adding another"
+  "E_DEVICE_LIMIT_REACHED": "You already have 20 devices. Remove one before adding another",
+  "E_INVALID_PAIRING_CODE": "This pairing code is not valid. Ask for a new one",
+  "E_PAIRING_WITH_SELF": "You cannot be your own guardian",
+  "E_GUARDIAN_LINK_EXISTS": "You are already linked with this person",
+  "E_GUARDIAN_REGISTRATION_REJECTED": "This sign-up is not possible. Check the pairing code, or sign in if you already have an account",
+  "E_GUARDIAN_TWO_FACTOR_REQUIRED": "Guardians need two-step verification. It has to be on before the link works, and stay on while it lasts",
+  "E_GUARDIAN_LINK_NOT_PENDING": "This link is no longer waiting for confirmation",
+  "E_GUARDIAN_LINK_NOT_ACTIVE": "This link is not active yet",
+  "E_NO_REVOCATION_PENDING": "There is no request to leave to cancel",
+  "E_NOTIFICATIONS_UNAVAILABLE": "Notifications are not set up on this server"
 }

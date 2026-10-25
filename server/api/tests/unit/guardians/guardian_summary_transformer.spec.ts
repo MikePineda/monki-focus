@@ -59,7 +59,7 @@ function hostileInput(): GuardianSummaryInput {
     generatedAt: T0,
     score: { today: 72, last7Days: 64 },
     unlocks: { requested: 2, approved: 1, denied: 1 },
-    bypasses: { last7Days: 1, unresolved: 0, recent: [event] },
+    bypasses: { last7Days: 1, openGaps: 0, recent: [event] },
   } as unknown as GuardianSummaryInput
 }
 
@@ -94,7 +94,7 @@ test.group('Guardian summary transformer', () => {
     ])
     assert.deepEqual(resource.score, { today: 72, last7Days: 64 })
     assert.deepEqual(resource.unlocks, { last7Days: { requested: 2, approved: 1, denied: 1 } })
-    assert.deepEqual(Object.keys(resource.bypasses).sort(), ['last7Days', 'recent', 'unresolved'])
+    assert.deepEqual(Object.keys(resource.bypasses).sort(), ['last7Days', 'openGaps', 'recent'])
     assert.deepEqual(resource.bypasses.recent, [
       {
         id: 9,

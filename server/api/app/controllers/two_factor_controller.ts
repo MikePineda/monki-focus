@@ -6,6 +6,8 @@ import { clientIp } from '#http/client_ip'
 import { reauthValidator } from '#validators/profile'
 import PasswordReauth from '#services/accounts/password_reauth'
 import TwoFactorService from '#services/accounts/two_factor_service'
+import Guardianship from '#services/guardians/guardianship'
+import { CodedError } from '#exceptions/coded_error'
 import { refreshSessionVersion } from '#services/accounts/web_session'
 import { twoFactorRules } from '#services/accounts/account_throttles'
 import { throttleFailures } from '#services/accounts/failure_throttle'
@@ -21,6 +23,7 @@ export default class TwoFactorController {
   constructor(
     protected twoFactor: TwoFactorService,
     protected reauth: PasswordReauth,
+    protected guardianship: Guardianship,
     protected clock: Clock
   ) {}
 
@@ -50,8 +53,16 @@ export default class TwoFactorController {
     return { recoveryCodes: await this.twoFactor.regenerateRecoveryCodes(user, this.clock.now()) }
   }
 
-  /** DELETE /me/two-factor: turns TOTP off. */
+  /**
+   * DELETE /me/two-factor: turns TOTP off. Refused (409) while the user
+   * guards someone: guardianship needs a second factor for as long as it
+   * lasts (leave the link first).
+   */
   async destroy(ctx: HttpContext) {
+    const signedIn = ctx.auth.use('web').getUserOrFail()
+    if (await this.guardianship.isGuarding(signedIn, this.clock.now())) {
+      throw new CodedError('E_GUARDIAN_TWO_FACTOR_REQUIRED', 409, 'Guardians need 2FA')
+    }
     const user = await this.reauthenticate(ctx)
     await this.twoFactor.disable(user)
     return ctx.response.noContent()

@@ -97,6 +97,32 @@ test.group('Device data retention', (group) => {
     assert.lengthOf(await db.from(BYPASS_EVENTS_TABLE).where('ward_user_id', user.id), 1)
   })
 
+  test('test_pairing_codes_are_pruned_a_day_after_they_expire', async ({ assert }) => {
+    const clock = freezeTime(T0)
+    const { user } = await enrolledDevice()
+    const now = clock.now()
+    const code = (digit: string, expiresAt: Date, usedAt: Date | null) => ({
+      ward_user_id: user.id,
+      lookup_hash: hex(digit),
+      code_hash: hex(digit),
+      expires_at: expiresAt,
+      attempts: 0,
+      used_at: usedAt,
+      created_at: expiresAt,
+    })
+    await db
+      .table('pairing_codes')
+      .multiInsert([
+        code('a', now.minus({ days: 1, seconds: 1 }).toJSDate(), now.minus({ days: 2 }).toJSDate()),
+        code('b', now.minus({ hours: 23 }).toJSDate(), now.minus({ hours: 23 }).toJSDate()),
+      ])
+
+    const pruned = await new DeviceRetentionJob().prune(now)
+
+    assert.equal(pruned.pairingCodes, 1)
+    assert.lengthOf(await db.from('pairing_codes').where('ward_user_id', user.id), 1)
+  })
+
   test('test_retention_runs_once_per_day', async ({ assert }) => {
     const clock = freezeTime(T0)
     const job = new DeviceRetentionJob()

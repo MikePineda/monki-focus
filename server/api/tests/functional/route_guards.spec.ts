@@ -18,9 +18,15 @@ const SESSION_MIDDLEWARE = new Set([
 
 /**
  * Dashboard routes a guest may call: each one does its own throttled check
- * (credentials, the pending second factor, an invitation).
+ * (credentials, the pending second factor, an invitation, a pairing code).
  */
-const GUEST_ROUTES = new Set(['v1.auth.login', 'v1.auth.two_factor', 'v1.auth.register'])
+const GUEST_ROUTES = new Set([
+  'v1.auth.login',
+  'v1.auth.two_factor',
+  'v1.auth.register',
+  // The only sign-up open while REGISTRATION_OPEN is off: a ward's pairing code is the invitation.
+  'v1.auth.register_guardian',
+])
 
 /** Device routes without a token: enrolment trades a one-time code for one. */
 const DEVICE_GUEST_ROUTES = new Set(['v1.device.enroll'])

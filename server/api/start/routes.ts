@@ -20,6 +20,10 @@
 |   - /api/v1/me/*: the signed-in user's profile, password, two-factor,
 |     export and deletion.
 |   - /api/v1/devices/*: the signed-in user's devices and enrolment codes.
+|   - /api/v1/guardian/*: pairing codes and pairings, guardian links (both
+|     sides), the ntfy subscription, and a ward's summary for a guardian
+|     (only through an active link). /api/v1/auth/register-guardian is the
+|     one sign-up open while REGISTRATION_OPEN is off (a pairing code).
 |   - /api/v1/admin/*: admins only; anyone else gets the 404 of an
 |     unknown route.
 |   Only these dashboard groups get the named `session` and `shield`
@@ -50,6 +54,11 @@ const TwoFactorController = () => import('#controllers/two_factor_controller')
 const AdminInvitationsController = () => import('#controllers/admin_invitations_controller')
 const DevicesController = () => import('#controllers/devices_controller')
 const DeviceApiController = () => import('#controllers/device_api_controller')
+const GuardianPairingController = () => import('#controllers/guardian_pairing_controller')
+const GuardianRegistrationsController = () =>
+  import('#controllers/guardian_registrations_controller')
+const GuardianLinksController = () => import('#controllers/guardian_links_controller')
+const GuardianWardsController = () => import('#controllers/guardian_wards_controller')
 
 router
   .group(() => {
@@ -89,6 +98,10 @@ router
             router.post('login', [SessionsController, 'store']).as('login')
             router.post('two-factor', [SessionsController, 'twoFactorStep']).as('two_factor')
             router.post('register', [RegistrationsController, 'store']).as('register')
+            // A ward's pairing code is the invitation (throttled per IP and per code).
+            router
+              .post('register-guardian', [GuardianRegistrationsController, 'store'])
+              .as('register_guardian')
 
             router
               .group(() => {
@@ -145,6 +158,51 @@ router
           })
           .prefix('devices')
           .as('devices')
+          .use([
+            middleware.session(),
+            middleware.shield(),
+            middleware.auth(),
+            middleware.userLocale(),
+          ])
+
+        router
+          .group(() => {
+            router
+              .post('pairing-codes', [GuardianPairingController, 'storeCode'])
+              .as('pairing_codes.store')
+            router.post('pairings', [GuardianPairingController, 'redeem']).as('pairings.store')
+            router.get('links', [GuardianLinksController, 'index']).as('links.index')
+            router
+              .patch('links/:id', [GuardianLinksController, 'update'])
+              .where('id', router.matchers.number())
+              .as('links.update')
+            router
+              .post('links/:id/confirm', [GuardianLinksController, 'confirm'])
+              .where('id', router.matchers.number())
+              .as('links.confirm')
+            router
+              .post('links/:id/revoke', [GuardianLinksController, 'revoke'])
+              .where('id', router.matchers.number())
+              .as('links.revoke')
+            router
+              .post('links/:id/cancel-revocation', [GuardianLinksController, 'cancelRevocation'])
+              .where('id', router.matchers.number())
+              .as('links.cancel_revocation')
+            router
+              .post('links/:id/rotate-topic', [GuardianLinksController, 'rotateTopic'])
+              .where('id', router.matchers.number())
+              .as('links.rotate_topic')
+            router
+              .get('links/:id/subscribe', [GuardianLinksController, 'subscribe'])
+              .where('id', router.matchers.number())
+              .as('links.subscribe')
+            router
+              .get('wards/:wardUserId/summary', [GuardianWardsController, 'summary'])
+              .where('wardUserId', router.matchers.number())
+              .as('wards.summary')
+          })
+          .prefix('guardian')
+          .as('guardian')
           .use([
             middleware.session(),
             middleware.shield(),
