@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:bridge-hello-ack:v1",
+  "title": "hello.ack (app to extension)",
+  "description": "The app's answer to hello. `aggregator: mac` means the Mac app aggregates and syncs this device's activity, so the extension stops syncing its own blocks and keeps only its local stats (plan §3.4 dedupe).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["aggregator", "appVersion", "schemaVersion"],
+  "properties": {
+    "aggregator": {
+      "const": "mac"
+    },
+    "appVersion": {
+      "type": "string",
+      "maxLength": 32,
+      "pattern": "^[0-9]{1,9}(\\.[0-9]{1,9}){0,3}$"
+    },
+    "schemaVersion": {
+      "const": 1
+    }
+  }
+}

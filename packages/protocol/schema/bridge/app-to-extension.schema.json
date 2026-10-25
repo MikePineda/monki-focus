@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:bridge-app-to-extension:v1",
+  "title": "monki-focus native messaging: app to extension (v1)",
+  "description": "What the extension (and monki-bridge, at the envelope level) accepts from the macOS app. `app.unavailable` is written by monki-bridge itself when the app is not running. An `unlock.token` is untrusted until the extension verifies it.",
+  "allOf": [
+    {
+      "$ref": "urn:monki-focus:protocol:bridge-envelope:v1"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "hello.ack",
+            "rules.snapshot",
+            "unlock.token",
+            "focusSession.state",
+            "app.unavailable"
+          ]
+        }
+      }
+    }
+  ]
+}

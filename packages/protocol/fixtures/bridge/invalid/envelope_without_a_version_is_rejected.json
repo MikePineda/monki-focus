@@ -1,0 +1,12 @@
+{
+  "name": "envelope_without_a_version_is_rejected",
+  "direction": "extension-to-app",
+  "reason": "invalid_envelope",
+  "message": {
+    "id": "a",
+    "type": "browser.focus",
+    "payload": {
+      "focused": true
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "text_that_is_not_json_is_rejected",
+  "direction": "extension-to-app",
+  "reason": "invalid_json",
+  "text": "{\"v\":1,\"id\":\"a\",\"type\":"
+}

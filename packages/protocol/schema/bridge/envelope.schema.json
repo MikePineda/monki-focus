@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:bridge-envelope:v1",
+  "title": "monki-focus native messaging envelope (v1)",
+  "description": "Every message between the extension, monki-bridge and the macOS app: {v, id, type, payload}. The payload of each type has its own schema in this folder. Which side may send which type is fixed by extension-to-app.schema.json and app-to-extension.schema.json. Serialised as compact UTF-8 JSON of at most 1048576 bytes (docs/CONTRACTS.md, Native messaging).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "id", "type", "payload"],
+  "properties": {
+    "v": {
+      "description": "Envelope version.",
+      "const": 1
+    },
+    "id": {
+      "description": "Sender-chosen message id (a random uuid). Opaque to the receiver; nothing is ever keyed or logged by it.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+    },
+    "type": {
+      "enum": [
+        "hello",
+        "browser.focus",
+        "browser.activity",
+        "bypass.event",
+        "hello.ack",
+        "rules.snapshot",
+        "unlock.token",
+        "focusSession.state",
+        "app.unavailable"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "hello"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "urn:monki-focus:protocol:bridge-hello:v1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "browser.focus"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "urn:monki-focus:protocol:bridge-browser-focus:v1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "browser.activity"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "urn:monki-focus:protocol:bridge-browser-activity:v1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "bypass.event"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "urn:monki-focus:protocol:bridge-bypass-event:v1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "hello.ack"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "urn:monki-focus:protocol:bridge-hello-ack:v1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "rules.snapshot"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "urn:monki-focus:protocol:bridge-rules-snapshot:v1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "unlock.token"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "urn:monki-focus:protocol:bridge-unlock-token:v1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "focusSession.state"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "urn:monki-focus:protocol:bridge-focus-session-state:v1"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "const": "app.unavailable"
+          }
+        }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "$ref": "urn:monki-focus:protocol:bridge-app-unavailable:v1"
+          }
+        }
+      }
+    }
+  ]
+}

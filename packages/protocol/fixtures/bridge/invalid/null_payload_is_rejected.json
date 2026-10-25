@@ -1,0 +1,11 @@
+{
+  "name": "null_payload_is_rejected",
+  "direction": "app-to-extension",
+  "reason": "payload_not_object",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "app.unavailable",
+    "payload": null
+  }
+}

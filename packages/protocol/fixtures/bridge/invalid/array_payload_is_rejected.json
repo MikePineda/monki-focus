@@ -1,0 +1,11 @@
+{
+  "name": "array_payload_is_rejected",
+  "direction": "extension-to-app",
+  "reason": "payload_not_object",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "browser.focus",
+    "payload": [true]
+  }
+}

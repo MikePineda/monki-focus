@@ -1,0 +1,13 @@
+{
+  "name": "envelope_type_that_is_not_a_string_is_rejected",
+  "direction": "extension-to-app",
+  "reason": "invalid_envelope",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": 7,
+    "payload": {
+      "focused": true
+    }
+  }
+}

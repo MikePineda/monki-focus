@@ -1,0 +1,12 @@
+{
+  "name": "unlock_token_carries_an_unverified_paseto",
+  "direction": "app-to-extension",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "unlock.token",
+    "payload": {
+      "token": "v4.public.c3ludGhldGljLW5vdC1hLXJlYWwtdG9rZW4.eyJraWQiOiJ0ZXN0LW9ubHkifQ"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "envelope_id_with_a_space_is_rejected",
+  "direction": "extension-to-app",
+  "reason": "invalid_envelope",
+  "message": {
+    "v": 1,
+    "id": "not ok",
+    "type": "browser.focus",
+    "payload": {
+      "focused": true
+    }
+  }
+}

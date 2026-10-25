@@ -1,0 +1,13 @@
+{
+  "name": "app_unavailable_with_a_payload_field_is_rejected",
+  "direction": "app-to-extension",
+  "reason": "invalid_payload",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "app.unavailable",
+    "payload": {
+      "reason": "not running"
+    }
+  }
+}

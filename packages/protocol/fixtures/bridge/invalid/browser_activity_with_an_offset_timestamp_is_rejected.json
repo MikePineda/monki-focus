@@ -1,0 +1,21 @@
+{
+  "name": "browser_activity_with_an_offset_timestamp_is_rejected",
+  "direction": "extension-to-app",
+  "reason": "invalid_payload",
+  "message": {
+    "v": 1,
+    "id": "f3b0c1d2-0000-4000-8000-000000000001",
+    "type": "browser.activity",
+    "payload": {
+      "timestamp": "2026-01-05T19:00:00+10:00",
+      "duration": 0,
+      "data": {
+        "domain": "example.com",
+        "path": "/articles",
+        "surface": null,
+        "audible": false,
+        "incognito": false
+      }
+    }
+  }
+}

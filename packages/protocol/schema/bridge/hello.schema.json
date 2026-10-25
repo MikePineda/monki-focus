@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:monki-focus:protocol:bridge-hello:v1",
+  "title": "hello (extension to app)",
+  "description": "First message on every connection: who is talking. The app answers with hello.ack.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["extensionVersion", "schemaVersion", "browser"],
+  "properties": {
+    "extensionVersion": {
+      "description": "The extension manifest version (one to four dot-separated integers).",
+      "type": "string",
+      "maxLength": 32,
+      "pattern": "^[0-9]{1,9}(\\.[0-9]{1,9}){0,3}$"
+    },
+    "schemaVersion": {
+      "description": "Version of this bridge contract the extension speaks.",
+      "const": 1
+    },
+    "browser": {
+      "description": "The browser the extension runs in; names the app's web bucket (monki-web-<browser>_<host>).",
+      "enum": ["brave", "chrome", "other"]
+    }
+  }
+}
