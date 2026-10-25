@@ -42,6 +42,13 @@ describe('default categories', () => {
     expect(levelOf('surface:youtube.watch')).toBe(50)
   })
 
+  it('youtube_you_page_is_neutral_by_decision_not_by_fallback', () => {
+    expect(assignments.find((a) => keyOf(a) === 'surface:youtube.library')).toMatchObject({
+      level: 50,
+      category: 'video',
+    })
+  })
+
   it('youtube_feed_surfaces_are_categorised', () => {
     expect(levelOf('surface:youtube.explore')).toBe(25)
     expect(levelOf('surface:youtube.subscriptions')).toBe(50)
