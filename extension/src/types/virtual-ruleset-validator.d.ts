@@ -12,3 +12,7 @@ declare module 'virtual:monki-ruleset-validator' {
   }
   export const validateRuleset: GeneratedValidator
 }
+
+declare module 'virtual:monki-escalation-validator' {
+  export const validateEscalationState: (value: unknown) => boolean
+}

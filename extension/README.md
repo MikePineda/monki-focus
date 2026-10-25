@@ -381,7 +381,11 @@ what it returns and turns it into the page's view (`src/shared/GateContract.ts`)
   at build time (Ajv standalone, same options) into
   `virtual:monki-ruleset-validator`; `src/shared/RulesetValidation.ts`
   answers the same rejection codes, and a test runs every `invalid` fixture
-  through both validators. Every build and zip ends with
+  through both validators. The same plugin serves
+  `virtual:monki-escalation-validator` (`escalation.schema.json#/$defs/state`),
+  which checks every stored escalation entry before it reaches the engine
+  (`EscalationEntryGuard.ts`, with an engine probe for the instants the
+  `date-time` format admits but the engine refuses). Every build and zip ends with
   `config/bundleEvalCheck.ts`, which fails on any `Function(`,
   `new Function` or `eval(` in the output (an E2E spec checks the built
   folders too).
