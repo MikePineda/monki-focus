@@ -179,6 +179,9 @@ export const envSchema = {
   SENTRY_DSN_WEB: Env.schema.string.optional({ format: 'url', tld: false }),
 }
 
+/** Shortest APP_KEY accepted with NODE_ENV=production (it encrypts sessions and signing keys). */
+export const MIN_PRODUCTION_APP_KEY_LENGTH = 32
+
 /** Names of every validated variable (the `.env.example` parity test reads it). */
 export const ENV_NAMES = Object.keys(envSchema) as Array<keyof typeof envSchema>
 
@@ -191,6 +194,8 @@ export function crossFieldProblems(values: {
   E2E_MODE?: boolean
   HOST: string
   APP_URL: string
+  /** Length of APP_KEY only: the key itself never reaches this check. */
+  APP_KEY_LENGTH?: number
   /** Released secret: only checked here, never printed. */
   UNLOCK_SIGNING_KEY?: string
   UNLOCK_SIGNING_KEY_ID?: string
@@ -202,6 +207,15 @@ export function crossFieldProblems(values: {
   if (testGrade && !(isLoopbackHost(values.HOST) && isLoopbackUrl(values.APP_URL))) {
     problems.push(
       'NODE_ENV=test and E2E_MODE need a loopback HOST and APP_URL (127.0.0.0/8, ::1 or localhost)'
+    )
+  }
+  // APP_KEY encrypts the signing keys at rest: production needs a real one.
+  if (
+    values.NODE_ENV === 'production' &&
+    (values.APP_KEY_LENGTH ?? 0) < MIN_PRODUCTION_APP_KEY_LENGTH
+  ) {
+    problems.push(
+      `APP_KEY must be at least ${MIN_PRODUCTION_APP_KEY_LENGTH} characters in production (generate one with \`node ace generate:key\`)`
     )
   }
   // The operator's unlock key: both variables or neither, a valid Ed25519

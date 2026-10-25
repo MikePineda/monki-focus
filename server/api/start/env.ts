@@ -21,6 +21,7 @@ const problems = crossFieldProblems({
   E2E_MODE: env.get('E2E_MODE'),
   HOST: env.get('HOST'),
   APP_URL: env.get('APP_URL'),
+  APP_KEY_LENGTH: env.get('APP_KEY').release().length,
   UNLOCK_SIGNING_KEY: env.get('UNLOCK_SIGNING_KEY')?.release(),
   UNLOCK_SIGNING_KEY_ID: env.get('UNLOCK_SIGNING_KEY_ID'),
 })

@@ -147,6 +147,11 @@ export default class SigningKeyStore {
     })
   }
 
+  /** Kids whose private keys this store holds in memory (at most one per purpose). */
+  cachedKids(): string[] {
+    return [...this.#loaded.keys()].sort()
+  }
+
   /** The active key of a purpose, ready to sign. Retired keys never sign. */
   async signingKey(purpose: KeyPurpose): Promise<SigningKeyMaterial> {
     return this.#activeMaterial(db.connection(), purpose)
@@ -284,6 +289,11 @@ export default class SigningKeyStore {
     const checked = checkStoredKey(record, material)
     if (!checked.ok) {
       throw new SigningKeyError(checked.reason, `signing key ${record.kid} does not match its row`)
+    }
+    // One cached key per purpose: a rotation done by another process (ace,
+    // another replica) never leaves the retired key's private half in memory.
+    for (const [kid, loaded] of this.#loaded) {
+      if (loaded.purpose === record.purpose) this.#loaded.delete(kid)
     }
     this.#loaded.set(record.kid, material)
     return material

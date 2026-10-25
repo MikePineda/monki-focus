@@ -109,6 +109,7 @@ test.group('Environment schema', () => {
       E2E_MODE: true,
       HOST: '0.0.0.0',
       APP_URL: 'http://localhost:3434',
+      APP_KEY_LENGTH: 32,
     })
 
     assert.lengthOf(problems, 1)
@@ -122,7 +123,13 @@ test.group('Environment schema', () => {
       { NODE_ENV: 'test', HOST: '0.0.0.0', APP_URL: 'http://127.0.0.1:3333' },
       { NODE_ENV: 'test', HOST: '127.0.0.1', APP_URL: 'https://focus.example.org' },
       { NODE_ENV: 'development', E2E_MODE: true, HOST: '::', APP_URL: 'http://[::1]:3434' },
-      { NODE_ENV: 'production', E2E_MODE: true, HOST: '10.0.0.5', APP_URL: 'http://127.0.0.1' },
+      {
+        NODE_ENV: 'production',
+        E2E_MODE: true,
+        HOST: '10.0.0.5',
+        APP_URL: 'http://127.0.0.1',
+        APP_KEY_LENGTH: 32,
+      },
     ]
     for (const values of refused) {
       assert.lengthOf(crossFieldProblems(values), 1, JSON.stringify(values))
@@ -130,9 +137,20 @@ test.group('Environment schema', () => {
 
     const accepted = [
       { NODE_ENV: 'test', HOST: '127.0.0.1', APP_URL: 'http://127.0.0.1:3333' },
-      { NODE_ENV: 'production', E2E_MODE: true, HOST: '::1', APP_URL: 'http://[::1]:3434' },
+      {
+        NODE_ENV: 'production',
+        E2E_MODE: true,
+        HOST: '::1',
+        APP_URL: 'http://[::1]:3434',
+        APP_KEY_LENGTH: 32,
+      },
       { NODE_ENV: 'test', E2E_MODE: true, HOST: 'localhost', APP_URL: 'http://127.0.0.2:3434' },
-      { NODE_ENV: 'production', HOST: '0.0.0.0', APP_URL: 'https://focus.example.org' },
+      {
+        NODE_ENV: 'production',
+        HOST: '0.0.0.0',
+        APP_URL: 'https://focus.example.org',
+        APP_KEY_LENGTH: 64,
+      },
     ]
     for (const values of accepted) {
       assert.lengthOf(crossFieldProblems(values), 0, JSON.stringify(values))
@@ -152,7 +170,12 @@ test.group('Environment schema', () => {
   test('test_unlock_signing_key_and_its_kid_go_together_and_never_print', ({ assert }) => {
     const key = testOnlyKey('test-key-not-real-unlock-a')
     const other = testOnlyKey('test-key-not-real-unlock-b')
-    const base = { NODE_ENV: 'production', HOST: '0.0.0.0', APP_URL: 'https://focus.example.org' }
+    const base = {
+      NODE_ENV: 'production',
+      HOST: '0.0.0.0',
+      APP_URL: 'https://focus.example.org',
+      APP_KEY_LENGTH: 32,
+    }
     const pkcs8 = exportPkcs8(key)
 
     assert.lengthOf(crossFieldProblems({ ...base }), 0)
@@ -171,5 +194,39 @@ test.group('Environment schema', () => {
       assert.match(problems[0], /UNLOCK_SIGNING_KEY/)
       assert.notInclude(problems[0], pkcs8.slice(-24))
     }
+  })
+  test('test_production_needs_an_app_key_of_at_least_32_characters', ({ assert }) => {
+    const base = { HOST: '0.0.0.0', APP_URL: 'https://focus.example.org' }
+
+    for (const length of [undefined, 0, 16, 31]) {
+      const problems = crossFieldProblems({
+        ...base,
+        NODE_ENV: 'production',
+        APP_KEY_LENGTH: length,
+      })
+      assert.lengthOf(problems, 1, String(length))
+      assert.match(problems[0], /APP_KEY must be at least 32 characters/)
+    }
+    assert.lengthOf(crossFieldProblems({ ...base, NODE_ENV: 'production', APP_KEY_LENGTH: 32 }), 0)
+    assert.lengthOf(
+      crossFieldProblems({
+        NODE_ENV: 'test',
+        HOST: '127.0.0.1',
+        APP_URL: 'http://127.0.0.1:3333',
+        APP_KEY_LENGTH: 16,
+      }),
+      0
+    )
+  })
+
+  test('test_every_shipped_production_app_key_is_long_enough', async ({ assert }) => {
+    const { readFile } = await import('node:fs/promises')
+    const { default: app } = await import('@adonisjs/core/services/app')
+    const compose = await readFile(app.makePath('../../docker-compose.yml'), 'utf8')
+    const e2e = await readFile(app.makePath('../../e2e/e2e.env'), 'utf8')
+    const keys = [...`${compose}\n${e2e}`.matchAll(/APP_KEY[:=]\s*(\S+)/g)].map((match) => match[1])
+
+    assert.isAbove(keys.length, 1)
+    for (const key of keys) assert.isAtLeast(key.length, 32, key)
   })
 })
