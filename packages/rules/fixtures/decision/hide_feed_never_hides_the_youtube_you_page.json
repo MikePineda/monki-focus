@@ -1,0 +1,59 @@
+{
+  "id": "decision.hide_feed_never_hides_the_youtube_you_page",
+  "kind": "decision",
+  "description": "The You page on mobile web is a utility surface: a site-wide hide-feed rule on YouTube leaves it shown.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "r-youtube-hide",
+          "target": {
+            "kind": "site",
+            "domain": "youtube.com"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      }
+    },
+    "now": "2026-10-26T10:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://m.youtube.com/feed/you"
+    }
+  },
+  "then": {
+    "access": "allow",
+    "content": "show",
+    "ruleId": "r-youtube-hide",
+    "reason": "permalink_never_hidden",
+    "explanationKey": "decision.permalink_never_hidden",
+    "validUntil": "2026-10-26T23:00:00Z"
+  }
+}

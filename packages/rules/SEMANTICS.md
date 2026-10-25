@@ -667,7 +667,9 @@ decisions are folded into the sections above):
 11. `start == end` in a schedule means 24 hours.
 12. Reddit user pages are `reddit.user_feed` (feed), multireddits are
     `reddit.feed`; YouTube subscriptions (`youtube.subscriptions`) and
-    explore/trending/hashtags (`youtube.explore`) are feeds; Instagram Explore
+    explore/trending/hashtags (`youtube.explore`) are feeds, while the You
+    page (`/feed/you`: history, playlists, watch later) is `youtube.library`
+    (utility), so hiding YouTube's feeds never empties it; Instagram Explore
     search is `instagram.search` (utility). The starter preset hides
     `youtube.explore` but not subscriptions or user pages.
 

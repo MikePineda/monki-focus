@@ -6,9 +6,10 @@
   "surfaces": {
     "youtube.home": ["/"],
     "youtube.subscriptions": ["/feed/subscriptions"],
-    "youtube.explore": ["/feed/explore", "/feed/trending", "/hashtag/*", "/gaming", "/feed/you"],
+    "youtube.explore": ["/feed/explore", "/feed/trending", "/hashtag/*", "/gaming"],
     "youtube.shorts": ["/shorts/**"],
     "youtube.watch": ["/watch", "/live/*"],
-    "youtube.search": ["/results"]
+    "youtube.search": ["/results"],
+    "youtube.library": ["/feed/you"]
   }
 }

@@ -82,6 +82,7 @@ describe('data files', () => {
       'x.search',
       'x.messages',
       'youtube.search',
+      'youtube.library',
       'instagram.direct',
     ]) {
       expect(kinds.get(id), id).toBe('utility')
@@ -151,6 +152,8 @@ describe('data files', () => {
     expect(youtube?.profile.surfaces['youtube.explore']).toEqual(
       expect.arrayContaining(['/feed/explore', '/feed/trending', '/hashtag/*'])
     )
+    expect(youtube?.profile.surfaces['youtube.explore']).not.toContain('/feed/you')
+    expect(youtube?.profile.surfaces['youtube.library']).toEqual(['/feed/you'])
   })
 
   it('instagram_explore_search_is_utility_and_tags_are_feed', () => {
