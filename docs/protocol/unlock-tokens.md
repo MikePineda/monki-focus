@@ -120,9 +120,21 @@ strict policy.
   against a key it already pins, `kid` is derived from `x` and `x` passes
   §1.1; it then keeps the endorsing key and the new key and drops any other.
   Clients refresh `/keys` when the heartbeat's `keysEtag` changes, or once
-  when a token names an unknown kid. _Endorsement tokens are specified here
-  and in `openapi.yaml`; their reference implementation and vectors land
-  with work package S3._
+  when a token names an unknown kid. An endorsement is verified like any
+  other token (§5): steps 1 to 11 with the assertion above and `typ: "key"`;
+  then `iss` equals the pinned issuer (`issuer_mismatch`) and `use` the
+  keyring purpose (`binding_mismatch`); `x` passes §1.1, `kid` is derived
+  from it and differs from the endorsing kid (`invalid_claims`); then steps
+  13, 14 (90 days) and 16. Schema:
+  [`key-endorsement.claims.schema.json`](../../packages/protocol/schema/key-endorsement.claims.schema.json);
+  reference: [`verify_key_endorsement.ts`](../../packages/protocol/src/verify_key_endorsement.ts),
+  [`adopt_endorsed_key.ts`](../../packages/protocol/src/adopt_endorsed_key.ts)
+  and [`issue_key_endorsement.ts`](../../packages/protocol/src/issue_key_endorsement.ts).
+- **Server key lifecycle.** The server keeps one active key per purpose and
+  at most one retired key, which it still publishes in `/keys` (status
+  `retired`) until an operator prunes it, after the longest token it signed
+  can have expired. A rotation therefore never leaves more than two
+  verifiable keys per purpose.
 - **Compromise.** A leaked signing key cannot be rotated away (its holder could
   endorse a key of their own). Recovery is re-enrolling every device, which
   pins a fresh key and shows its kid again.
@@ -187,22 +199,22 @@ platform's JSON parser sees the same document.
 
 ### 4.1 Unlock token (`typ: "unlock"`)
 
-| Claim   | Type    | Format and meaning                                                                                        |
-| ------- | ------- | --------------------------------------------------------------------------------------------------------- |
-| `v`     | integer | Always `1`.                                                                                               |
-| `typ`   | string  | Always `"unlock"`.                                                                                        |
-| `iss`   | string  | Instance origin (§3 issuer profiles).                                                                     |
-| `sub`   | string  | User id on the instance, `^[A-Za-z0-9_-]{1,64}$`.                                                         |
-| `dev`   | string  | Device uuid (lowercase canonical UUID). Equals the device verifying it.                                   |
-| `rule`  | string  | Id of the rule being lifted, `^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$`.                                        |
-| `scope` | object  | `{kind, value[, includeSubdomains]}`, kinds `domain`, `path`, `app` (§4.5).                               |
-| `dur_s` | integer | Length of the unlock once activated, 60 to 7200 seconds, and at most `exp - iat`.                         |
-| `iat`   | string  | Issued at, server time. Only ever raises the trusted-time floor (§6), never anchors.                      |
-| `nbf`   | string  | Not before, server time; `iat <= nbf`.                                                                    |
-| `exp`   | string  | Expiry, server time; `nbf < exp` and `exp - iat <= 4 h`.                                                  |
-| `jti`   | string  | Token id (UUID, 128 bits), the replay-store key.                                                          |
-| `req`   | string  | Uuid of the unlock request this token answers.                                                            |
-| `pol`   | string  | base64url SHA-256 of the signed policy in force when the request was made (the heartbeat's `policyHash`). |
+| Claim   | Type    | Format and meaning                                                                                                            |
+| ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `v`     | integer | Always `1`.                                                                                                                   |
+| `typ`   | string  | Always `"unlock"`.                                                                                                            |
+| `iss`   | string  | Instance origin (§3 issuer profiles).                                                                                         |
+| `sub`   | string  | User id on the instance, `^[A-Za-z0-9_-]{1,64}$`.                                                                             |
+| `dev`   | string  | Device uuid (lowercase canonical UUID). Equals the device verifying it.                                                       |
+| `rule`  | string  | Id of the rule being lifted, `^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$`.                                                            |
+| `scope` | object  | `{kind, value[, includeSubdomains]}`, kinds `domain`, `path`, `app` (§4.5).                                                   |
+| `dur_s` | integer | Length of the unlock once activated, 60 to 7200 seconds, and at most `exp - iat`.                                             |
+| `iat`   | string  | Issued at, server time. Only ever raises the trusted-time floor (§6), never anchors.                                          |
+| `nbf`   | string  | Not before, server time; `iat <= nbf`.                                                                                        |
+| `exp`   | string  | Expiry, server time; `nbf < exp` and `exp - iat <= 4 h`.                                                                      |
+| `jti`   | string  | Token id (UUID, 128 bits), the replay-store key.                                                                              |
+| `req`   | string  | Uuid of the unlock request this token answers.                                                                                |
+| `pol`   | string  | base64url SHA-256 of the message bytes of the policy token in force when the request was made (the heartbeat's `policyHash`). |
 
 ### 4.2 Policy token (`typ: "policy"`)
 
@@ -439,6 +451,7 @@ which is why unlock lifetimes are short (residual risk).
 | `fixtures/unlock-tokens/*.json`          | Unlock-token vectors, one file per case.                                   |
 | `fixtures/policy-tokens/*.json`          | Policy-token vectors.                                                      |
 | `fixtures/time-tokens/*.json`            | Time-token vectors (`verify` has `nonce` and `boot` instead of `now`).     |
+| `fixtures/key-endorsements/*.json`       | Key endorsement vectors (`verify.purpose` is the keyring's key purpose).   |
 | `fixtures/state-machines/*.json`         | Trusted time, receipt, activation and ledger event sequences (§8).         |
 | `fixtures/scope-match/cases.json`        | Scope matching (§4.5).                                                     |
 | `fixtures/ed25519-edge/`                 | Wycheproof EddsaVerify and speccheck cases with strict verdicts (§1.1).    |
@@ -553,7 +566,8 @@ token, a nonce, a key or a footer.
    is ever applied without a fresh policy).
 2. Whether an unlock `scope` of kind `rule` (lift one rule everywhere) is
    wanted; it is deliberately absent from v1.
-3. The exact content of `pol` (proposal: SHA-256 of the policy token's
-   message bytes) is fixed by work package S3.
+3. ~~The exact content of `pol`~~ Decided: the unpadded base64url SHA-256
+   of the policy token's message bytes, the canonical claims (§4.0);
+   reference [`policy_hash.ts`](../../packages/protocol/src/policy_hash.ts).
 4. Exact QR payload format for enrolment (`{code, issuer, kids}`) is fixed by
    the dashboard work package.

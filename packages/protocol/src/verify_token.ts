@@ -34,6 +34,7 @@ import {
   canonicalUnlockMessage,
 } from './canonical_claims.ts'
 import { checkClaimTimes, checkTimeWindow, type ClaimTimes } from './claim_times.ts'
+import { decodeClaimsMessage } from './claims_message.ts'
 import { constantTimeEqual } from './constant_time_equal.ts'
 import {
   implicitAssertion,
@@ -86,20 +87,6 @@ export interface VerifiedTimeToken {
   readonly kid: string
 }
 
-const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
-
-function decodeMessage(message: Uint8Array): { text: string; value: object } | undefined {
-  try {
-    const text = utf8.decode(message)
-    const value: unknown = JSON.parse(text)
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? { text, value }
-      : undefined
-  } catch {
-    return undefined
-  }
-}
-
 interface AuthenticatedClaims<C> {
   readonly claims: C
   readonly kid: string
@@ -150,7 +137,7 @@ function authenticate<C extends { readonly iss: string; readonly dev: string }>(
   }
 
   // 8-11. Claims, only now that they are authenticated.
-  const decoded = decodeMessage(verified.value.message)
+  const decoded = decodeClaimsMessage(verified.value.message)
   if (decoded === undefined) {
     return fail('invalid_claims')
   }

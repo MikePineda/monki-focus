@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 import * as f from '../src/claim_formats.ts'
 import { RFC3339_UTC_PATTERN } from '../src/rfc3339_utc.ts'
 import { MAX_REVOKED_PER_TIME_TOKEN } from '../src/time_claims.ts'
+import { PUBLIC_KEY_BASE64URL_PATTERN } from '../src/key_endorsement_claims.ts'
 import { UNLOCK_MAX_DURATION_SECONDS, UNLOCK_MIN_DURATION_SECONDS } from '../src/unlock_claims.ts'
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -261,7 +262,40 @@ export function generateSchemas() {
     pick('issuer', 'uuid', 'rfc3339Utc')
   )
 
+  const keyEndorsement = document(
+    'urn:monki-focus:protocol:key-endorsement-claims:v1',
+    'monki-focus key endorsement claims (v1)',
+    `Claims of a PASETO v4.public key endorsement, signed by the previous active key of the same purpose with footer {"kid":"<old kid>"} and implicit assertion "monki-focus/key/v1|" + iss + "|" + use. ${CANONICAL} Semantic rules beyond this schema: kid is derived from x; x passes the strict Ed25519 key checks; kid differs from the endorsing kid; iat <= nbf < exp; exp - iat <= 7776000 (90 days); iss equals the pinned issuer and use the keyring purpose.`,
+    ['v', 'typ', 'iss', 'use', 'kid', 'x', 'iat', 'nbf', 'exp'],
+    {
+      v: common.v,
+      typ: { const: 'key' },
+      iss: common.iss,
+      use: {
+        enum: ['unlock', 'policy'],
+        description: 'Key purpose of the endorsed key (and of the endorsing key).',
+      },
+      kid: {
+        type: 'string',
+        maxLength: 16,
+        pattern: src(f.KEY_ID_PATTERN),
+        description: 'Key id of the endorsed key: first 16 characters of base64url(SHA-256(x)).',
+      },
+      x: {
+        type: 'string',
+        maxLength: 43,
+        pattern: src(PUBLIC_KEY_BASE64URL_PATTERN),
+        description: 'The endorsed raw 32-byte Ed25519 public key, unpadded base64url.',
+      },
+      iat: common.iat,
+      nbf: common.nbf,
+      exp: ref('rfc3339Utc', 'Expiry of the endorsement (server time); nbf < exp.'),
+    },
+    pick('issuer', 'rfc3339Utc')
+  )
+
   return {
+    'schema/key-endorsement.claims.schema.json': keyEndorsement,
     'schema/unlock-token.claims.schema.json': unlock,
     'schema/policy-token.claims.schema.json': policy,
     'schema/time-token.claims.schema.json': time,

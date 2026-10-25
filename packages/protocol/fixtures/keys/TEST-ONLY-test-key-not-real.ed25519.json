@@ -27,6 +27,14 @@
       "kid": "jAhwHvW_LqKC2uK3"
     },
     {
+      "name": "test-key-not-real-policy-b",
+      "purpose": "policy",
+      "role": "Policy-signing rotation successor (endorsed by policy-a).",
+      "seedHex": "cbc6017c769d77803a162ae0ed1d37568476bfd48db8ea96b2abef74c7b564f4",
+      "publicKeyHex": "c2ff2fb5c497471f9653534ff64eda6d7a5e64a063bc222c9e0cefd3276c30b0",
+      "kid": "xa7GBnAsYA3Mgm30"
+    },
+    {
       "name": "test-key-not-real-untrusted",
       "purpose": "unlock",
       "role": "A key nobody pinned (an attacker or another instance).",

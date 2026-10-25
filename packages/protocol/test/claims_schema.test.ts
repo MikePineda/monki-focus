@@ -5,6 +5,7 @@ import { Ajv2020 } from 'ajv/dist/2020.js'
 import { describe, expect, it } from 'vitest'
 import * as formats from '../src/claim_formats.ts'
 import { generateSchemas } from '../scripts/gen-schemas.mjs'
+import { isKeyEndorsementClaims } from '../src/key_endorsement_claims.ts'
 import { isPolicyClaims } from '../src/policy_claims.ts'
 import { isTimeClaims } from '../src/time_claims.ts'
 import { RFC3339_UTC_PATTERN } from '../src/rfc3339_utc.ts'
@@ -23,10 +24,12 @@ function loadSchema(name: string): Schema {
 const unlockSchema = loadSchema('unlock-token.claims.schema.json')
 const policySchema = loadSchema('policy-token.claims.schema.json')
 const timeSchema = loadSchema('time-token.claims.schema.json')
+const keySchema = loadSchema('key-endorsement.claims.schema.json')
 const ajv = new Ajv2020({ strict: true, allErrors: true })
 const validateUnlock = ajv.compile(unlockSchema)
 const validatePolicy = ajv.compile(policySchema)
 const validateTime = ajv.compile(timeSchema)
+const validateKey = ajv.compile(keySchema)
 
 const vectors = [
   ...loadTokenVectors('unlock-tokens'),
@@ -39,6 +42,10 @@ const validUnlock = JSON.parse(
 const validTime = JSON.parse(
   vectors.find((vector) => vector.id === 'valid_time_token')?.construction.claimsJson ?? '{}'
 ) as Record<string, unknown>
+const keyVector = JSON.parse(
+  readFileSync(join(packageRoot, 'fixtures/key-endorsements/valid_key_endorsement.json'), 'utf8')
+) as { construction: { claimsJson: string } }
+const validKey = JSON.parse(keyVector.construction.claimsJson) as Record<string, unknown>
 const validPolicy = JSON.parse(
   vectors.find((vector) => vector.id === 'valid_policy_token')?.construction.claimsJson ?? '{}'
 ) as Record<string, unknown>
@@ -176,6 +183,7 @@ describe('claims schemas', () => {
   it('test_committed_schemas_equal_the_generated_schemas', () => {
     const generated = generateSchemas()
     expect(Object.keys(generated).sort()).toEqual([
+      'schema/key-endorsement.claims.schema.json',
       'schema/policy-token.claims.schema.json',
       'schema/time-token.claims.schema.json',
       'schema/unlock-token.claims.schema.json',
@@ -186,7 +194,7 @@ describe('claims schemas', () => {
   })
 
   it('test_schemas_are_valid_draft_2020_12_and_closed', () => {
-    for (const schema of [unlockSchema, policySchema, timeSchema]) {
+    for (const schema of [unlockSchema, policySchema, timeSchema, keySchema]) {
       expect(schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema')
       expect(schema.additionalProperties).toBe(false)
       expect(ajv.validateSchema(schema)).toBe(true)
@@ -215,6 +223,22 @@ describe('claims schemas', () => {
     }
   )
 
+  it.each([
+    ...mutations(validKey),
+    ['use time', { ...validKey, use: 'time' }],
+    ['use uppercase', { ...validKey, use: 'Unlock' }],
+    ['kid of 15 characters', { ...validKey, kid: String(validKey.kid).slice(0, 15) }],
+    ['kid with padding', { ...validKey, kid: `${String(validKey.kid).slice(0, 15)}=` }],
+    ['x of 42 characters', { ...validKey, x: String(validKey.x).slice(0, 42) }],
+    ['x of 44 characters', { ...validKey, x: `${String(validKey.x)}A` }],
+    ['x in the standard alphabet', { ...validKey, x: `+${String(validKey.x).slice(1)}` }],
+  ] as [string, unknown][])(
+    'test_key_endorsement_validator_agrees_with_schema_on_%s',
+    (_label, claims) => {
+      expect(isKeyEndorsementClaims(claims)).toBe(validateKey(claims))
+    }
+  )
+
   it('test_validators_agree_with_schemas_on_every_vector_payload', () => {
     for (const vector of vectors) {
       const claims = parsedClaims(vector.construction.claimsJson)
@@ -230,6 +254,7 @@ describe('claims schemas', () => {
       expect(isUnlockClaims(claims)).toBe(validateUnlock(claims))
       expect(isPolicyClaims(claims)).toBe(validatePolicy(claims))
       expect(isTimeClaims(claims)).toBe(validateTime(claims))
+      expect(isKeyEndorsementClaims(claims)).toBe(validateKey(claims))
     }
   })
 

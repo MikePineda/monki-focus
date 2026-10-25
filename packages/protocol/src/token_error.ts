@@ -32,7 +32,10 @@ export const TOKEN_ERROR_CODES = [
   'issuer_mismatch',
   /** The signed `dev` differs from this device (defence in depth). */
   'device_mismatch',
-  /** Time token: the signed `nonce` or `boot` differs from the request (defence in depth). */
+  /**
+   * Time token: the signed `nonce` or `boot` differs from the request; key
+   * endorsement: the signed `use` differs from the keyring purpose (defence in depth).
+   */
   'binding_mismatch',
   /** `exp - iat` exceeds the maximum lifetime for the purpose. */
   'lifetime_too_long',
