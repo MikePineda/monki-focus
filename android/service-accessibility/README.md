@@ -30,8 +30,15 @@ active window is polled once a second while an overlay is up).
 ## Decisions
 
 - **Explicit `packageNames`** (threat model): the packs' packages, Settings and
-  the package installers. Bedtime is therefore enforced on those packages
-  only; other apps are not watched at all.
+  the package installers, plus every browser of the device (whatever resolves
+  `ACTION_VIEW` of an http URL), added at connect with `setServiceInfo`.
+  Bedtime is enforced on those packages only; other apps are not watched.
+  Only the active window is read (no `flagRetrieveInteractiveWindows`).
+- **No fail-open through browsers.** A browser no pack can read gets
+  app-level friction (`unsupported-browser-<package>`) whenever a rule
+  restricts the web, and bedtime blocks it (category level 0). In a readable
+  browser a URL bar hidden for more than 30 s counts as unclassified; 5
+  minutes of that within 10 bring app friction on the browser.
 - **Surface block → BACK**, then a dismissible notice that still offers
   emergency access; two BACKs within 1.5 s that do not leave the surface →
   HOME.
@@ -51,8 +58,11 @@ active window is polled once a second while an overlay is up).
 - **Unclassified cap**: when it applies, `decide` runs with one extra
   `friction` rule on the package (`unclassified-cap-<package>`), so bedtime,
   unlocks and escalation work as for any rule.
-- **No rule set stored yet** → the bundled starter preset in the device zone.
-  Storage unreadable → fail closed.
+- **No gap at start**: the bundled starter preset applies at connect while
+  the stored rules load (and when none is stored yet). Stored rules
+  unreadable before they ever loaded → fail closed. Until the stored
+  escalation is read, and if it keeps failing after retries, friction groups
+  start at level 2 (a typed intention), never from scratch.
 - **Downloaded packs** are re-verified on every start from
   `noBackupFilesDir/detector-packs/`; no `rules-signing` key is pinned yet, so
   every download is refused and the bundled packs stay active.
@@ -63,18 +73,29 @@ active window is polled once a second while an overlay is up).
   accessibility-detail screens get a card with "Go back" and "Disable
   protection (waits 2 min, …)". A label collision (another installed package
   or active admin named like us; unreadable admin labels count) releases the
-  App info, uninstall and device-admin guards.
+  App info, uninstall, device-admin and accessibility-detail guards (installed
+  apps, accessibility services and active admins are all compared).
 - **Exit and unlink** (home screen, notice action, every bounce card): 2-minute
-  wait → neutral `protection_ended` event → device admin removed → overlays
-  and notice gone → `disableSelf()`. Turning the service on again re-arms it.
+  wait on the monotonic clock (a reboot restarts it) → neutral
+  `protection_ended` event → device admin removed → overlays and notice gone
+  → `disableSelf()`. A service turned on again after that turns itself off,
+  unless the user chose "Turn protection back on" in the app.
 - **Persistent notice** while protection is active, posted again when
   dismissed. Android 14+ lets users swipe away ongoing notifications of apps
   without a foreground service; no foreground service is used: the
-  `deleteIntent` and every tick post it again.
-- **Bypass events** (`accessibility_disabled` on unbind/interrupt,
-  `device_admin_disabled` outside the exit, `emergency_override`) are written
-  to a synchronous journal before the Room outbox, so one recorded while the
-  process dies is queued on the next start.
+  `deleteIntent` and every tick post it again. The app asks for the
+  notification permission before protection is turned on from it; while it
+  is missing, "Protection active — notice is off" shows on the home screen
+  and on every gate and bounce screen.
+- **`GateActivity` cannot be dodged**: our screen counts as shown only while
+  the overlay window is up or the activity is started; the activity resets
+  the relay when it stops, so reopening the watched app launches it again.
+- **Bypass events** (`accessibility_disabled` on unbind only, never on
+  `onInterrupt`; `device_admin_disabled` outside the exit;
+  `emergency_override` with a `scope` of `rule` or `bedtime`, never a rule
+  id, site or app) are written to a synchronous journal before the Room
+  outbox, so one recorded while the process dies is queued on the next
+  start.
 - Launcher icon always present; no hidden mode exists in code. ADB remains a
   documented exit: `adb shell dpm remove-active-admin dev.monkifocus.android/.MonkiDeviceAdminReceiver`.
 

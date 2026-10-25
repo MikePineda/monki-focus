@@ -18,4 +18,12 @@ interface ActionPerformer {
 
     /** Removes our overlay. */
     fun clear()
+
+    /**
+     * True only while what was last shown is really in front: the overlay
+     * window attached, or `GateActivity` started. The pipeline shows again
+     * whenever this is false, so leaving the activity with HOME and
+     * reopening the app never dodges the gate.
+     */
+    fun isOnTop(): Boolean
 }

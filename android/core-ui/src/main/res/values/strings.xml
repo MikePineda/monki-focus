@@ -120,4 +120,10 @@
 
     <!-- Home. -->
     <string name="home_exit_button">Exit and unlink</string>
+    <string name="notice_off_banner">Protection active — notice is off</string>
+    <string name="exit_rearm">Turn protection back on</string>
+    <string name="home_notice_request">Turn on the protection notice</string>
+    <string name="home_turn_on">Turn on protection</string>
+    <string name="status_notice_on">Protection notice: on</string>
+    <string name="status_notice_off">Protection notice: off</string>
 </resources>

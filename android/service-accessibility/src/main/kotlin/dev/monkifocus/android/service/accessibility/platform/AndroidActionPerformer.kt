@@ -33,6 +33,7 @@ internal class AndroidActionPerformer(
 ) : ActionPerformer {
     private val probe = ImeProbe()
     private var shown: OverlayContent? = null
+    private var inActivity = false
     private val sample =
         object : Runnable {
             override fun run() {
@@ -65,11 +66,14 @@ internal class AndroidActionPerformer(
         if (gate != null && GateHost.choose(gate.state, Build.VERSION.SDK_INT, preferences.overlayImeFailed) == GateHost.ACTIVITY) {
             handler.removeCallbacks(sample)
             overlay.clear()
-            val launch = relay.content.value == null
+            inActivity = true
+            // GateActivity resets the relay when it stops: a gate nobody sees is launched again.
+            val launch = relay.content.value == null || !relay.activityVisible
             relay.post(content)
             if (launch) startGateActivity()
             return
         }
+        inActivity = false
         relay.post(null)
         val asking = gate?.state is GateUiState.Asking
         overlay.show(content, focusable = asking)
@@ -83,8 +87,11 @@ internal class AndroidActionPerformer(
         }
     }
 
+    override fun isOnTop(): Boolean = if (inActivity) relay.activityVisible else overlay.attached
+
     override fun clear() {
         shown = null
+        inActivity = false
         handler.removeCallbacks(sample)
         relay.post(null)
         overlay.clear()

@@ -36,6 +36,12 @@ class LabelCollisionTest {
     }
 
     @Test
+    fun another_accessibility_service_with_our_label_is_a_collision() {
+        assertTrue(LabelCollision.exists(labels, ours, emptyList(), emptyList(), listOf(Labelled("com.example.lookalike", "monki-focus"))))
+        assertFalse(LabelCollision.exists(labels, ours, emptyList(), emptyList(), listOf(Labelled(ours, "monki-focus"))))
+    }
+
+    @Test
     fun differently_named_apps_are_no_collision() {
         assertFalse(exists(installed = listOf(Labelled("com.example.other", "Monki Focus Pro"), Labelled("com.example.blank", null))))
     }

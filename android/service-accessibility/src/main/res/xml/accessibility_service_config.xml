@@ -5,13 +5,15 @@
   apps and browsers of the compiled pack allowlist, plus Settings and the
   package installers for the anti-bypass guard), the two window events the
   pipeline needs, window content only for those packages and view ids for
-  the detector packs. No isAccessibilityTool: this is not an assistive tool.
-  A test keeps packageNames equal to PackageAllowlist.COMPILED.
+  the detector packs; no interactive-windows flag (only the active window is
+  read). At connect the service adds the device's other browsers with
+  setServiceInfo. No isAccessibilityTool: this is not an assistive tool. A
+  test keeps packageNames equal to the packages of the bundled packs.
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
+    android:accessibilityFlags="flagReportViewIds"
     android:canRetrieveWindowContent="true"
     android:description="@string/accessibility_service_description"
     android:notificationTimeout="150"

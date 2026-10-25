@@ -129,6 +129,6 @@ class GateCoordinatorTest {
         h.coordinator.tick(NIGHT_MS + 120_000, onScreenGroup = BEDTIME_GROUP)
 
         assertEquals(EscalationPhase.OVERRIDE_ACTIVE, h.phaseOf(BEDTIME_GROUP))
-        assertEquals("bedtime", h.bypassEvents.single().details["target_group"])
+        assertEquals("bedtime", h.bypassEvents.single().details["scope"])
     }
 }

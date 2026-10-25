@@ -7,14 +7,18 @@ package dev.monkifocus.android.service.accessibility.exit
  * blocked. It does not consult the decision engine at all, so an
  * `engine_error` (which blocks every target) can never stand in its way.
  *
- * - [request] starts a [WAIT_MS] wait (asking again does not restart it);
+ * - [request] starts a [WAIT_MS] wait on the monotonic clock (asking again
+ *   does not restart it). Setting the wall clock cannot shorten it; a reboot
+ *   (another boot count, or a monotonic reading behind the request) restarts
+ *   it from now;
  * - [cancel] keeps protection;
  * - [tick] ends it once the wait is over, with [ExitFlowEffect]s: the
  *   neutral `protection_ended` event, device admin disarmed, enforcement and
  *   the service stopped;
- * - a wall clock set back behind the request restarts the wait from now,
- *   so it never grows longer than two minutes of the current clock;
- * - [rearm] after the user turned the service on again.
+ * - after the end, a service that is turned on again turns itself off
+ *   ([connect] → [ServiceStart.DISABLE]), so a setting flipped back by
+ *   accident or by someone else cannot undo the exit; only [allowRearm],
+ *   which the user triggers from our own app, lets the next start re-arm.
  *
  * Pure: every transition answers the next state and its effects.
  */
@@ -28,10 +32,10 @@ object ExitFlow {
 
     fun request(
         state: ExitFlowState,
-        nowMs: Long,
+        now: ExitTime,
     ): Transition =
         when (state) {
-            ExitFlowState.Armed -> Transition(ExitFlowState.Waiting(nowMs))
+            ExitFlowState.Armed -> Transition(ExitFlowState.Waiting(now.monotonicMs, now.boot))
             is ExitFlowState.Waiting, is ExitFlowState.Ended -> Transition(state)
         }
 
@@ -40,23 +44,36 @@ object ExitFlow {
 
     fun tick(
         state: ExitFlowState,
-        nowMs: Long,
+        now: ExitTime,
     ): Transition {
         if (state !is ExitFlowState.Waiting) return Transition(state)
-        if (nowMs < state.requestedAtMs) return Transition(ExitFlowState.Waiting(nowMs))
-        if (nowMs - state.requestedAtMs < WAIT_MS) return Transition(state)
-        return Transition(ExitFlowState.Ended(nowMs), ENDING_EFFECTS)
+        if (now.boot != state.boot || now.monotonicMs < state.requestedAtMs) {
+            return Transition(ExitFlowState.Waiting(now.monotonicMs, now.boot))
+        }
+        if (now.monotonicMs - state.requestedAtMs < WAIT_MS) return Transition(state)
+        return Transition(ExitFlowState.Ended(now.wallMs), ENDING_EFFECTS)
     }
 
-    fun rearm(state: ExitFlowState): Transition = if (state is ExitFlowState.Ended) Transition(ExitFlowState.Armed) else Transition(state)
+    /** The user asked our app to bring protection back after an exit. */
+    fun allowRearm(state: ExitFlowState): Transition =
+        if (state is ExitFlowState.Ended) Transition(state.copy(rearmAllowed = true)) else Transition(state)
+
+    /** The system bound the service: run, re-arm when the user allowed it, or turn off again. */
+    fun connect(state: ExitFlowState): Pair<Transition, ServiceStart> =
+        when {
+            state is ExitFlowState.Ended && state.rearmAllowed -> Transition(ExitFlowState.Armed) to ServiceStart.RUN
+            state is ExitFlowState.Ended -> Transition(state) to ServiceStart.DISABLE
+            else -> Transition(state) to ServiceStart.RUN
+        }
 
     /** Whole seconds left in the wait (rounded up), or null when not waiting. */
     fun remainingSeconds(
         state: ExitFlowState,
-        nowMs: Long,
+        now: ExitTime,
     ): Int? {
         if (state !is ExitFlowState.Waiting) return null
-        val left = (WAIT_MS - (nowMs - state.requestedAtMs)).coerceIn(0, WAIT_MS)
+        val elapsed = if (now.boot != state.boot || now.monotonicMs < state.requestedAtMs) 0 else now.monotonicMs - state.requestedAtMs
+        val left = (WAIT_MS - elapsed).coerceIn(0, WAIT_MS)
         return ((left + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND).toInt()
     }
 

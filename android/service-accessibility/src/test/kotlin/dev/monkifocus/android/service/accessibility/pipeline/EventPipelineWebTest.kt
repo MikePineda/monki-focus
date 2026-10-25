@@ -6,11 +6,16 @@ import dev.monkifocus.android.core.domain.rules.RuleMode
 import dev.monkifocus.android.feature.gate.state.GateUiState
 import dev.monkifocus.android.service.accessibility.action.CoverRegion
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
+import dev.monkifocus.android.service.accessibility.decision.UnclassifiedCapRule
+import dev.monkifocus.android.service.accessibility.decision.UnsupportedBrowserRule
+import dev.monkifocus.android.service.accessibility.support.BEDTIME_ON
 import dev.monkifocus.android.service.accessibility.support.CHROME
+import dev.monkifocus.android.service.accessibility.support.NIGHT_MS
 import dev.monkifocus.android.service.accessibility.support.PipelineHarness
 import dev.monkifocus.android.service.accessibility.support.RecordingPerformer.Call
 import dev.monkifocus.android.service.accessibility.support.aRule
 import dev.monkifocus.android.service.accessibility.support.aRuleset
+import dev.monkifocus.android.service.accessibility.support.blankScreen
 import dev.monkifocus.android.service.accessibility.support.browserScreen
 import dev.monkifocus.android.service.accessibility.support.site
 import dev.monkifocus.android.service.accessibility.support.surface
@@ -161,5 +166,93 @@ class EventPipelineWebTest {
         h.tick(foreground = CHROME, screen = page, afterMs = 5 * 60_000L)
 
         assertTrue((h.showing as OverlayContent.Gate).state is GateUiState.Timeout)
+    }
+
+    private val otherBrowser = "org.example.browser"
+
+    @Test
+    fun a_browser_no_pack_can_read_gets_app_friction_always() {
+        val h = PipelineHarness(redditFriction, unsupportedBrowsers = setOf(otherBrowser))
+
+        h.opened(blankScreen(otherBrowser))
+
+        val gate = h.showing as OverlayContent.Gate
+        assertEquals(UnsupportedBrowserRule.idFor(otherBrowser), gate.group)
+        assertTrue(gate.state is GateUiState.Pausing)
+    }
+
+    @Test
+    fun a_browser_no_pack_can_read_is_blocked_at_bedtime() {
+        val h =
+            PipelineHarness(redditFriction.copy(bedtime = BEDTIME_ON), startWallMs = NIGHT_MS, unsupportedBrowsers = setOf(otherBrowser))
+
+        h.opened(blankScreen(otherBrowser))
+
+        assertTrue((h.showing as OverlayContent.Gate).state is GateUiState.BedtimeCover)
+    }
+
+    @Test
+    fun an_unreadable_browser_is_left_alone_when_no_rule_restricts_the_web() {
+        val h = PipelineHarness(aRuleset(), unsupportedBrowsers = setOf(otherBrowser))
+
+        h.opened(blankScreen(otherBrowser))
+
+        assertNull(h.showing)
+    }
+
+    @Test
+    fun a_url_bar_hidden_past_the_grace_counts_toward_the_cap_and_ends_in_friction() {
+        val h = PipelineHarness(redditFriction)
+        val noBar = browserScreen(url = null)
+        h.opened(noBar)
+
+        repeat(14) { h.tick(foreground = CHROME, screen = noBar, afterMs = 30_000) }
+
+        val gate = h.showing as OverlayContent.Gate
+        assertEquals(UnclassifiedCapRule.idFor(CHROME), gate.group)
+    }
+
+    @Test
+    fun a_url_bar_hidden_only_briefly_changes_nothing() {
+        val h = PipelineHarness(redditFriction)
+        val noBar = browserScreen(url = null)
+
+        repeat(20) {
+            h.changed(noBar, afterMs = 15_000)
+            h.changed(browserScreen("https://example.org/article"), afterMs = 15_000)
+        }
+
+        assertNull(h.showing)
+    }
+
+    @Test
+    fun a_gate_left_with_home_comes_back_when_the_app_is_reopened() {
+        val h = PipelineHarness(redditFriction)
+        val page = browserScreen("https://www.reddit.com/")
+        h.opened(page)
+        h.performer.onTop = false
+        h.performer.take()
+
+        h.opened(page)
+
+        val shown =
+            h.performer
+                .take()
+                .filterIsInstance<Call.Show>()
+                .map { it.content }
+        assertEquals(listOf("reddit"), shown.map { (it as OverlayContent.Gate).group })
+    }
+
+    @Test
+    fun the_tick_puts_the_gate_back_while_the_watched_app_is_in_front() {
+        val h = PipelineHarness(redditFriction)
+        h.opened(browserScreen("https://www.reddit.com/"))
+        h.performer.onTop = false
+        h.performer.take()
+
+        h.tick(foreground = CHROME)
+
+        assertTrue(h.performer.calls.any { it is Call.Show })
+        assertTrue(h.performer.onTop)
     }
 }

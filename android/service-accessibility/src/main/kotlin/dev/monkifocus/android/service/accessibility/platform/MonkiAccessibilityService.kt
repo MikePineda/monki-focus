@@ -6,10 +6,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import dev.monkifocus.android.core.domain.engine.instantOf
 import dev.monkifocus.android.core.domain.rules.EscalationState
@@ -20,10 +25,13 @@ import dev.monkifocus.android.service.accessibility.decision.DecisionEvaluator
 import dev.monkifocus.android.service.accessibility.decision.SnapshotHolder
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowState
 import dev.monkifocus.android.service.accessibility.exit.ProtectionDisarmer
+import dev.monkifocus.android.service.accessibility.exit.ServiceStart
 import dev.monkifocus.android.service.accessibility.gate.GateCoordinator
 import dev.monkifocus.android.service.accessibility.guard.AntiBypassGuard
 import dev.monkifocus.android.service.accessibility.notice.NoticeContent
+import dev.monkifocus.android.service.accessibility.notice.NoticeVisibility
 import dev.monkifocus.android.service.accessibility.packs.ActivePacks
+import dev.monkifocus.android.service.accessibility.packs.WatchedPackages
 import dev.monkifocus.android.service.accessibility.pipeline.EventPipeline
 import dev.monkifocus.android.service.accessibility.pipeline.ScreenObserver
 import dev.monkifocus.android.service.accessibility.pipeline.UserAction
@@ -44,10 +52,11 @@ import java.time.Instant
  * thread. Every decision and action is the pipeline's.
  *
  * Anti-stalkerware (plan 04 §2): while connected it keeps the persistent
- * notice up; the system unbinding or interrupting it records
- * `accessibility_disabled` (journalled first, so it survives the process
- * going away); after "Exit and unlink" it stops enforcing and turns itself
- * off, and turning it on again later re-arms protection. It logs nothing.
+ * notice up (or the in-app banner when notices are off); the system
+ * unbinding it records `accessibility_disabled` (journalled first, so it
+ * survives the process going away; `onInterrupt` never does); after "Exit and unlink" it stops enforcing and turns itself
+ * off; turned on again after that it turns itself off unless the user
+ * asked our app to bring protection back. It logs nothing.
  */
 class MonkiAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
@@ -59,6 +68,7 @@ class MonkiAccessibilityService : AccessibilityService() {
     private var collision: DeviceLabelCollision? = null
     private var refresher: Job? = null
     private var packs: List<DetectorPack> = emptyList()
+    private var unsupportedBrowsers: Set<String> = emptySet()
     private var disabledRecorded = false
     private var ending = false
 
@@ -92,14 +102,23 @@ class MonkiAccessibilityService : AccessibilityService() {
         graph = shared
         disabledRecorded = false
         ending = false
-        // Turning the service on again after an exit is a deliberate choice: protection is back.
-        if (shared.exitFlow.state is ExitFlowState.Ended) shared.exitFlow.rearm(System.currentTimeMillis())
+        if (shared.exitFlow.connect() == ServiceStart.DISABLE) {
+            // An exit stays an exit: only "Turn protection back on" in our app brings protection back.
+            ending = true
+            shared.inputs.notifier.reconcile(protectionActive = false, content = NoticeContent.of(false, shared.exitFlow.state))
+            disableSelf()
+            return
+        }
         shared.bypassSink.flush()
 
         val inputs = shared.inputs
         val screenReader = AccessibilityScreenReader(this)
         val labels = DeviceLabelCollision(this, inputs.ownLabels)
-        val overlay = OverlayHost(this) { content -> OverlayScreen(content, onAction = ::onUserAction) }
+        val overlay =
+            OverlayHost(this) { content ->
+                val noticeOff by shared.gateRelay.noticeOff.collectAsState()
+                OverlayScreen(content, noticeOff = noticeOff, onAction = ::onUserAction)
+            }
         val androidPerformer = AndroidActionPerformer(this, overlay, shared.gateRelay, shared.preferences, handler)
         val coordinator =
             GateCoordinator(
@@ -120,6 +139,7 @@ class MonkiAccessibilityService : AccessibilityService() {
                 labels = AppLabels(this),
                 ourPackage = packageName,
                 packs = { packs },
+                unsupportedBrowsers = { unsupportedBrowsers },
             )
         reader = screenReader
         performer = androidPerformer
@@ -128,7 +148,7 @@ class MonkiAccessibilityService : AccessibilityService() {
         shared.exitFlow.disarmer = ServiceDisarmer()
         ContextCompat.registerReceiver(this, screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED)
         reconcileNotice()
-        load(shared)
+        load(shared, configured = serviceInfo?.packageNames?.toList().orEmpty())
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -145,12 +165,15 @@ class MonkiAccessibilityService : AccessibilityService() {
         schedule()
     }
 
-    override fun onInterrupt() {
-        recordDisabled(VIA_INTERRUPT)
-    }
+    /**
+     * The system interrupts feedback (spoken feedback and the like) for its
+     * own reasons; it says nothing about protection being turned off, so it
+     * is never recorded as a bypass (an app could otherwise forge one).
+     */
+    override fun onInterrupt() = Unit
 
     override fun onUnbind(intent: Intent?): Boolean {
-        recordDisabled(VIA_UNBIND)
+        recordDisabled()
         teardown()
         return super.onUnbind(intent)
     }
@@ -168,32 +191,79 @@ class MonkiAccessibilityService : AccessibilityService() {
 
     private fun readScreen() = reader?.read()
 
-    /** Rules, escalation and packs off the main thread; the rule set and labels again every minute. */
-    private fun load(shared: ProtectionGraph) {
+    /**
+     * Loads off the main thread without leaving a gap: the bundled starter
+     * preset and packs (and the browsers of the device) at once, then the
+     * stored escalation (retried, conservative if it never reads), the
+     * re-verified downloaded packs, and the stored rule set and the label
+     * check every minute.
+     */
+    private fun load(
+        shared: ProtectionGraph,
+        configured: List<String>,
+    ) {
         refresher?.cancel()
         refresher =
             shared.io.launch {
                 val inputs = shared.inputs
-                val stored: List<EscalationState> = runCatching { inputs.escalationStates.all() }.getOrDefault(emptyList())
-                val loadedPacks =
+                val now = Instant.ofEpochMilli(System.currentTimeMillis())
+                val bundled = runCatching { inputs.bundledPacks() }.getOrDefault(emptyMap())
+                val bundledPacks = runCatching { ActivePacks(inputs.packLoader).load(bundled, emptyMap(), now) }.getOrDefault(emptyList())
+                val starter = runCatching { inputs.starterRuleset() }.getOrNull()
+                val watched = runCatching { WatchedPackages.of(configured, browsersOnDevice(), packageName, bundledPacks) }.getOrNull()
+                handler.post {
+                    packs = bundledPacks
+                    starter?.let(snapshots::provisional)
+                    watched?.let(::watch)
+                }
+                val stored = readEscalation(inputs)
+                handler.post { if (stored != null) snapshots.escalationLoaded(stored) else snapshots.escalationUnavailable() }
+                val active =
                     runCatching {
-                        val bundled = inputs.bundledPacks()
-                        ActivePacks(inputs.packLoader).load(
-                            bundled,
-                            DownloadedPackFiles(this@MonkiAccessibilityService).read(bundled.keys),
-                            Instant.ofEpochMilli(System.currentTimeMillis()),
-                        )
-                    }.getOrDefault(emptyList())
-                handler.post { packs = loadedPacks }
+                        val downloaded = DownloadedPackFiles(this@MonkiAccessibilityService).read(bundled.keys)
+                        ActivePacks(inputs.packLoader).load(bundled, downloaded, now)
+                    }.getOrDefault(bundledPacks)
+                handler.post { packs = active }
                 while (isActive) {
                     val ruleset: Ruleset? = runCatching { inputs.activeRuleset(instantOf(System.currentTimeMillis())) }.getOrNull()
                     collision?.refresh()
                     handler.post {
-                        if (ruleset != null) snapshots.loaded(ruleset, stored) else snapshots.failed()
+                        if (ruleset != null) snapshots.loaded(ruleset) else snapshots.failed()
+                        shared.guardianLinked = snapshots.snapshot?.guardianLinked == true
                     }
                     delay(REFRESH_MS)
                 }
             }
+    }
+
+    /** The stored escalation, retried with a growing pause; null when it never reads. */
+    private suspend fun readEscalation(inputs: ProtectionInputs): List<EscalationState>? {
+        repeat(ESCALATION_ATTEMPTS) { attempt ->
+            runCatching { return inputs.escalationStates.all() }
+            delay(RETRY_MS * (attempt + 1))
+        }
+        return null
+    }
+
+    /** Every app that opens an http link: a browser the packs cannot read must not be a way around the rules. */
+    private fun browsersOnDevice(): List<String> {
+        val view = Intent(Intent.ACTION_VIEW, Uri.parse(BROWSER_PROBE_URL)).addCategory(Intent.CATEGORY_BROWSABLE)
+        val found =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.queryIntentActivities(view, PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_ALL.toLong()))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.queryIntentActivities(view, PackageManager.MATCH_ALL)
+            }
+        return found.mapNotNull { it.activityInfo?.packageName }.distinct()
+    }
+
+    /** Watches the resolved browsers too, from now on (`setServiceInfo`). */
+    private fun watch(watched: WatchedPackages) {
+        unsupportedBrowsers = watched.unsupported
+        val info = serviceInfo ?: return
+        info.packageNames = watched.all.sorted().toTypedArray()
+        serviceInfo = info
     }
 
     private fun schedule() {
@@ -204,25 +274,22 @@ class MonkiAccessibilityService : AccessibilityService() {
         active.flushDelayMs(SystemClock.elapsedRealtime())?.let { handler.postDelayed(flush, it) }
     }
 
+    /** The notice, or the in-app banner when the notice cannot be posted: protection is never active unseen. */
     private fun reconcileNotice() {
         val shared = graph ?: return
         val exit = shared.exitFlow.state
-        shared.inputs.notifier.reconcile(
-            protectionActive = pipeline != null && exit !is ExitFlowState.Ended,
-            content =
-                NoticeContent(
-                    guardianLinked = snapshots.snapshot?.guardianLinked == true,
-                    exitPending = exit is ExitFlowState.Waiting,
-                ),
-        )
+        val active = pipeline != null && exit !is ExitFlowState.Ended
+        val notifier = shared.inputs.notifier
+        notifier.reconcile(protectionActive = active, content = NoticeContent.of(shared.guardianLinked, exit))
+        shared.gateRelay.setNoticeOff(NoticeVisibility.of(active, notifier.permitted()) == NoticeVisibility.BANNER)
     }
 
-    /** Best effort, once per connection, never after a deliberate exit. */
-    private fun recordDisabled(via: String) {
+    /** Only from `onUnbind`: once per connection, never after a deliberate exit. */
+    private fun recordDisabled() {
         val shared = graph ?: return
         if (disabledRecorded || ending || shared.exitFlow.protectionEnded) return
         disabledRecorded = true
-        shared.bypasses.record(BypassKind.ACCESSIBILITY_DISABLED, System.currentTimeMillis(), details = mapOf(DETAIL_VIA to via))
+        shared.bypasses.record(BypassKind.ACCESSIBILITY_DISABLED, System.currentTimeMillis())
     }
 
     private fun teardown() {
@@ -236,7 +303,11 @@ class MonkiAccessibilityService : AccessibilityService() {
         graph?.let { shared ->
             shared.gateRelay.onAction = null
             shared.exitFlow.disarmer = null
-            shared.inputs.notifier.reconcile(protectionActive = false, content = NoticeContent(guardianLinked = false, exitPending = false))
+            shared.inputs.notifier.reconcile(
+                protectionActive = false,
+                content = NoticeContent.of(shared.guardianLinked, shared.exitFlow.state),
+            )
+            shared.gateRelay.setNoticeOff(false)
         }
         runCatching { unregisterReceiver(screenOff) }
     }
@@ -263,8 +334,10 @@ class MonkiAccessibilityService : AccessibilityService() {
 
     private companion object {
         const val REFRESH_MS = 60_000L
-        const val DETAIL_VIA = "via"
-        const val VIA_UNBIND = "unbind"
-        const val VIA_INTERRUPT = "interrupt"
+        const val ESCALATION_ATTEMPTS = 3
+        const val RETRY_MS = 500L
+
+        /** Any http URL: only which apps can open it matters. */
+        const val BROWSER_PROBE_URL = "http://example.org/"
     }
 }

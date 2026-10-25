@@ -20,11 +20,11 @@ class DecisionEvaluator(
     fun evaluate(
         snapshot: ProtectionSnapshot?,
         observation: Observation,
-        capPackage: String?,
+        addition: RulesetAddition?,
         nowEpochMs: Long,
     ): Evaluation {
         if (snapshot == null) return Evaluation(ENGINE_ERROR_DECISION, null, observation)
-        val ruleset = capPackage?.let { UnclassifiedCapRule.addedTo(snapshot.ruleset, it) } ?: snapshot.ruleset
+        val ruleset = addition?.applyTo(snapshot.ruleset) ?: snapshot.ruleset
         val decision = decide(ruleset, observation, snapshot.decisionState, instantOf(nowEpochMs), catalog)
         return Evaluation(decision, ruleset, observation)
     }

@@ -10,6 +10,7 @@ import dev.monkifocus.android.service.accessibility.bypass.BypassRecorder
 import dev.monkifocus.android.service.accessibility.decision.DecisionEvaluator
 import dev.monkifocus.android.service.accessibility.decision.SnapshotHolder
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowController
+import dev.monkifocus.android.service.accessibility.exit.ExitTime
 import dev.monkifocus.android.service.accessibility.gate.GateCoordinator
 import dev.monkifocus.android.service.accessibility.guard.AntiBypassGuard
 import dev.monkifocus.android.service.accessibility.pipeline.EventPipeline
@@ -27,6 +28,7 @@ internal class PipelineHarness(
     loadFailed: Boolean = false,
     var labelCollision: Boolean = false,
     startWallMs: Long = MORNING_MS,
+    unsupportedBrowsers: Set<String> = emptySet(),
 ) {
     val performer = RecordingPerformer()
     val escalationWrites = mutableListOf<EscalationState>()
@@ -48,7 +50,10 @@ internal class PipelineHarness(
     private var nextId = 0
     val bypasses = BypassRecorder({ bypassEvents += it }) { "event-${++nextId}" }
     val coordinator = GateCoordinator(RulesData.catalog, snapshots, { escalationWrites += it }, intentions, bypasses)
-    val exit = ExitFlowController(exitStore, bypasses, disarmer)
+
+    /** The boot count the exit flow's clock reports; a test changes it to simulate a reboot. */
+    var boot = 1
+    val exit = ExitFlowController(exitStore, bypasses, disarmer) { ExitTime(mono, boot, wall) }
     private val guard =
         AntiBypassGuard(setOf("monki-focus"), OURS) {
             collisionChecks++
@@ -65,6 +70,7 @@ internal class PipelineHarness(
             labels = { "app" },
             ourPackage = OURS,
             packs = { RulesData.packs },
+            unsupportedBrowsers = { unsupportedBrowsers },
         )
 
     var mono = 100_000L

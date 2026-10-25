@@ -16,6 +16,9 @@ data class CoverRegion(
     val bottom: Int,
 ) {
     companion object {
+        /** No region is known (an app screen without bars): nothing to cover. */
+        val NONE = CoverRegion(0, 0)
+
         fun between(
             keepVisible: List<Rect>,
             screenHeight: Int,

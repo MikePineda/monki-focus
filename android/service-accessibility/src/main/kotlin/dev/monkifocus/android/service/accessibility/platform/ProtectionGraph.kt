@@ -32,8 +32,17 @@ class ProtectionGraph(
     val bypasses: BypassRecorder by lazy { BypassRecorder(bypassSink) { UUID.randomUUID().toString() } }
 
     val exitFlow: ExitFlowController by lazy {
-        ExitFlowController(preferences, bypasses, DeviceAdminDisarmer(appContext, inputs.deviceAdmin, inputs.notifier))
+        ExitFlowController(
+            preferences,
+            bypasses,
+            DeviceAdminDisarmer(appContext, inputs.deviceAdmin, inputs.notifier),
+            AndroidExitClock(appContext),
+        )
     }
 
     val gateRelay: GateRelay by lazy { GateRelay() }
+
+    /** Whether a guardian is linked, as the running service last read it (the notice names them only then). */
+    @Volatile
+    var guardianLinked: Boolean = false
 }

@@ -128,7 +128,10 @@ class EventPipelineAppTest {
         h.tick(foreground = "com.instagram.android", afterMs = 121_000)
 
         assertEquals(listOf("emergency_override"), h.bypassEvents.map { it.kind })
-        assertEquals("ig-reels", h.bypassEvents.single().details["target_group"])
+        val details = h.bypassEvents.single().details
+        assertEquals("rule", details["scope"])
+        assertTrue("no rule id, site or app name in a bypass event", details.values.none { "ig-reels" in it || "instagram" in it })
+        assertTrue(details.keys.all { it in setOf("scope", "wait_ended_at", "ends_at") })
         assertNull(h.showing)
         h.performer.take()
         h.opened(screen("reels-01"))
