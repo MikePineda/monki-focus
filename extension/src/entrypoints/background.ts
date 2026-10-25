@@ -72,6 +72,7 @@ export default defineBackground(() => {
   const restrictions = new RestrictionWatcher({
     rulesets,
     clock: gateClock,
+    usage: async () => (await gateHolder.module?.decisionState())?.usage ?? null,
     storage: browser.storage.session,
     onChange: decisionsChanged,
   })

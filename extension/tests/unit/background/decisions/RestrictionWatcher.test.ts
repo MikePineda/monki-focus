@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Ruleset } from '@monki-focus/rules/pure'
+import type { DailyUsage, Ruleset } from '@monki-focus/rules/pure'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeBrowser } from 'wxt/testing/fake-browser'
 import {
@@ -31,11 +31,16 @@ function morningRuleset(): Ruleset {
   }
 }
 
-function makeWatcher(clock: ManualClock, ruleset: { current: Ruleset }) {
+function makeWatcher(
+  clock: ManualClock,
+  ruleset: { current: Ruleset },
+  usage: { current: DailyUsage | null } = { current: null }
+) {
   const onChange = vi.fn()
   const watcher = new RestrictionWatcher({
     rulesets: { load: () => Promise.resolve(ruleset.current) },
     clock,
+    usage: () => Promise.resolve(usage.current),
     storage: fakeBrowser.storage.session,
     onChange,
   })
@@ -102,6 +107,51 @@ describe('RestrictionWatcher', () => {
     clock.advanceSeconds(60)
     expect(await watcher.check()).toBe(true)
     expect(onChange).toHaveBeenCalledOnce()
+  })
+
+  it('a_budget_running_out_while_a_page_stays_open_notifies', async () => {
+    const clock = new ManualClock('2026-01-05T10:00:00Z')
+    const base = gatedRuleset()
+    const ruleset = {
+      current: {
+        ...base,
+        rules: base.rules.map((rule) =>
+          rule.id === 'starter-reddit-friction' ? { ...rule, dailyBudgetMinutes: 30 } : rule
+        ),
+      },
+    }
+    const usage = {
+      current: { localDate: '2026-01-05', secondsByRule: { 'starter-reddit-friction': 1_740 } },
+    }
+    const { watcher, onChange } = makeWatcher(clock, ruleset, usage)
+    await watcher.check()
+
+    usage.current = { localDate: '2026-01-05', secondsByRule: { 'starter-reddit-friction': 1_800 } }
+    clock.advanceSeconds(60)
+
+    expect(await watcher.check()).toBe(true)
+    expect(onChange).toHaveBeenCalledOnce()
+    expect(await snapshot()).toContain('exhausted starter-reddit-friction')
+  })
+
+  it('usage_of_another_day_spends_no_budget', async () => {
+    const clock = new ManualClock('2026-01-05T10:00:00Z')
+    const base = gatedRuleset()
+    const ruleset = {
+      current: {
+        ...base,
+        rules: base.rules.map((rule) =>
+          rule.id === 'starter-reddit-friction' ? { ...rule, dailyBudgetMinutes: 30 } : rule
+        ),
+      },
+    }
+    const usage = {
+      current: { localDate: '2026-01-04', secondsByRule: { 'starter-reddit-friction': 9_000 } },
+    }
+    const { watcher } = makeWatcher(clock, ruleset, usage)
+    await watcher.check()
+
+    expect(await snapshot()).not.toContain('exhausted starter-reddit-friction')
   })
 
   it('a_restarted_worker_still_sees_the_change', async () => {

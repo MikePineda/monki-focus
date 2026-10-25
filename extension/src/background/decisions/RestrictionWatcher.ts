@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { bedtimePhase, instantOf, isScheduleActive, localTimeAt } from '@monki-focus/engine'
-import type { Ruleset } from '@monki-focus/rules/pure'
+import type { DailyUsage, Ruleset } from '@monki-focus/rules/pure'
 import type { Clock } from '../../shared/clock'
 
 /** The coarse backstop alarm (the decisions' own `validUntil` alarm is `ValidityAlarm`). */
@@ -19,6 +19,8 @@ export interface SnapshotStorage {
 export interface RestrictionWatcherOptions {
   rulesets: { load(): Promise<Ruleset> }
   clock: Clock
+  /** Today's usage per budgeted rule (`DecisionState.usage`); null when unknown. */
+  usage?: () => Promise<DailyUsage | null>
   storage: SnapshotStorage
   /** Runs when the active rules changed since the last check. */
   onChange: () => Promise<void> | void
@@ -33,13 +35,45 @@ function zonesOf(ruleset: Ruleset): string[] {
 }
 
 /**
+ * The enabled budgeted rules whose usage has reached the budget, counted
+ * only when `usage.localDate` is today in a pinned zone (SEMANTICS.md
+ * §5.2.2, §6.3), in code-unit order. Usage grows without changing
+ * `validUntil`, so this is how a budget running out reaches open pages.
+ */
+export function exhaustedBudgets(
+  ruleset: Ruleset,
+  usage: DailyUsage | null,
+  nowMs: number
+): string[] {
+  if (usage === null) return []
+  const seconds = Math.floor(nowMs / 1000)
+  const today = zonesOf(ruleset).map((zone) => localTimeAt(seconds, zone).localDate)
+  if (!today.includes(usage.localDate)) return []
+  return ruleset.rules
+    .filter(
+      (rule) =>
+        rule.enabled &&
+        rule.dailyBudgetMinutes !== undefined &&
+        Object.hasOwn(usage.secondsByRule, rule.id) &&
+        (usage.secondsByRule[rule.id] ?? 0) >= rule.dailyBudgetMinutes * 60
+    )
+    .map((rule) => rule.id)
+    .sort()
+}
+
+/**
  * What the rule set has in force at `nowMs`, per pinned zone: the local
  * date (budgets reset at midnight), the bedtime phase and the ids of the
- * enabled rules whose schedules are active, in code-unit order.
+ * enabled rules whose schedules are active, in code-unit order; then the
+ * budgets already spent today.
  */
-export function activeRulesSnapshot(ruleset: Ruleset, nowMs: number): string {
+export function activeRulesSnapshot(
+  ruleset: Ruleset,
+  nowMs: number,
+  usage: DailyUsage | null = null
+): string {
   const now = instantOf(nowMs)
-  return zonesOf(ruleset)
+  const zones = zonesOf(ruleset)
     .map((zone) => {
       const date = localTimeAt(Math.floor(nowMs / 1000), zone).localDate
       const bedtime = bedtimePhase(ruleset.bedtime, now, zone)
@@ -51,14 +85,16 @@ export function activeRulesSnapshot(ruleset: Ruleset, nowMs: number): string {
       return [zone, date, bedtime, ...active].join(' ')
     })
     .join('\n')
+  return `${zones}\nexhausted ${exhaustedBudgets(ruleset, usage, nowMs).join(' ')}`
 }
 
 /**
  * The coarse backstop behind the decisions' `validUntil` (the
  * `ValidityAlarm` and the pages' own timers): every minute the worker
- * compares which rules are in force (schedules, bedtime, budget day) with
- * the last snapshot, and when a schedule edge changed them `onChange` tells
- * the open site tabs to ask again. No decision is probed here. The snapshot
+ * compares which rules are in force (schedules, bedtime, budget day) and
+ * which budgets are spent with the last snapshot, and when a schedule edge
+ * or a budget running out changed them `onChange` tells the open site tabs
+ * to ask again (§5.6: usage that keeps accruing is not in `validUntil`). No decision is probed here. The snapshot
  * lives in `storage.session`, so a worker that slept in between still sees
  * the change.
  */
@@ -68,7 +104,9 @@ export class RestrictionWatcher {
   /** Returns whether the active rules changed (and `onChange` ran). */
   async check(): Promise<boolean> {
     const { rulesets, clock, storage, onChange } = this.options
-    const snapshot = activeRulesSnapshot(await rulesets.load(), clock.now())
+    // Usage only adds spent budgets; when it cannot be read, compare without it.
+    const usage = (await this.options.usage?.().catch(() => null)) ?? null
+    const snapshot = activeRulesSnapshot(await rulesets.load(), clock.now(), usage)
     const previous = (await storage.get(RESTRICTION_SNAPSHOT_NAME))[RESTRICTION_SNAPSHOT_NAME]
     if (previous === snapshot) return false
     await storage.set({ [RESTRICTION_SNAPSHOT_NAME]: snapshot })
