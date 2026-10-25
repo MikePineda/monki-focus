@@ -92,6 +92,23 @@ plugin from `gradle/libs.versions.toml` so the compiler version is the catalog's
 - Never log accessibility node text (`scripts/ci/check-android-logging.sh`);
   release builds strip `android.util.Log` with R8.
 
+## Statistics and background work
+
+- `:background` copies the system usage events every 15 minutes and when
+  the app opens (`UsageIngestWorker`) into ActivityWatch-style sessions and
+  away periods, then into 5-minute blocks with the analytics core; raw events
+  are purged after 30 days. `BedtimeWarningWorker` (inexact, no exact alarm)
+  and `DetectorPackUpdateWorker` (re-verifies stored packs, no network) run
+  through `MonkiWorkerFactory`.
+- Browser pages reach the statistics from the accessibility service's URL
+  bar as the domain plus a plain first path segment only; a segment with
+  `%` or `;`, longer than 64 characters, or read from a domain-only bar is
+  dropped.
+- **Known gap: private tabs.** No reliable view id for Chrome or Brave
+  incognito tabs is known yet, so a private tab's domain is counted like any
+  other page on this device (it never leaves the phone). The ids will come
+  from the on-device validation (WP 2.12); see `docs/BACKLOG.md`.
+
 ## Onboarding, Status and rules
 
 - **Onboarding** (`:feature-onboarding`) is `OnboardingStateMachine`, pure

@@ -23,3 +23,4 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-10-25 Android: `HeartbeatWorker` (plan §2.9: heartbeat rows, `BypassDetector`, dead-man POST to the server) once server pairing exists; WP 2.8/2.9 shipped only the local workers.
 - 2026-10-25 Android: real `DetectorPackUpdateWorker` download once a server and a pinned `rules-signing` key exist (today it only re-verifies stored packs).
 - 2026-10-25 Android: a user-chosen device name for the ActivityWatch buckets (today the neutral `phone`), and an ActivityWatch/CSV export of the local data on the stats screen like the extension's.
+- 2026-10-25 Android: detect private (incognito) tabs in Chrome and Brave from device-validated view ids (data-only predicate in the browser pack, marked unverified until captured) and skip `siteSeen` on them; today their domains are counted locally.
