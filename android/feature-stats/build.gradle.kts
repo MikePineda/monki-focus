@@ -12,4 +12,7 @@ android {
 dependencies {
     implementation(project(":core-domain"))
     implementation(project(":core-ui"))
+    implementation(libs.kotlinx.coroutines.core)
+
+    testImplementation(libs.kotlinx.coroutines.test)
 }
