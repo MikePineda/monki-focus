@@ -78,10 +78,14 @@ plugin from `gradle/libs.versions.toml` so the compiler version is the catalog's
   `RulesetValidator` (networknt 2.0.x on Jackson 2, plus `x-uniqueBy`,
   `x-registrableDomain`, `x-timeZone` and the 256 KiB limit). JUnit4
   `Parameterized` runners run every `decision`, `specificity`,
-  `url-normalize`, `schedule`, `escalation`, `rule-change` and `invalid`
-  fixture; `RunnerCoverageTest` fails on a kind without a runner. Adapters
-  call `decide(…, now = instantOf(clock.millis()), catalog)`; it never throws
-  and fails closed (`engine_error`).
+  `url-normalize`, `schedule`, `escalation`, `rule-change`, `candidates` and
+  `invalid` fixture; `RunnerCoverageTest` fails on a kind without a runner.
+  Adapters call `decide(…, now = instantOf(clock.millis()), catalog)`; it
+  never throws and fails closed (`engine_error`). They re-decide at the
+  decision's `validUntil` at the latest, combine escalation with
+  `frictionCandidates` + `effectiveEscalationState`, accrue usage to
+  `budgetedRulesFor` and check typed intentions with `TypedIntentionRule`
+  (`:feature-gate`'s `IntentionRule` delegates to it).
 - UI copy only through `core-ui/src/main/res/values{,-es}/strings.xml`; the
   parity test and Lint (`MissingTranslation`, `ExtraTranslation`,
   `HardcodedText` as errors) fail on drift.
