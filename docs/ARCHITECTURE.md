@@ -84,8 +84,10 @@ feeds per surface with selectors that live only in the extension, redirects
 Shorts with a static declarative rule, sends gated navigations to an
 extension-owned intention page (the destination is kept per tab in session
 storage, never read from a query parameter), escalates friction on repeated
-attempts and records activity heartbeats. With the macOS app installed it
-talks to the native messaging bridge for trusted time and policy.
+attempts and records activity heartbeats. With the macOS app installed and
+the optional `nativeMessaging` permission granted ("Connect the Mac app" in
+the options), it mirrors its heartbeats to the app over the native messaging
+bridge and keeps working on its own without it.
 
 ### Android app (`android/`)
 
@@ -101,9 +103,16 @@ JUnit4 with Robolectric for tests.
 
 A menu-bar app (no sandbox) that watches the frontmost app and idle time,
 gates or hides distracting apps, enforces bedtime and runs focus sessions. A
-small `monki-bridge` helper is the native messaging host for Brave and Chrome;
-it relays to the app over a local Unix socket (mode 0600, peer-validated) with
-a minimal five-method API.
+small `monki-bridge` helper (`Contents/Helpers`) is the native messaging host
+`dev.monkifocus.bridge` for Brave and Chrome: a stateless relay between the
+browser's length-prefixed stdio and an NDJSON Unix socket in the user's
+Application Support folder (0600 in a 0700 folder, same-uid peers only),
+checking every message's envelope and direction and capping it at 1 MiB. The
+app accepts only `hello`, `browser.focus`, `browser.activity` and
+`bypass.event`, answers `hello.ack`, and merges web heartbeats into its own
+per-browser bucket. App-to-extension pushes (`rules.snapshot`,
+`unlock.token`, `focusSession.state`) are unauthenticated and stay unused
+until M6/M7 (threat model §3a). Contract: [CONTRACTS.md](CONTRACTS.md#native-messaging).
 
 ### Server and dashboard (`server/`)
 
@@ -170,6 +179,6 @@ guardian is notified.
 | Analytics fixtures            | `packages/rules/fixtures/analytics`  | engine (TS), Kotlin, Swift, server |
 | Unlock and policy tokens      | `packages/protocol` vectors          | extension, Android, macOS, server  |
 | Device API                    | `packages/protocol/openapi.yaml`     | all clients, server tests          |
-| Native messaging              | `macos` bridge contract              | extension, macOS app               |
+| Native messaging              | `packages/protocol` bridge schemas   | extension, macOS app               |
 
 See [CONTRACTS.md](CONTRACTS.md) for the list and status of each contract.
