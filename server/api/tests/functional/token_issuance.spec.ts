@@ -16,6 +16,7 @@ import SigningKeyStore from '#services/signing_key_store'
 import TokenIssuance from '#services/token_issuance'
 import UnlockTokenLedgerStore, { UNLOCK_TOKENS_TABLE } from '#services/unlock_token_ledger_store'
 import { DeviceFactory } from '#tests/factories/device_factory'
+import { anUnlockRequest } from '#tests/factories/unlock_request_factory'
 
 const ISSUER = 'http://127.0.0.1:3333'
 const DEVICE = '6f1c2d3e-4b5a-4c6d-8e7f-90a1b2c3d4e5'
@@ -35,8 +36,12 @@ const grant: UnlockGrant = {
 
 async function setup() {
   // Ledger rows name enrolled devices (foreign key on devices.uuid).
-  await DeviceFactory.with('user').merge({ uuid: DEVICE }).create()
+  // ... and their requests (foreign key on unlock_requests.uuid).
+  const device = await DeviceFactory.with('user').merge({ uuid: DEVICE }).create()
   await DeviceFactory.with('user').merge({ uuid: OTHER_DEVICE }).create()
+  for (const uuid of [grant.requestUuid, 'b1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d']) {
+    await anUnlockRequest(device, { uuid })
+  }
   const keys = new SigningKeyStore()
   await keys.ensureKeys(T0)
   let now = T0

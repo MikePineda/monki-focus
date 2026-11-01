@@ -85,6 +85,8 @@ test.group('Database schema', () => {
         'pairing_codes.FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL',
         'pairing_codes.FOREIGN KEY (ward_user_id) REFERENCES users(id) ON DELETE CASCADE',
         'scheduler_runs.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
+        'unlock_requests.FOREIGN KEY (decided_by_user_id) REFERENCES users(id) ON DELETE SET NULL',
+        'unlock_requests.FOREIGN KEY (ward_user_id) REFERENCES users(id) ON DELETE CASCADE',
         'user_recovery_codes.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
       ]
     )
@@ -106,6 +108,7 @@ test.group('Database schema', () => {
         'bypass_events.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL',
         'device_enrollment_codes.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL',
         'device_heartbeats.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE',
+        'unlock_requests.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE',
         'unlock_tokens.FOREIGN KEY (device_uuid) REFERENCES devices(uuid) ON DELETE CASCADE',
       ]
     )
@@ -122,6 +125,7 @@ test.group('Database schema', () => {
       result.rows.map((row) => row.definition),
       [
         'pairing_codes.FOREIGN KEY (guardian_link_id) REFERENCES guardian_links(id) ON DELETE SET NULL',
+        'unlock_requests.FOREIGN KEY (guardian_link_id) REFERENCES guardian_links(id) ON DELETE SET NULL',
       ]
     )
   })
