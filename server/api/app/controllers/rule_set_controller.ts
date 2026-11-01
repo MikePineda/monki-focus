@@ -6,6 +6,7 @@ import RuleSetSync from '#services/rules/rule_set_sync'
 import { consumeRuleSetRead, consumeRuleSetWrite } from '#services/rules/rule_set_throttles'
 import { assertMayStartOwnProtection } from '#services/guardians/guardian_only_accounts'
 import { revisionTag } from '#domain/rules/rule_set_etag'
+import { ruleSetOfRawBody } from '#domain/rules/rule_set_raw_body'
 import type { IfMatchRefusal } from '#domain/rules/rule_set_precondition'
 
 const PRECONDITION_CODES: Record<IfMatchRefusal, string> = {
@@ -45,7 +46,7 @@ export default class RuleSetController {
     await consumeRuleSetWrite({ user: user.id })
     const outcome = await this.sync.write(user.id, {
       ifMatch: request.header('if-match'),
-      ruleSet: request.input('ruleSet'),
+      ruleSet: ruleSetOfRawBody(request.raw()),
       deviceId: null,
       now: this.clock.now(),
     })

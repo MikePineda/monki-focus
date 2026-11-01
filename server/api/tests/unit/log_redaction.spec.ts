@@ -180,6 +180,23 @@ test.group('Log redaction', () => {
     assert.include(output(), 'socket hang up')
   })
 
+  test('test_postgres_context_fields_never_reach_a_log', ({ assert }) => {
+    const { logger, output } = capturingLogger()
+    // node-pg copies the offending input into CONTEXT (`where`) and friends.
+    const jsonError = Object.assign(new Error('unsupported Unicode escape sequence'), {
+      code: '22P05',
+      where: `JSON data, line 1: {"domain":"${SECRET}"`,
+      hint: SECRET,
+      internalQuery: `select '${SECRET}'`,
+      internalPosition: SECRET,
+    })
+
+    logger.error({ err: jsonError }, 'write failed')
+
+    assert.notInclude(output(), SECRET)
+    assert.include(output(), '"errorCode":"22P05"')
+  })
+
   test('test_a_code_field_outside_an_error_is_always_censored', ({ assert }) => {
     const { logger, output } = capturingLogger()
 

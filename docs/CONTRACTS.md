@@ -523,6 +523,10 @@ E_RULE_SET_REVISION_MISMATCH, revision }` on the session route): the
   `invalid_time_zone`, `too_large`), the session route `{ errors: [{
 field, rule, message }] }`. Only JSON pointers come back (segments
   outside `[A-Za-z0-9_]` masked as `*`, at most 20), never a value.
+- **Storable values**: before the schema, a string or key containing U+0000
+  or a lone surrogate (Postgres `jsonb` refuses both) and nesting deeper
+  than 64 answer 422 at that pointer (rule `schema`). The set is read from
+  the raw JSON body only (empty strings kept, never the query string).
 - **Content hash**: unpadded base64url SHA-256 of the canonical JSON
   (object keys sorted at every depth, no whitespace).
 - **Tenancy**: a device reaches only its owner's set and a session user

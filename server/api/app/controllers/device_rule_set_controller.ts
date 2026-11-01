@@ -5,6 +5,7 @@ import Clock from '#services/clock'
 import RuleSetSync from '#services/rules/rule_set_sync'
 import { consumeRuleSetRead, consumeRuleSetWrite } from '#services/rules/rule_set_throttles'
 import { revisionTag } from '#domain/rules/rule_set_etag'
+import { ruleSetOfRawBody } from '#domain/rules/rule_set_raw_body'
 import { DeviceApiError } from '#exceptions/device_api_error'
 
 /**
@@ -37,7 +38,7 @@ export default class DeviceRuleSetController {
     await consumeRuleSetWrite({ device: device.id })
     const outcome = await this.sync.write(device.userId, {
       ifMatch: request.header('if-match'),
-      ruleSet: request.input('ruleSet'),
+      ruleSet: ruleSetOfRawBody(request.raw()),
       deviceId: device.id,
       now: this.clock.now(),
     })

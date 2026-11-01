@@ -15,7 +15,8 @@ import { stdSerializers } from '@adonisjs/core/logger'
  *    `X-Api-Key`, `set-cookie`) inside any `headers` object.
  * 2. `serializeError` (pino `serializers.err`): drops the fields where
  *    drivers and HTTP clients copy values (`detail`, `bindings`, `sql`,
- *    `config`, `request`, `response`), renames `code` to `errorCode` and
+ *    `config`, `request`, `response`, node-pg's `where`, `hint`,
+ *    `internalQuery`, `internalPosition`), renames `code` to `errorCode` and
  *    scrubs the rest, causes included.
  * 3. pino `redact` paths: the same names at fixed depths, a second net
  *    applied after serializers.
@@ -93,7 +94,19 @@ const SENSITIVE_KEYS = new Set([
 ])
 
 /** Error fields where drivers and HTTP clients copy values, headers or bodies. */
-const LEAKY_ERROR_FIELDS = ['detail', 'bindings', 'sql', 'config', 'request', 'response']
+const LEAKY_ERROR_FIELDS = [
+  'detail',
+  'bindings',
+  'sql',
+  'config',
+  'request',
+  'response',
+  // node-pg: CONTEXT and HINT can quote the offending input (a jsonb document)
+  'where',
+  'hint',
+  'internalQuery',
+  'internalPosition',
+]
 
 /** What a redacted value prints as. */
 export const LOG_REDACT_CENSOR = '[redacted]'
