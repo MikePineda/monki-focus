@@ -15,7 +15,7 @@ import type {
   RuleChangeProposal,
   RulesState,
 } from '../../shared/RuleChangeContract'
-import { SHORTS_SURFACE } from '../shorts/ShortsRedirectSync'
+import { FACEBOOK_REELS_SURFACE, SHORTS_SURFACE } from '../shorts/ShortsRedirectSync'
 import type { TrackingCommands } from '../tracking/TrackingModule'
 import type { CommandHandlers } from './CommandRouter'
 
@@ -65,6 +65,8 @@ export interface CommandDependencies {
   decisions: FeedDecisions
   stylesheets?: FeedStylesheets
   shortsRedirect?: ShortsRedirectState
+  /** The Facebook Reels twin of `shortsRedirect`. */
+  reelsRedirect?: ShortsRedirectState
   tracking: TrackingCommands
   gate?: GateCommandDependencies
   rules?: RuleChanges
@@ -79,9 +81,10 @@ function wired<T>(dependency: T | undefined): T {
   return dependency
 }
 
-function isShortsSite(url: string, catalog: RulesCatalog): boolean {
+/** Whether `url` is on the site that owns the short-video `surface`. */
+function isSiteOf(surface: string, url: string, catalog: RulesCatalog): boolean {
   try {
-    return feedSurfacesOfHost(pageSurfaceOf(url, catalog).host, catalog).includes(SHORTS_SURFACE)
+    return feedSurfacesOfHost(pageSurfaceOf(url, catalog).host, catalog).includes(surface)
   } catch {
     return false
   }
@@ -94,6 +97,7 @@ export function createCommandHandlers({
   decisions,
   stylesheets,
   shortsRedirect,
+  reelsRedirect,
   tracking,
   gate,
   rules,
@@ -112,8 +116,13 @@ export function createCommandHandlers({
       const answer = await decisions.feedDecisionFor(url)
       // A YouTube page already knows whether Shorts are restricted right now:
       // keep the hard redirect in step without a separate decision.
-      if (shortsRedirect && isShortsSite(url, catalog)) {
+      if (shortsRedirect && isSiteOf(SHORTS_SURFACE, url, catalog)) {
         await shortsRedirect.apply(answer.restrict.includes(SHORTS_SURFACE)).catch(() => undefined)
+      }
+      if (reelsRedirect && isSiteOf(FACEBOOK_REELS_SURFACE, url, catalog)) {
+        await reelsRedirect
+          .apply(answer.restrict.includes(FACEBOOK_REELS_SURFACE))
+          .catch(() => undefined)
       }
       const session = await gate?.sessionFor(url, answer.decision).catch(() => undefined)
       return session ? { ...answer, session } : answer

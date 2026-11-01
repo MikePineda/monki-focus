@@ -123,3 +123,63 @@ describe('YouTube on desktop and mobile', () => {
     expect(entries).toContain('ytm-pivot-bar-item-renderer')
   })
 })
+
+describe('Facebook', () => {
+  const site = SITE_FEED_PROFILES.find((candidate) => candidate.domain === 'facebook.com')
+  const catalog = bundledRulesCatalog()
+
+  function matches(selectors: readonly string[] | undefined, html: string): string[] {
+    const page = new DOMParser().parseFromString(html, 'text/html')
+    return [...page.querySelectorAll((selectors ?? []).join(', '))].map((element) => element.id)
+  }
+
+  it.each(['facebook.com', 'web.facebook.com', 'mbasic.facebook.com'])(
+    'host_%s_uses_the_facebook_profile',
+    (host) => {
+      expect(siteFeedProfileFor(host, catalog)?.domain).toBe('facebook.com')
+    }
+  )
+
+  it('only_reels_and_watch_have_selectors', () => {
+    const keys = [site?.hide, site?.pageContainers, site?.entryPoints].flatMap((map) =>
+      Object.keys(map ?? {})
+    )
+    expect([...new Set(keys)].sort()).toEqual(['facebook.reels', 'facebook.watch'])
+  })
+
+  it('reel_carousels_and_the_reels_entry_are_entry_points_but_plain_posts_are_not', () => {
+    const hidden = matches(
+      site?.entryPoints['facebook.reels'],
+      `<div role="feed">
+         <div id="reel-unit"><a id="reel-link" href="/reel/123456">reel</a></div>
+         <div id="post-unit"><a id="post-link" href="/ExamplePage/posts/123">post</a></div>
+       </div>
+       <a id="reels-tab" href="/reels/">Reels</a>
+       <a id="marketplace-tab" href="/marketplace/">Marketplace</a>`
+    )
+    expect(hidden).toEqual(expect.arrayContaining(['reel-unit', 'reel-link', 'reels-tab']))
+    expect(hidden).not.toContain('post-unit')
+    expect(hidden).not.toContain('marketplace-tab')
+  })
+
+  it('watch_tab_links_are_entry_points_but_single_video_links_are_not', () => {
+    const hidden = matches(
+      site?.entryPoints['facebook.watch'],
+      `<a id="watch-tab" href="/watch/">Video</a>
+       <a id="single-video" href="/watch/?v=123456">video</a>
+       <a id="page-video" href="/ExamplePage/videos/123456/">video</a>`
+    )
+    expect(hidden).toEqual(['watch-tab'])
+  })
+
+  it('the_watch_hide_takes_the_feed_list_and_keeps_the_player', () => {
+    const hidden = matches(
+      site?.hide['facebook.watch'],
+      `<div role="main">
+         <div id="player"><video></video></div>
+         <div id="video-feed" role="feed"><div>suggested</div></div>
+       </div>`
+    )
+    expect(hidden).toEqual(['video-feed'])
+  })
+})

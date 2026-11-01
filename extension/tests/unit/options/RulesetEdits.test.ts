@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from 'vitest'
 import {
+  ADDABLE_SURFACES,
   addSiteRule,
+  addSurfaceRule,
   allowedSubreddits,
   allowSubreddit,
   parseDomainInput,
@@ -57,6 +59,27 @@ describe('RulesetEdits', () => {
     expect(allowedSubreddits(next).map((entry) => entry.name)).toEqual(['AskScience'])
     expect(allowSubreddit(next, 'askscience')).toBe(next)
     expect(validateRuleset(next)).toEqual({ valid: true })
+  })
+
+  it('an_existing_install_can_add_the_facebook_reels_block_as_a_surface_rule', () => {
+    const next = addSurfaceRule(makeRuleset({ rules: [] }), 'facebook.reels', 'block')
+
+    expect(next.rules).toEqual([
+      {
+        id: 'surface-facebook-reels',
+        target: { kind: 'surface', surface: 'facebook.reels' },
+        mode: 'block',
+        schedules: [],
+        enabled: true,
+      },
+    ])
+    expect(validateRuleset(next)).toEqual({ valid: true })
+  })
+
+  it('only_feed_surfaces_are_offered_for_surface_rules', () => {
+    expect(ADDABLE_SURFACES).toEqual(expect.arrayContaining(['facebook.reels', 'facebook.watch']))
+    expect(ADDABLE_SURFACES).not.toContain('facebook.marketplace')
+    expect(ADDABLE_SURFACES).not.toContain('facebook.video')
   })
 
   it('new_rule_ids_never_collide', () => {

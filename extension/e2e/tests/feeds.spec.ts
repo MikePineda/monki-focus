@@ -158,6 +158,58 @@ test('spa_navigation_to_shorts_redirects', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-fixture', 'youtube-watch')
 })
 
+test('facebook_reel_url_redirects_to_the_single_video_page', async ({ page }) => {
+  // Every rule of the static ruleset is exercised by a real navigation.
+  await page.goto('https://www.facebook.com/reel/1234567890123456')
+  expect(page.url()).toBe('https://www.facebook.com/watch/?v=1234567890123456')
+  await expect(page.locator('html')).toHaveAttribute('data-fixture', 'facebook-watch')
+
+  await page.goto('https://www.facebook.com/reel/1234567890123456/')
+  expect(page.url()).toBe('https://www.facebook.com/watch/?v=1234567890123456')
+
+  await page.goto('https://facebook.com/reel/1234567890123456?s=ifu')
+  expect(page.url()).toBe('https://www.facebook.com/watch/?v=1234567890123456')
+})
+
+test('facebook_home_keeps_posts_and_hides_reels_and_the_video_tab', async ({ page }) => {
+  await page.goto('https://www.facebook.com/')
+
+  await expectDecisionApplied(page, 'facebook.reels facebook.watch')
+  await expect(page.locator('#post-unit')).toBeVisible()
+  await expect(page.locator('#video-post')).toBeVisible()
+  await expect(page.locator('#reels-carousel')).toBeHidden()
+  await expect(page.locator('#reels-tab')).toBeHidden()
+  await expect(page.locator('#watch-tab')).toBeHidden()
+  await expect(page.locator('#marketplace-tab')).toBeVisible()
+  await expect(placeholderHeading(page)).toHaveCount(0)
+})
+
+test('facebook_watch_feed_is_hidden_and_the_player_stays', async ({ page }) => {
+  await page.goto('https://www.facebook.com/watch/?v=1234567890123456')
+
+  await expect(page.locator('#video-feed')).toBeHidden()
+  await expect(page.locator('#player')).toBeVisible()
+  await expect(placeholderHeading(page)).toBeVisible()
+})
+
+test('facebook_marketplace_is_never_touched', async ({ page }) => {
+  await page.goto('https://www.facebook.com/marketplace/')
+
+  await expectDecisionApplied(page, 'facebook.reels facebook.watch')
+  await expect(page.locator('#listings')).toBeVisible()
+  await expect(placeholderHeading(page)).toHaveCount(0)
+})
+
+test('spa_navigation_to_a_facebook_reel_redirects', async ({ page }) => {
+  await page.goto('https://www.facebook.com/')
+  await expectDecisionApplied(page, 'facebook.reels facebook.watch')
+
+  await page.locator('#open-reel').click()
+
+  await page.waitForURL('https://www.facebook.com/watch/?v=1234567890123456')
+  await expect(page.locator('html')).toHaveAttribute('data-fixture', 'facebook-watch')
+})
+
 test('push_state_without_events_shows_no_feed_after_300_ms', async ({ page }) => {
   await page.goto(REDDIT_PERMALINK)
   await expectDecisionApplied(page, 'reddit.feed')

@@ -2,6 +2,7 @@
 import { surfaceRegistry } from '@monki-focus/rules/pure'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  FACEBOOK_REELS_REDIRECT,
   SHORTS_REDIRECT_RULESET_ID,
   SHORTS_SURFACE,
   ShortsRedirectSync,
@@ -25,6 +26,25 @@ describe('ShortsRedirectSync', () => {
 
     expect(await sync.sync()).toBe(true)
     expect(updateEnabledRulesets).toHaveBeenCalledWith({ enableRulesetIds: ['shorts-redirect'] })
+  })
+
+  it('a_facebook_reels_sync_toggles_its_own_ruleset_for_its_own_surface', async () => {
+    const restricts = vi.fn(() => Promise.resolve(true))
+    const updateEnabledRulesets = vi.fn(() => Promise.resolve())
+    const sync = new ShortsRedirectSync(
+      { restricts },
+      { updateEnabledRulesets },
+      FACEBOOK_REELS_REDIRECT
+    )
+
+    expect(await sync.sync()).toBe(true)
+    expect(restricts).toHaveBeenCalledWith('facebook.reels')
+    expect(updateEnabledRulesets).toHaveBeenCalledWith({
+      enableRulesetIds: ['facebook-reels-redirect'],
+    })
+    expect(STATIC_RULESETS.map((ruleset) => ruleset.id)).toContain(
+      FACEBOOK_REELS_REDIRECT.rulesetId
+    )
   })
 
   it('allowed_shorts_disable_the_redirect', async () => {

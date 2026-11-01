@@ -23,6 +23,8 @@ export const SITE_HOST_PERMISSIONS = [
   '*://*.twitter.com/*',
   '*://*.youtube.com/*',
   '*://*.instagram.com/*',
+  '*://*.facebook.com/*',
+  '*://*.fb.com/*',
 ] as const
 
 /**
@@ -30,9 +32,12 @@ export const SITE_HOST_PERMISSIONS = [
  * `/shorts/<id>` load into `/watch?v=<id>`; it ships enabled (the starter
  * rule set blocks Shorts) and the service worker toggles it with
  * `updateEnabledRulesets` to follow the user's rule set.
+ * `facebook-reels-redirect` does the same for a Facebook `/reel/<id>` load
+ * (to `/watch/?v=<id>`) while the rule set restricts `facebook.reels`.
  */
 export const STATIC_RULESETS = [
   { id: 'shorts-redirect', enabled: true, path: 'rules/shorts-redirect.json' },
+  { id: 'facebook-reels-redirect', enabled: true, path: 'rules/facebook-reels-redirect.json' },
 ] as const
 
 const MODES_WITH_KEY: readonly string[] = ['development', 'e2e']

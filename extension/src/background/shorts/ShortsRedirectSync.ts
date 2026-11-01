@@ -1,10 +1,29 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { FACEBOOK_REELS_SURFACE } from '../../sites/facebook'
 import { SHORTS_SURFACE } from '../../sites/youtube'
 
-export { SHORTS_SURFACE }
+export { FACEBOOK_REELS_SURFACE, SHORTS_SURFACE }
 
 /** The static DNR ruleset in `public/rules/shorts-redirect.json` (manifest id). */
 export const SHORTS_REDIRECT_RULESET_ID = 'shorts-redirect'
+
+/** A short-video surface and the static DNR ruleset that turns its hard loads into a single-video page. */
+export interface ShortVideoRedirect {
+  surface: string
+  rulesetId: string
+}
+
+/** YouTube Shorts: `/shorts/<id>` -> `/watch?v=<id>`. */
+export const YOUTUBE_SHORTS_REDIRECT: ShortVideoRedirect = {
+  surface: SHORTS_SURFACE,
+  rulesetId: SHORTS_REDIRECT_RULESET_ID,
+}
+
+/** Facebook Reels: `/reel/<id>` -> `/watch/?v=<id>` (`public/rules/facebook-reels-redirect.json`). */
+export const FACEBOOK_REELS_REDIRECT: ShortVideoRedirect = {
+  surface: FACEBOOK_REELS_SURFACE,
+  rulesetId: 'facebook-reels-redirect',
+}
 
 /** The slice of `declarativeNetRequest` the sync uses. */
 export interface RulesetToggle {
@@ -27,7 +46,8 @@ export interface SurfaceRestriction {
  * open or close are picked up on the next YouTube visit. Fails closed: when
  * the decision cannot be made the restriction counts, so the redirect stays on.
  * Updates run one after another (a promise chain), so two racing callers can
- * never leave the ruleset in the state of the older one.
+ * never leave the ruleset in the state of the older one. One instance per
+ * short-video surface (`target`, YouTube Shorts by default; Facebook Reels).
  */
 export class ShortsRedirectSync {
   private last: boolean | undefined
@@ -35,12 +55,13 @@ export class ShortsRedirectSync {
 
   constructor(
     private readonly restriction: SurfaceRestriction,
-    private readonly toggle: RulesetToggle
+    private readonly toggle: RulesetToggle,
+    private readonly target: ShortVideoRedirect = YOUTUBE_SHORTS_REDIRECT
   ) {}
 
   /** Asks the decision service and applies the answer. */
   async sync(): Promise<boolean> {
-    const enabled = await this.restriction.restricts(SHORTS_SURFACE).catch(() => true)
+    const enabled = await this.restriction.restricts(this.target.surface).catch(() => true)
     await this.apply(enabled)
     return enabled
   }
@@ -54,8 +75,8 @@ export class ShortsRedirectSync {
       if (enabled === this.last) return
       await this.toggle.updateEnabledRulesets(
         enabled
-          ? { enableRulesetIds: [SHORTS_REDIRECT_RULESET_ID] }
-          : { disableRulesetIds: [SHORTS_REDIRECT_RULESET_ID] }
+          ? { enableRulesetIds: [this.target.rulesetId] }
+          : { disableRulesetIds: [this.target.rulesetId] }
       )
       this.last = enabled
     })

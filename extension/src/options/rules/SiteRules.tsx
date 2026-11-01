@@ -9,14 +9,16 @@ import { SelectField } from '../../ui/SelectField'
 import { TextField } from '../../ui/TextField'
 import { RuleEditor } from './RuleEditor'
 import {
+  ADDABLE_SURFACES,
   addSiteRule,
+  addSurfaceRule,
   allowedSubredditOf,
   parseDomainInput,
   removeRule,
   replaceRule,
   RULE_MODES,
 } from './RulesetEdits'
-import { modeNameKey, scheduleSummary, targetLabel } from './RuleText'
+import { modeNameKey, scheduleSummary, surfaceNameKey, targetLabel } from './RuleText'
 
 export interface SiteRulesProps {
   ruleset: Ruleset
@@ -31,6 +33,8 @@ export function SiteRules({ ruleset, pendingIds, onPropose }: SiteRulesProps) {
   const [domain, setDomain] = useState('')
   const [mode, setMode] = useState<RuleMode>('friction')
   const [domainInvalid, setDomainInvalid] = useState(false)
+  const [surface, setSurface] = useState<string>(ADDABLE_SURFACES[0] ?? '')
+  const [surfaceMode, setSurfaceMode] = useState<RuleMode>('block')
   // Community allow rules have their own editor below.
   const rules = ruleset.rules.filter((rule) => allowedSubredditOf(rule) === null)
   const editedRule = rules.find((rule) => rule.id === editing)
@@ -143,6 +147,40 @@ export function SiteRules({ ruleset, pendingIds, onPropose }: SiteRulesProps) {
         <div class="options__actions">
           <Button variant="ink" type="submit">
             {t('rules.sites.add')}
+          </Button>
+        </div>
+      </form>
+      <form
+        class="options__inline-form"
+        aria-labelledby="options-add-surface"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void onPropose(addSurfaceRule(ruleset, surface, surfaceMode))
+        }}
+      >
+        <h4 id="options-add-surface" class="options__subheading">
+          {t('rules.surfaces.addTitle')}
+        </h4>
+        <div class="options__grid">
+          <SelectField<string>
+            label={t('rules.surfaces.surface')}
+            value={surface}
+            onChange={setSurface}
+            options={ADDABLE_SURFACES.map((value) => ({
+              value,
+              label: t(surfaceNameKey(value)),
+            }))}
+          />
+          <SelectField<RuleMode>
+            label={t('rules.editor.mode')}
+            value={surfaceMode}
+            onChange={setSurfaceMode}
+            options={RULE_MODES.map((value) => ({ value, label: t(modeNameKey(value)) }))}
+          />
+        </div>
+        <div class="options__actions">
+          <Button variant="ink" type="submit">
+            {t('rules.surfaces.add')}
           </Button>
         </div>
       </form>
