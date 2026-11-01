@@ -6,13 +6,19 @@ export const BEDTIME_GROUP = 'bedtime'
 
 /**
  * The escalation group a decision's restriction belongs to: its rule id, or
- * `bedtime` for a bedtime block (and for the emergency override that lifts
- * it). Null when the decision names no restriction (no rule, an engine
- * error).
+ * `bedtime` for a bedtime block, the relaxed-weekend bedtime gate and its
+ * intention (no rule, SEMANTICS.md §6.4) and the emergency override that
+ * lifts bedtime. Null when the decision names no restriction (no rule, an
+ * engine error).
  */
+const BEDTIME_REASONS: ReadonlySet<Decision['reason']> = new Set([
+  'schedule_bedtime',
+  'emergency_active',
+  'intention_required',
+  'intention_active',
+])
+
 export function groupOf(decision: Decision): string | null {
   if (decision.ruleId !== null) return decision.ruleId
-  return decision.reason === 'schedule_bedtime' || decision.reason === 'emergency_active'
-    ? BEDTIME_GROUP
-    : null
+  return BEDTIME_REASONS.has(decision.reason) ? BEDTIME_GROUP : null
 }

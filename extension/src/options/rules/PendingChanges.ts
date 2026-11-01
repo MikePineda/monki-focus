@@ -4,7 +4,7 @@ import type { Rule, Ruleset, Target } from '@monki-focus/rules/pure'
 /** One part of the configured rule set that does not apply yet. */
 export type PendingChange =
   | { kind: 'rule_added' | 'rule_removed' | 'rule_changed'; ruleId: string; target: Target }
-  | { kind: 'bedtime' | 'work_hours' | 'categories' | 'time_zone' }
+  | { kind: 'bedtime' | 'relaxed_weekends' | 'work_hours' | 'categories' | 'time_zone' }
 
 /** JSON with object keys sorted at every depth: key order carries no meaning. */
 function canonical(value: unknown): string {
@@ -49,6 +49,12 @@ export function pendingChanges(effective: Ruleset, configured: Ruleset): Pending
     if (!after.has(id)) changes.push({ kind: 'rule_removed', ruleId: id, target: rule.target })
   }
   if (!same(effective.bedtime, configured.bedtime)) changes.push({ kind: 'bedtime' })
+  // An absent option is off.
+  if (
+    (effective.relaxedWeekends?.enabled ?? false) !== (configured.relaxedWeekends?.enabled ?? false)
+  ) {
+    changes.push({ kind: 'relaxed_weekends' })
+  }
   if (!same(effective.workHours, configured.workHours)) changes.push({ kind: 'work_hours' })
   if (!sameSet(effective.categories, configured.categories)) changes.push({ kind: 'categories' })
   if (effective.timeZone !== configured.timeZone || effective.pendingTimeZone !== undefined) {

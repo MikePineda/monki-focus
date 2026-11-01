@@ -11,6 +11,7 @@ import {
   gateHarness,
   gatedRuleset,
 } from '../../../support/gateHarness'
+import { ManualClock } from '../../../support/ManualClock'
 
 type Harness = ReturnType<typeof gateHarness>
 
@@ -46,6 +47,24 @@ describe('GateController', () => {
     expect(view.pauseEndsAtMs).toBe(Date.parse('2026-01-05T09:00:05Z'))
     expect(view.context).toEqual({ site: 'reddit.com', visitsToday: 1, minutesToday: 12 })
     expect((await harness.escalation.get(REDDIT_GROUP)).attemptCount).toBe(1)
+  })
+
+  it('a_relaxed_friday_night_bedtime_gates_in_the_bedtime_group', async () => {
+    const harness = gateHarness({
+      ruleset: gatedRuleset({
+        bedtime: { ...gatedRuleset().bedtime, enabled: true },
+        relaxedWeekends: { enabled: true },
+      }),
+      // Friday 23:00 UTC: inside the window that starts on Friday.
+      clock: new ManualClock('2026-01-09T23:00:00Z'),
+    })
+
+    const view = friction(await arrive(harness))
+
+    expect(view.phase).toBe('pausing')
+    expect(view.gate).toMatchObject({ level: 0, pauseSeconds: 5, frictionType: 'countdown' })
+    expect((await harness.escalation.get('bedtime')).attemptCount).toBe(1)
+    expect((await harness.escalation.get(REDDIT_GROUP)).attemptCount).toBe(0)
   })
 
   it('reloading_the_gate_does_not_reset_the_pause', async () => {
