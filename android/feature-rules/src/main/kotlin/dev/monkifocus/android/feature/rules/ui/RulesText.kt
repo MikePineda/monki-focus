@@ -97,12 +97,29 @@ internal object RulesText {
     /** The catalog label of a registered surface id, or null when the catalog has none. */
     fun surfaceLabel(surface: String): Int? = SURFACES[surface]
 
+    private val FAMILIES: Map<String, Int> =
+        mapOf(
+            "facebook" to R.string.rules_family_facebook,
+            "instagram" to R.string.rules_family_instagram,
+            "reddit" to R.string.rules_family_reddit,
+            "x" to R.string.rules_family_x,
+            "youtube" to R.string.rules_family_youtube,
+        )
+
+    /** A site family of `data/surfaces.json` by its name in the catalog; an unknown one is shown as its id. */
+    @Composable
+    fun family(family: String): String = FAMILIES[family]?.let { stringResource(it) } ?: family
+
+    /** A surface id by its name in the catalog; an unknown one is shown as its id. */
+    @Composable
+    fun surface(id: String): String = SURFACES[id]?.let { stringResource(it) } ?: id
+
     @Composable
     fun target(target: Target): String =
         when (target) {
             is SiteTarget -> target.domain + target.path.orEmpty()
             is AppTarget -> stringResource(R.string.rules_target_app, target.packageName)
-            is SurfaceTarget -> SURFACES[target.surface]?.let { stringResource(it) } ?: target.surface
+            is SurfaceTarget -> surface(target.surface)
         }
 
     @Composable

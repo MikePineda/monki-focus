@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import dev.monkifocus.android.core.domain.rules.Ruleset
 import dev.monkifocus.android.core.domain.rules.Schedule
+import dev.monkifocus.android.core.domain.rules.Surface
 import dev.monkifocus.android.core.ui.MonkiTheme
 import dev.monkifocus.android.core.ui.R
 import dev.monkifocus.android.core.ui.components.MonkiQuietButton
@@ -44,11 +45,14 @@ import dev.monkifocus.android.feature.rules.edit.PendingChanges
 import dev.monkifocus.android.feature.rules.edit.RuleSummary
 import dev.monkifocus.android.feature.rules.edit.RulesetEdits
 import dev.monkifocus.android.feature.rules.edit.SubredditName
+import dev.monkifocus.android.feature.rules.edit.SurfaceRuleOptions
 
 /**
  * The rules screen (plan 01 §7, WP 2.10): what waits to apply (with its
  * time and a cancel button), every rule with its target, mode, schedule and
- * budget (mode and switch editable), the allowed reddit communities,
+ * budget (mode and switch editable), "Add rule" for a feed of the bundled
+ * [surfaces] (and the [starter] preset's surface rules the set lacks), the
+ * allowed reddit communities,
  * bedtime, work hours, and import / export. Every change is a pure edit
  * handed to [RulesActions.onEdit]; nothing here writes the rule set. While
  * [state] is null the rules are loading; when they cannot be read
@@ -61,7 +65,10 @@ fun RulesScreen(
     actions: RulesActions,
     modifier: Modifier = Modifier,
     unavailable: Boolean = false,
+    surfaces: List<Surface> = emptyList(),
+    starter: Ruleset? = null,
 ) {
+    val options = remember(surfaces) { SurfaceRuleOptions(surfaces) }
     val colors = MonkiTheme.colors
     Surface(modifier = modifier.fillMaxSize().testTag(RulesTestTags.SCREEN), color = colors.surface0) {
         Column(
@@ -102,6 +109,10 @@ fun RulesScreen(
                 } else if (state != null) {
                     PendingSection(state, actions)
                     RuleList(state, actions)
+                    if (options.families.isNotEmpty() || starter != null) {
+                        SectionTitle(R.string.rules_add_title)
+                        SurfaceRulePicker(state.configured, options, starter, actions)
+                    }
                     Subreddits(state.configured, actions)
                     Bedtime(state.configured, actions)
                     WorkHours(state.configured, actions)

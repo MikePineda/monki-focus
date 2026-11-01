@@ -19,10 +19,18 @@ object RulesTestTags {
     const val WORK_START = "rules.work.start"
     const val WORK_END = "rules.work.end"
     const val WORK_SAVE = "rules.work.save"
+    const val ADD_SAVE = "rules.add.save"
+    const val SUGGESTED_ADD = "rules.suggested.add"
     const val EXPORT = "rules.export"
     const val IMPORT = "rules.import"
 
     fun rule(id: String): String = "rules.rule.$id"
+
+    fun addFamily(family: String): String = "rules.add.family.$family"
+
+    fun addSurface(id: String): String = "rules.add.surface.$id"
+
+    fun addMode(mode: String): String = "rules.add.mode.$mode"
 
     fun ruleEnabled(id: String): String = "rules.rule.$id.enabled"
 
