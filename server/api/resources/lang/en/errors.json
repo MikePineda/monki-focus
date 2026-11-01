@@ -24,5 +24,6 @@
   "E_GUARDIAN_LINK_NOT_ACTIVE": "This link is not active yet",
   "E_NO_REVOCATION_PENDING": "There is no request to leave to cancel",
   "E_NOTIFICATIONS_UNAVAILABLE": "Notifications are not set up on this server",
-  "E_GUARDIAN_ONLY_ACCOUNT": "This account was created to guard someone. Ask the admin for an invitation to protect your own devices"
+  "E_GUARDIAN_ONLY_ACCOUNT": "This account was created to guard someone. Ask the admin for an invitation to protect your own devices",
+  "E_UNLOCK_REQUEST_CLOSED": "This request was already decided or expired"
 }

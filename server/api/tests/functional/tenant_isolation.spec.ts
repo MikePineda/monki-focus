@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { test } from '@japa/runner'
-import type User from '#models/user'
+import User from '#models/user'
 import Clock from '#services/clock'
 import Invitation from '#models/invitation'
 import app from '@adonisjs/core/services/app'
@@ -13,6 +13,9 @@ import GuardianLink from '#models/guardian_link'
 import { enrolledDevice } from '#tests/factories/device_factory'
 import { FACTORY_PASSPHRASE } from '#tests/factories/user_factory'
 import { guardianPair } from '#tests/factories/guardian_link_factory'
+import UnlockRequest from '#models/unlock_request'
+import { anUnlockRequest } from '#tests/factories/unlock_request_factory'
+import { bootKeys } from '#tests/support/device_api'
 
 /**
  * Another user's resource answers 404 (never 403, which would confirm that
@@ -33,6 +36,8 @@ interface Victim {
   pending: GuardianLink
   /** An active link where the victim, the ward, asked to leave. */
   leaving: GuardianLink
+  /** A pending unlock request addressed to the victim through `guarded`. */
+  unlockRequest: UnlockRequest
 }
 
 interface IsolationCase {
@@ -130,10 +135,34 @@ const cases: IsolationCase[] = [
     url: (victim) => `/api/v1/guardian/wards/${victim.guarded.wardUserId}/summary`,
     untouched: async () => true,
   },
+  ...(['approve', 'deny'] as const).map((decision) => ({
+    route: `v1.guardian.unlock_requests.${decision}`,
+    method: 'post' as const,
+    url: (victim: Victim) =>
+      `/api/v1/guardian/unlock-requests/${victim.unlockRequest.uuid}/${decision}`,
+    untouched: async (victim: Victim) => {
+      const request = await UnlockRequest.findOrFail(victim.unlockRequest.id)
+      return request.status === 'pending' && request.decidedAt === null
+    },
+  })),
 ]
 
-/** Routes whose params are not ids of a user's rows (none yet). Each needs a reason. */
-const NOT_ID_SCOPED = new Map<string, string>()
+/** Routes whose params are not ids of a session user's rows. Each needs a reason. */
+const NOT_ID_SCOPED = new Map<string, string>([
+  ...[
+    'v1.device.unlock_requests.show',
+    'v1.device.unlock_requests.destroy',
+    'v1.device.unlock_tokens.consumed',
+  ].map(
+    (route) =>
+      [route, 'Bearer device routes: tests/functional/unlock/device_unlock_requests.spec.ts'] as [
+        string,
+        string,
+      ]
+  ),
+  ['v1.actions.decide', 'the param is a single-use capability, not an id (unlock_actions.spec.ts)'],
+  ['v1.actions.confirm', 'renders a page only; never looks the capability up'],
+])
 
 async function aVictim(): Promise<Victim> {
   const user = await UserFactory.apply('admin', 'twoFactor').create()
@@ -143,7 +172,10 @@ async function aVictim(): Promise<Victim> {
   const { link: guarded } = await guardianPair({ state: 'active', guardian: user })
   const { link: pending } = await guardianPair({ state: 'pending', ward: user })
   const { link: leaving } = await guardianPair({ state: 'revoking', ward: user })
-  return { user, invitation, device, guarded, pending, leaving }
+  await bootKeys()
+  const { device: wardDevice } = await enrolledDevice(await User.findOrFail(guarded.wardUserId))
+  const unlockRequest = await anUnlockRequest(wardDevice, { guardianLinkId: guarded.id })
+  return { user, invitation, device, guarded, pending, leaving, unlockRequest }
 }
 
 test.group('Tenant isolation', (group) => {

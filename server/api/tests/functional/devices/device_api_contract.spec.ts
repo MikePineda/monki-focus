@@ -10,11 +10,7 @@ import { contractValidator, openApi } from '#tests/support/device_api'
  * those a later package owns (listed here with their package, and refused
  * once they are implemented so the list cannot go stale).
  */
-const NOT_YET_IMPLEMENTED = new Map([
-  ['POST /device/unlock-requests', 'S6'],
-  ['GET /device/unlock-requests/{uuid}', 'S6'],
-  ['DELETE /device/unlock-requests/{uuid}', 'S6'],
-])
+const NOT_YET_IMPLEMENTED = new Map<string, string>([])
 
 const METHODS = ['get', 'post', 'put', 'patch', 'delete']
 
