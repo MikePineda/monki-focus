@@ -2,7 +2,7 @@
 import { test } from '@japa/runner'
 import type { SyncBlock } from '@monki-focus/analytics'
 import { summariseActivity, TOP_ACTIVITY_KEYS } from '#domain/analytics/activity_summary'
-import { isLocalDate, localDateRange } from '#domain/analytics/local_date_range'
+import { isLocalDate, localDateRange } from '#services/analytics/local_date_range'
 
 function block(overrides: Partial<SyncBlock> = {}): SyncBlock {
   return {

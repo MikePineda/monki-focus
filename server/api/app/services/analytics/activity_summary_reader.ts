@@ -3,7 +3,7 @@ import db from '@adonisjs/lucid/services/db'
 import type { SyncBlock } from '@monki-focus/analytics'
 import type User from '#models/user'
 import { summariseActivity } from '#domain/analytics/activity_summary'
-import { localDateRange } from '#domain/analytics/local_date_range'
+import { localDateRange } from '#services/analytics/local_date_range'
 import { ACTIVITY_BLOCKS_TABLE } from '#services/analytics/activity_block_ingest'
 
 interface BlockRow {

@@ -2,7 +2,7 @@
 import vine from '@vinejs/vine'
 import { BLOCK_SECONDS } from '@monki-focus/analytics'
 import type { FieldContext } from '@vinejs/vine/types'
-import { LOCAL_DATE_PATTERN, isLocalDate } from '#domain/analytics/local_date_range'
+import { LOCAL_DATE_PATTERN, isLocalDate } from '#services/analytics/local_date_range'
 
 /** At most 500 blocks per batch (openapi.yaml `ActivityBlockBatch`, the rules `BlockList`). */
 export const MAX_ACTIVITY_BATCH = 500

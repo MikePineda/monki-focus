@@ -15,7 +15,7 @@ export default class AnalyticsController {
 
   /** GET /analytics/day?date=YYYY-MM-DD. */
   async day({ auth, request, response }: HttpContext) {
-    const user = auth.getUserOrFail()
+    const user = auth.use('web').getUserOrFail()
     const { date } = await analyticsDayValidator.validate(request.qs())
     response.header('Cache-Control', 'no-store')
     return this.reader.summary(user, date, 1)
@@ -23,7 +23,7 @@ export default class AnalyticsController {
 
   /** GET /analytics/week?start=YYYY-MM-DD. */
   async week({ auth, request, response }: HttpContext) {
-    const user = auth.getUserOrFail()
+    const user = auth.use('web').getUserOrFail()
     const { start } = await analyticsWeekValidator.validate(request.qs())
     response.header('Cache-Control', 'no-store')
     return this.reader.summary(user, start, 7)
