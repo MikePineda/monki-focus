@@ -13,6 +13,7 @@
  *   the stored gate equals the returned one.
  */
 import type { EscalationState, Gate, Rule } from '@monki-focus/rules'
+import { BEDTIME_GROUP } from './BedtimePolicy.ts'
 import { visitOutcome } from './EscalationPolicy.ts'
 import { escalationStateOf, sessionCounters } from './EscalationSession.ts'
 import { fullGate } from './GateCalculator.ts'
@@ -31,8 +32,8 @@ function lastActivitySeconds(state: EscalationState): number {
  * smallest rule id).
  */
 export function effectiveEscalationState(
-  winner: Rule,
-  frictionRules: readonly Rule[],
+  winner: Pick<Rule, 'id'>,
+  frictionRules: readonly Pick<Rule, 'id'>[],
   states: readonly EscalationState[],
   nowSeconds: number
 ): EscalationState {
@@ -66,6 +67,28 @@ export function effectiveEscalationState(
 export function decisionGate(
   winner: Rule,
   frictionRules: readonly Rule[],
+  states: readonly EscalationState[],
+  nowSeconds: number,
+  guardianLinked: boolean
+): Gate {
+  return groupGate(winner, frictionRules, states, nowSeconds, guardianLinked)
+}
+
+/**
+ * The gate of the relaxed bedtime (§5.2.4): the `bedtime` group alone, with no
+ * rule sharing its escalation.
+ */
+export function bedtimeGate(
+  states: readonly EscalationState[],
+  nowSeconds: number,
+  guardianLinked: boolean
+): Gate {
+  return groupGate({ id: BEDTIME_GROUP }, [], states, nowSeconds, guardianLinked)
+}
+
+function groupGate(
+  winner: Pick<Rule, 'id'>,
+  frictionRules: readonly Pick<Rule, 'id'>[],
   states: readonly EscalationState[],
   nowSeconds: number,
   guardianLinked: boolean

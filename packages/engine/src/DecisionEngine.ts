@@ -30,7 +30,7 @@ import { contentOutcome } from './ContentAxis.ts'
 import type { ContentOutcome } from './ContentAxis.ts'
 import { candidatePoolsAt, decisionSubject, frictionRulesOf } from './DecisionCandidates.ts'
 import type { DecisionSubject } from './DecisionCandidates.ts'
-import { decisionGate } from './DecisionGate.ts'
+import { bedtimeGate, decisionGate } from './DecisionGate.ts'
 import { guardDecisionInputs } from './DecisionInputGuard.ts'
 import { validUntilOf } from './DecisionValidity.ts'
 import type { TimedDecision } from './DecisionValidity.ts'
@@ -38,6 +38,7 @@ import { isOverrideActive } from './EmergencyOverridePolicy.ts'
 import { explanationKeyOf } from './ExplanationKey.ts'
 import { isIntentionActive } from './IntentionPolicy.ts'
 import { localDatesAt, zonesOf } from './PinnedTimeZones.ts'
+import { isRelaxedNightAt } from './RelaxedWeekendPolicy.ts'
 import { resolveObservation } from './ResolvedObservation.ts'
 import type { RulesCatalog } from './RulesCatalog.ts'
 import { hasActiveUnlock } from './UnlockPolicy.ts'
@@ -49,7 +50,7 @@ interface Restriction {
   ruleId: RuleId | null
   group: string
   /** Friction: an active intention lifts it and an unlifted one shows a gate. */
-  friction?: { winner: Rule; frictionRules: readonly Rule[] }
+  friction?: { winner: Rule; frictionRules: readonly Rule[] } | 'bedtime'
 }
 
 interface AccessOutcome {
@@ -91,10 +92,12 @@ function restrictionsOf(
   const { subject, state, categoryLevel } = inputs
   const { ruleset, catalog } = subject
   const restrictions: Restriction[] = []
-  if (
+  const bedtimeApplies =
     isBedtimeActive(ruleset.bedtime, nowSeconds, zonesOf(ruleset)) &&
     categoryLevel <= BEDTIME_MAX_LEVEL
-  ) {
+  // §6.4: a Friday or Saturday night asks for an intention after the rule block (step 4).
+  const relaxedNight = bedtimeApplies && isRelaxedNightAt(ruleset, nowSeconds)
+  if (bedtimeApplies && !relaxedNight) {
     restrictions.push({
       access: 'block',
       reason: 'schedule_bedtime',
@@ -122,6 +125,15 @@ function restrictionsOf(
       reason: 'rule_match',
       ruleId: winner.rule.id,
       group: winner.rule.id,
+    })
+  }
+  if (relaxedNight) {
+    restrictions.push({
+      access: 'gate',
+      reason: 'intention_required',
+      ruleId: null,
+      group: BEDTIME_GROUP,
+      friction: 'bedtime',
     })
   }
   if (winner?.mode === 'friction') {
@@ -152,13 +164,16 @@ function accessOutcome(
     const { access, reason, ruleId, friction } = restriction
     if (friction === undefined) return { access, reason, ruleId }
     const { state } = inputs
-    const gate = decisionGate(
-      friction.winner,
-      friction.frictionRules,
-      state.escalation,
-      nowSeconds,
-      state.guardianLinked
-    )
+    const gate =
+      friction === 'bedtime'
+        ? bedtimeGate(state.escalation, nowSeconds, state.guardianLinked)
+        : decisionGate(
+            friction.winner,
+            friction.frictionRules,
+            state.escalation,
+            nowSeconds,
+            state.guardianLinked
+          )
     return { access, reason, ruleId, gate }
   }
   if (firstLift !== null) return firstLift

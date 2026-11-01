@@ -17,6 +17,7 @@ import type { AccessCandidate } from './AccessAxis.ts'
 import { isRuleScheduledAt } from './PinnedTimeZones.ts'
 import { hasUnknownPath } from './ResolvedObservation.ts'
 import type { ResolvedObservation } from './ResolvedObservation.ts'
+import { relaxedRulesAt } from './RelaxedWeekendPolicy.ts'
 import type { RulesCatalog } from './RulesCatalog.ts'
 import { matchesHostOfUnknownPath, matchesTarget } from './TargetMatcher.ts'
 
@@ -59,10 +60,18 @@ export function decisionSubject(
   return { ruleset, observation, catalog, unknownPath: hasUnknownPath(observation), pool }
 }
 
-/** The candidates at an instant (schedules in the pinned zones, §6.3). */
+/**
+ * The candidates at an instant (schedules in the pinned zones, §6.3), with
+ * short-video limits relaxed to friction on a relaxed day (§6.4).
+ */
 export function candidatePoolsAt(subject: DecisionSubject, epochSeconds: number): CandidatePools {
   const { ruleset, observation, catalog, unknownPath } = subject
-  const scheduled = subject.pool.filter((rule) => isRuleScheduledAt(rule, ruleset, epochSeconds))
+  const scheduled = relaxedRulesAt(
+    subject.pool.filter((rule) => isRuleScheduledAt(rule, ruleset, epochSeconds)),
+    ruleset,
+    epochSeconds,
+    catalog
+  )
   const matching = scheduled.filter((rule) => matchesTarget(rule.target, observation, catalog))
   return { matching, access: unknownPath ? scheduled : matching }
 }
