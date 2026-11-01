@@ -188,6 +188,14 @@
     {
       "target": {
         "kind": "app",
+        "package": "com.facebook.katana"
+      },
+      "level": 0,
+      "category": "social"
+    },
+    {
+      "target": {
+        "kind": "app",
         "package": "com.zhiliaoapp.musically"
       },
       "level": 0,
