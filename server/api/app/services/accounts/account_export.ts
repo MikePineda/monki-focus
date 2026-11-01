@@ -12,6 +12,7 @@ import { ownedBy } from '#services/tenancy/owned_by'
 import { deviceResource } from '#transformers/device_transformer'
 import { bypassEventResource } from '#transformers/bypass_event_transformer'
 import GuardianLinkRegistry from '#services/guardians/guardian_link_registry'
+import RuleSetStore from '#services/rules/rule_set_store'
 
 /** Identifies the document; bump `version` on any breaking change of its shape. */
 export const EXPORT_FORMAT = 'monki-focus.export'
@@ -22,16 +23,18 @@ export const EXPORT_VERSION = 1
  * user, as JSON, read only through the user's own scope. Secrets are never
  * part of it (password hash, TOTP seed, recovery code and invitation
  * digests, device tokens, enrolment and pairing codes, ntfy topics).
- * Devices, bypass events and guardian links (both sides, revoked ones
- * too) are here; later packages add theirs (unlocks, activity; the
- * ActivityWatch format comes with analytics).
+ * Devices, bypass events, guardian links (both sides, revoked ones too)
+ * and the rule set (S15: the document, its revision and content hash) are
+ * here; later packages add theirs (unlocks, activity; the ActivityWatch
+ * format comes with analytics).
  */
 @inject()
 export default class AccountExport {
   constructor(
     protected invitations: InvitationService,
     protected twoFactor: TwoFactorService,
-    protected links: GuardianLinkRegistry
+    protected links: GuardianLinkRegistry,
+    protected ruleSets: RuleSetStore
   ) {}
 
   async build(user: User, now: DateTime) {
@@ -41,6 +44,7 @@ export default class AccountExport {
     const bypassEvents = await ownedBy(BypassEvent, user, 'ward_user_id').orderBy('id')
     const history = await this.links.historyOf(user)
     const guardianLinks = await this.links.present(history, now)
+    const ruleSet = await this.ruleSets.find(user.id)
 
     return {
       format: EXPORT_FORMAT,
@@ -66,6 +70,19 @@ export default class AccountExport {
         ...resource,
         revokedAt: history[index].link.revokedAt?.toUTC().toISO() ?? null,
       })),
+      ruleSet:
+        ruleSet === null
+          ? null
+          : {
+              revision: ruleSet.revision,
+              contentHash: ruleSet.contentHash,
+              updatedAt: ruleSet.updatedAt.toISOString(),
+              updatedByDeviceUuid:
+                ruleSet.updatedByDeviceId === null
+                  ? null
+                  : (uuidOf.get(ruleSet.updatedByDeviceId) ?? null),
+              document: ruleSet.document,
+            },
     }
   }
 }

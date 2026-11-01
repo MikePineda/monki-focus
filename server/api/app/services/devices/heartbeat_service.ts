@@ -24,6 +24,7 @@ import BypassEventRecorder, {
 import DeviceTokens from '#services/devices/device_tokens'
 import { consumeHeartbeat } from '#services/devices/device_throttles'
 import { publishedKeys } from '#services/devices/published_keys'
+import RuleSetStore from '#services/rules/rule_set_store'
 
 export const DEVICE_HEARTBEATS_TABLE = 'device_heartbeats'
 
@@ -48,6 +49,8 @@ export interface Heartbeat {
   readonly a11yEnabled?: boolean
   readonly riskState?: readonly RiskState[]
   readonly goingOffline?: boolean
+  /** The rule set revision the device has applied (S15). */
+  readonly ruleSetRevision?: number
 }
 
 /** openapi.yaml `HeartbeatResponse`. */
@@ -55,6 +58,7 @@ export interface HeartbeatAnswer {
   readonly serverTime: string
   readonly timeToken: string
   readonly keysEtag: string
+  /** The server's current rule set revision (0: none stored); a higher one than applied means pull. */
   readonly rulesVersion: number
   readonly tokenRotationDue: boolean
 }
@@ -74,13 +78,17 @@ export interface HeartbeatAnswer {
  *    protection off raises `protection_disabled` (the dead-man switch stops
  *    watching a device without protection, so the switch itself is told).
  *
- * `serverTime` is informative; only the time token anchors trusted time.
+ * The answer's `rulesVersion` is the owner's current rule set revision
+ * (S15); the device pulls `GET /device/rule-set` when it is newer than the
+ * `ruleSetRevision` it applied. `serverTime` is informative; only the time
+ * token anchors trusted time.
  */
 @inject()
 export default class HeartbeatService {
   constructor(
     protected events: BypassEventRecorder,
-    protected tokens: DeviceTokens
+    protected tokens: DeviceTokens,
+    protected ruleSets: RuleSetStore
   ) {}
 
   async record(
@@ -190,6 +198,7 @@ export default class HeartbeatService {
         risk_state: JSON.stringify(riskState),
         going_offline: heartbeat.goingOffline === true,
         key_pin_mismatch: pins.mismatch,
+        rule_set_revision: heartbeat.ruleSetRevision ?? null,
       })
 
       device.useTransaction(trx).merge({
@@ -205,6 +214,9 @@ export default class HeartbeatService {
         lastBoot: heartbeat.boot,
         announcedOfflineAt: heartbeat.goingOffline === true ? now : null,
         clockOffsetMs: clockOffsetMs(now.toMillis(), heartbeat.clientTime.toMillis()),
+        ...(heartbeat.ruleSetRevision === undefined
+          ? {}
+          : { ruleSetRevision: heartbeat.ruleSetRevision }),
       })
       await device.save()
       await this.events.record(raised, nowDate, trx)
@@ -214,8 +226,7 @@ export default class HeartbeatService {
       serverTime: formatRfc3339Utc(Math.floor(now.toSeconds())),
       timeToken: time.value.token,
       keysEtag: keys.etag,
-      // Rule sets arrive with phase 5; until then there is no server-side version.
-      rulesVersion: 0,
+      rulesVersion: await this.ruleSets.revisionOf(device.userId),
       tokenRotationDue: this.tokens.rotationDue(token, now),
     }
   }

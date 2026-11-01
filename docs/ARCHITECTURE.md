@@ -52,6 +52,12 @@ category assignments and a bedtime. Targets are an app package, a site
 surfaces of kind `feed`, `permalink` or `utility`, so "hide the feed but never
 block a shared post" is data, not per-platform code.
 
+With a server, the user's one rule set syncs to every device
+(`GET|PUT /device/rule-set`, `If-Match` revisions; `docs/CONTRACTS.md`,
+"Rule set sync"). The server only stores, versions and validates it; each
+device applies an incoming set through its own `RuleChangePolicy`
+(tightening at once, loosening from the next local day).
+
 Decisions run on **two axes**:
 
 - `access`: `allow | gate | block`, resolved from `allow`, `friction` and

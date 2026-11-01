@@ -25,5 +25,8 @@
   "E_NO_REVOCATION_PENDING": "There is no request to leave to cancel",
   "E_NOTIFICATIONS_UNAVAILABLE": "Notifications are not set up on this server",
   "E_GUARDIAN_ONLY_ACCOUNT": "This account was created to guard someone. Ask the admin for an invitation to protect your own devices",
-  "E_UNLOCK_REQUEST_CLOSED": "This request was already decided or expired"
+  "E_UNLOCK_REQUEST_CLOSED": "This request was already decided or expired",
+  "E_RULE_SET_IF_MATCH_REQUIRED": "Reload your rules before saving them",
+  "E_RULE_SET_REVISION_MISMATCH": "Your rules changed on another device. Reload them and save again",
+  "E_RULE_SET_INVALID": "These rules are not valid. Check the highlighted fields"
 }

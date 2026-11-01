@@ -15,6 +15,7 @@ import { CLIENT_BYPASS_KINDS } from '#domain/devices/bypass_event_kinds'
 import { CLIENT_DEDUPE_KEY_PATTERN } from '#domain/devices/bypass_dedupe_key'
 import { MAX_BYPASS_BATCH } from '#services/devices/bypass_event_reports'
 import { deviceName } from '#validators/devices'
+import { MAX_RULE_SET_REVISION } from '#domain/rules/rule_set_etag'
 
 /**
  * Bodies of the device API (packages/protocol/openapi.yaml). Failures
@@ -70,6 +71,12 @@ export const heartbeatValidator = vine.create({
   a11yEnabled: vine.boolean({ strict: true }).optional(),
   riskState: vine.array(vine.enum(RISK_STATES)).maxLength(MAX_RISK_STATES).distinct().optional(),
   goingOffline: vine.boolean({ strict: true }).optional(),
+  ruleSetRevision: vine
+    .number({ strict: true })
+    .withoutDecimals()
+    .min(0)
+    .max(MAX_RULE_SET_REVISION)
+    .optional(),
 })
 
 /** POST /device/bypass-events (`BypassEventBatch`). */
