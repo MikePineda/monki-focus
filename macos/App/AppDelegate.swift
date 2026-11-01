@@ -3,11 +3,13 @@
 import AppKit
 import MonkiCore
 import MonkiPlatform
+import SwiftUI
 import os
 
-/// Starts activity capture and the browser bridge at launch, and flushes and
-/// closes them at quit. Capture is local only: events stay in the user's
-/// Application Support folder.
+/// Starts activity capture, the browser bridge, app blocking and bedtime at
+/// launch, and flushes and closes them at quit. Capture is local only: events
+/// stay in the user's Application Support folder. Blocking reads the rules in
+/// `rules.json` there; without that file nothing is hidden or dimmed.
 ///
 /// The bridge socket serves `monki-bridge`, the extension's native messaging
 /// host. The host manifest is (re)written at launch only when extension ids
@@ -20,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private(set) var capture: ActivityCapture?
     private var bridge: BridgeSocketServer?
+    private var appGate: AppActivationGate?
+    private var bedtime: BedtimeCoordinator?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // The app also hosts its unit tests; those must not write the
@@ -47,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             capture.start()
             self.capture = capture
             startBridge(queue: capture.queue, identity: identity)
+            startBlocking(outbox: GRDBBypassOutbox(database: database))
         } catch {
             Self.logger.error(
                 "activity capture did not start: \(String(describing: type(of: error)), privacy: .public)")
@@ -54,6 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        appGate?.stop()
+        bedtime?.stop()
         bridge?.stop()
         capture?.stop()
     }
@@ -79,6 +86,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Self.logger.error("bridge did not start: \(String(describing: type(of: error)), privacy: .public)")
         }
         refreshHostManifest()
+    }
+
+    /// App blocking and bedtime on the rules stored on this Mac. Overrides
+    /// and escalation live in memory; granted overrides go to the outbox.
+    private func startBlocking(outbox: any BypassOutbox) {
+        let rules = StoredRulesProvider(url: StoredRulesProvider.defaultURL())
+        let timers = MainRunLoopTimerScheduler()
+        let overrides = EmergencyOverrides(
+            outbox: outbox, wall: SystemClock(), monotonic: SystemMonotonicClock())
+        let gate = AppActivationGate(
+            .init(
+                sources: [WorkspaceApplicationActivationSource(), WorkspaceApplicationLaunchSource()],
+                control: WorkspaceApplicationControl(),
+                presenter: GatePanelController { state, actions in
+                    AnyView(GatePanelView(state: state, actions: actions))
+                },
+                rules: rules,
+                overrides: overrides,
+                escalation: EscalationBook(),
+                timers: timers,
+                wall: SystemClock(),
+                policy: AppGatePolicy(
+                    protectedApps: ProtectedApps(ownBundleId: Bundle.main.bundleIdentifier ?? "dev.monkifocus.mac"))
+            ))
+        let bedtime = BedtimeCoordinator(
+            rules: rules,
+            overrides: overrides,
+            presenter: BedtimeOverlayController { emergency, actions in
+                AnyView(BedtimeOverlayView(emergency: emergency, actions: actions))
+            },
+            notifier: UserNotificationBedtimeWarningNotifier(
+                title: String(localized: "bedtime.warning.title"), body: String(localized: "bedtime.warning.body")),
+            timers: timers,
+            wall: SystemClock()
+        )
+        gate.start()
+        bedtime.start()
+        appGate = gate
+        self.bedtime = bedtime
     }
 
     /// Points the browsers' host manifest at this copy of the helper, when ids are configured.
