@@ -15,7 +15,8 @@ import dev.monkifocus.android.feature.gate.state.GateUiState
 /**
  * The timeout card over the scrim: "Your 10 min for “…” are up.", Leave
  * (the accent, focused first) and "5 more min" with its cost note: it
- * counts as a broken intention and the next pause doubles.
+ * counts as a broken intention and the next pause doubles. Over a page in
+ * a browser the [AnotherSiteActions] follow Leave.
  */
 @Composable
 fun TimeoutScreen(
@@ -23,6 +24,8 @@ fun TimeoutScreen(
     onLeave: () -> Unit,
     onExtend: () -> Unit,
     modifier: Modifier = Modifier,
+    onAnotherSite: (() -> Unit)? = null,
+    onGoBack: (() -> Unit)? = null,
 ) {
     val colors = MonkiTheme.colors
     val typography = MonkiTheme.typography
@@ -44,6 +47,7 @@ fun TimeoutScreen(
         Text(text = state.targetLabel, color = colors.ink3, style = typography.label)
         Text(text = title, color = colors.ink1, style = typography.title)
         GateCloseButton(onClose = onLeave, label = stringResource(R.string.timeout_leave))
+        AnotherSiteActions(onAnotherSite, onGoBack)
         MonkiSecondaryButton(
             text = stringResource(R.string.timeout_extend, state.extensionMinutes),
             onClick = onExtend,

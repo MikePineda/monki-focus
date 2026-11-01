@@ -27,6 +27,16 @@ interface ActionPerformer {
      */
     fun isOnTop(): Boolean
 
+    /**
+     * Opens [address] in [browserPackage], the browser the blocked page is
+     * in, with an explicit intent (never another app). The engine already
+     * let a [TypedAddress.Web] through; a search is the browser's own.
+     */
+    fun open(
+        browserPackage: String,
+        address: TypedAddress,
+    )
+
     /** Opens our app, or with [notificationSettings] its notification settings. */
     fun openApp(notificationSettings: Boolean)
 }

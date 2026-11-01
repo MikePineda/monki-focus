@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import dev.monkifocus.android.core.domain.rules.ExplanationKey
 import dev.monkifocus.android.core.ui.MonkiTheme
 import dev.monkifocus.android.feature.gate.state.GateUiState
 import org.junit.Rule
@@ -56,5 +57,24 @@ class SpanishGateScreensTest {
 
         compose.onNodeWithText("Es hora de dormir").assertExists()
         compose.onNodeWithText("Acceso de emergencia").assertExists()
+    }
+
+    @Test
+    fun another_site_renders_in_spanish() {
+        compose.setContent {
+            MonkiTheme { GateScreen(blocked(ExplanationKey.BLOCKED_BY_RULE), GateActions(onClose = {}, onAnotherSite = {}, onGoBack = {})) }
+        }
+
+        compose.onNodeWithText("Ir a otro sitio").assertExists()
+        compose.onNodeWithText("Volver atrás").assertExists()
+    }
+
+    @Test
+    fun the_address_entry_renders_in_spanish() {
+        compose.setContent { MonkiTheme { AnotherSiteScreen(onGo = {}, onCancel = {}, onClose = {}) } }
+
+        compose.onNodeWithText("¿Adónde quieres ir?").assertExists()
+        compose.onNodeWithText("Dirección web o búsqueda").assertExists()
+        compose.onNodeWithText("Ir").assertExists()
     }
 }

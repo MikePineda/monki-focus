@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 package dev.monkifocus.android.service.accessibility.pipeline
 
+import dev.monkifocus.android.core.domain.rules.Access
 import dev.monkifocus.android.core.domain.rules.AppObservation
 import dev.monkifocus.android.core.domain.rules.Decision
 import dev.monkifocus.android.core.domain.rules.Observation
@@ -17,6 +18,7 @@ import dev.monkifocus.android.service.accessibility.action.BackLoopGuard
 import dev.monkifocus.android.service.accessibility.action.CoverRegion
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
 import dev.monkifocus.android.service.accessibility.action.StatusCard
+import dev.monkifocus.android.service.accessibility.action.TypedAddress
 import dev.monkifocus.android.service.accessibility.decision.DecisionEvaluator
 import dev.monkifocus.android.service.accessibility.decision.Evaluation
 import dev.monkifocus.android.service.accessibility.decision.RulesetAddition
@@ -75,13 +77,18 @@ class EventPipeline(
     private val decisionThrottle: DecisionThrottle = DecisionThrottle(),
     private val backGuard: BackLoopGuard = BackLoopGuard(),
 ) {
-    /** A gate screen on display and what it was shown for (no URL: the decision and the label only). */
+    /**
+     * A gate screen on display and what it was shown for (no URL: the decision and the label only).
+     * [site] marks a page read in a browser's URL bar; [typing] the "Go to another site" entry on screen.
+     */
     private data class Presented(
         val decision: Decision,
         val group: String?,
         val label: String,
         val packageName: String,
         val notice: Boolean,
+        val site: Boolean = false,
+        val typing: Boolean = false,
     )
 
     private var cap = UnclassifiedTimeCap.INITIAL
@@ -258,12 +265,74 @@ class EventPipeline(
                 performer.openApp(notificationSettings = true)
             }
 
+            UserAction.AnotherSite, UserAction.CancelAnotherSite -> {
+                if (shown == null || !offersAnotherSite(shown, (showing as? OverlayContent.Gate)?.state)) return
+                presented = shown.copy(typing = action == UserAction.AnotherSite)
+                repaint(nowEpochMs)
+            }
+
+            is UserAction.GoTo -> {
+                if (shown == null || !offersAnotherSite(shown, (showing as? OverlayContent.Gate)?.state)) return
+                goTo(shown, TypedAddress.parse(action.address) ?: return, nowEpochMs)
+            }
+
+            UserAction.GoBack -> {
+                if (shown == null || !offersAnotherSite(shown, (showing as? OverlayContent.Gate)?.state)) return
+                group?.let { coordinator.close(it, nowEpochMs) }
+                dismiss()
+                performer.back()
+            }
+
             UserAction.DismissCard -> {
                 if ((showing as? OverlayContent.Card)?.card == StatusCard.SETUP) setupCardDismissed = true
                 dismiss()
             }
         }
     }
+
+    /**
+     * "Go to another site": a typed address the engine blocks too gets its
+     * own block screen (with the same ways out) and is not opened; anything
+     * else opens in the same browser and counts as leaving the gate, like
+     * Close. The new page is then read and decided like any other, so a
+     * gated address still meets its gate and the blocked site stays blocked.
+     */
+    private fun goTo(
+        shown: Presented,
+        address: TypedAddress,
+        nowEpochMs: Long,
+    ) {
+        if (address is TypedAddress.Web) {
+            val evaluation = evaluator.evaluate(snapshots.snapshot, SiteObservation(address.url), null, nowEpochMs)
+            if (evaluation.decision.access == Access.BLOCK) {
+                presented = null
+                present(evaluation, address.label, shown.packageName, notice = false, nowEpochMs, site = true)
+                return
+            }
+        }
+        shown.group?.let { coordinator.close(it, nowEpochMs) }
+        dismiss()
+        performer.open(shown.packageName, address)
+    }
+
+    /**
+     * Whether the screen offers "Go to another site" and "Go back": over a
+     * page in a browser, on the screens the user may leave by choice (block,
+     * pause, prompt, timeout). Never for an engine error (nothing is
+     * decided), the emergency wait or bedtime, which keep their behaviour.
+     */
+    private fun offersAnotherSite(
+        shown: Presented,
+        state: GateUiState?,
+    ): Boolean =
+        shown.site &&
+            shown.group != null &&
+            (
+                state is GateUiState.Blocked ||
+                    state is GateUiState.Pausing ||
+                    state is GateUiState.Asking ||
+                    state is GateUiState.Timeout
+            )
 
     private fun read(
         nowMonotonicMs: Long,
@@ -387,7 +456,17 @@ class EventPipeline(
                 val key = observation.observationKey
                 if (!decisionThrottle.admit(key, nowMonotonicMs)) return
                 val label = observation.key.host.ifEmpty { labels.appLabel(pkg) }
-                decideAndAct(SiteObservation(observation.urlText), key, observation.cover, null, label, pkg, nowMonotonicMs, nowEpochMs)
+                decideAndAct(
+                    SiteObservation(observation.urlText),
+                    key,
+                    observation.cover,
+                    null,
+                    label,
+                    pkg,
+                    nowMonotonicMs,
+                    nowEpochMs,
+                    site = true,
+                )
             }
         }
     }
@@ -401,6 +480,7 @@ class EventPipeline(
         pkg: String,
         nowMonotonicMs: Long,
         nowEpochMs: Long,
+        site: Boolean = false,
     ) {
         val snapshot = snapshots.snapshot
         // Before the first load there is nothing to decide with; a failed load fails closed below.
@@ -418,7 +498,7 @@ class EventPipeline(
             }
 
             ActionPlan.Gate -> {
-                present(evaluation, label, pkg, notice = false, nowEpochMs)
+                present(evaluation, label, pkg, notice = false, nowEpochMs, site)
             }
 
             ActionPlan.BackWithNotice -> {
@@ -426,7 +506,7 @@ class EventPipeline(
                     BackLoopGuard.Step.BACK -> performer.back()
                     BackLoopGuard.Step.HOME -> performer.home()
                 }
-                present(evaluation, label, pkg, notice = true, nowEpochMs)
+                present(evaluation, label, pkg, notice = true, nowEpochMs, site)
                 // A BACK should change the screen: if the same surface is still there, decide again at once.
                 decisionThrottle.invalidate()
             }
@@ -439,6 +519,7 @@ class EventPipeline(
         pkg: String,
         notice: Boolean,
         nowEpochMs: Long,
+        site: Boolean = false,
     ) {
         val state = coordinator.present(evaluation, label, nowEpochMs)
         if (state == GateUiState.Hidden) {
@@ -446,8 +527,19 @@ class EventPipeline(
             return
         }
         val group = GateGroup.of(evaluation.decision)
-        presented = Presented(evaluation.decision, group, label, pkg, notice)
-        show(OverlayContent.Gate(state, group, notice))
+        // The blocked page is read again behind the address entry: the entry stays while the user types.
+        val typing = presented?.let { it.typing && it.group == group && it.packageName == pkg } == true
+        val next = Presented(evaluation.decision, group, label, pkg, notice, site, typing)
+        presented = next
+        show(gateContent(next, state))
+    }
+
+    private fun gateContent(
+        shown: Presented,
+        state: GateUiState,
+    ): OverlayContent.Gate {
+        val offers = offersAnotherSite(shown, state)
+        return OverlayContent.Gate(state, shown.group, shown.notice, offersAnotherSite = offers, typingAddress = offers && shown.typing)
     }
 
     /** Re-renders the gate on screen from its group's current state (countdowns, transitions). */
@@ -461,7 +553,7 @@ class EventPipeline(
             dismiss()
             return
         }
-        show(OverlayContent.Gate(state, shown.group, shown.notice))
+        show(gateContent(shown, state))
     }
 
     /** The card the current [Readiness] calls for, if any; the notice-off card once per session. */

@@ -4,6 +4,7 @@ package dev.monkifocus.android.service.accessibility.support
 import dev.monkifocus.android.core.domain.ports.IntentionOutcome
 import dev.monkifocus.android.service.accessibility.action.ActionPerformer
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
+import dev.monkifocus.android.service.accessibility.action.TypedAddress
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowState
 import dev.monkifocus.android.service.accessibility.exit.ExitFlowStore
 import dev.monkifocus.android.service.accessibility.exit.ProtectionDisarmer
@@ -25,6 +26,11 @@ internal class RecordingPerformer : ActionPerformer {
         data class OpenApp(
             val notificationSettings: Boolean,
         ) : Call
+
+        data class Open(
+            val browserPackage: String,
+            val address: TypedAddress,
+        ) : Call
     }
 
     val calls = mutableListOf<Call>()
@@ -33,6 +39,13 @@ internal class RecordingPerformer : ActionPerformer {
     var onTop = false
 
     override fun isOnTop(): Boolean = onTop
+
+    override fun open(
+        browserPackage: String,
+        address: TypedAddress,
+    ) {
+        calls += Call.Open(browserPackage, address)
+    }
 
     override fun openApp(notificationSettings: Boolean) {
         calls += Call.OpenApp(notificationSettings)

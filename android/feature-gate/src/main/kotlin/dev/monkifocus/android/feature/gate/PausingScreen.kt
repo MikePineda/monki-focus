@@ -16,7 +16,7 @@ import dev.monkifocus.android.feature.gate.state.GateUiState
  * The pause (DESIGN.md §Interstitial 2–3): the big countdown, or the breath
  * circle for a breath pause, the 1 dp progress line and the "why" line of
  * the pause type, then Close (enabled from the first frame) and the
- * emergency footer.
+ * emergency footer. Over a page in a browser also the [AnotherSiteActions].
  */
 @Composable
 fun PausingScreen(
@@ -24,6 +24,8 @@ fun PausingScreen(
     onClose: () -> Unit,
     onEmergency: () -> Unit,
     modifier: Modifier = Modifier,
+    onAnotherSite: (() -> Unit)? = null,
+    onGoBack: (() -> Unit)? = null,
 ) {
     GateLayout(modifier) { compact ->
         GateContextLine(state.targetLabel)
@@ -43,6 +45,7 @@ fun PausingScreen(
             style = MonkiTheme.typography.body,
         )
         GateCloseButton(onClose)
+        AnotherSiteActions(onAnotherSite, onGoBack)
         GateLevelLine(state.level)
         GateEmergencyFooter(onEmergency)
     }

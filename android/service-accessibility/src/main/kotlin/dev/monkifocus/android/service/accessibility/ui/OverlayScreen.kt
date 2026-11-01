@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import dev.monkifocus.android.core.ui.MonkiTheme
+import dev.monkifocus.android.feature.gate.AnotherSiteScreen
 import dev.monkifocus.android.feature.gate.GateActions
 import dev.monkifocus.android.feature.gate.GateScreen
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
@@ -46,18 +47,29 @@ private fun ScreenOf(
 ) {
     when (content) {
         is OverlayContent.Gate -> {
-            GateScreen(
-                state = content.state,
-                actions =
-                    GateActions(
-                        onClose = { onAction(UserAction.Close) },
-                        onContinue = { intention, minutes -> onAction(UserAction.Continue(intention, minutes)) },
-                        onEmergency = { onAction(UserAction.Emergency) },
-                        onCancelEmergency = { onAction(UserAction.CancelEmergency) },
-                        onExtend = { onAction(UserAction.Extend) },
-                    ),
-                modifier = modifier,
-            )
+            if (content.typingAddress) {
+                AnotherSiteScreen(
+                    onGo = { onAction(UserAction.GoTo(it)) },
+                    onCancel = { onAction(UserAction.CancelAnotherSite) },
+                    onClose = { onAction(UserAction.Close) },
+                    modifier = modifier,
+                )
+            } else {
+                GateScreen(
+                    state = content.state,
+                    actions =
+                        GateActions(
+                            onClose = { onAction(UserAction.Close) },
+                            onContinue = { intention, minutes -> onAction(UserAction.Continue(intention, minutes)) },
+                            onEmergency = { onAction(UserAction.Emergency) },
+                            onCancelEmergency = { onAction(UserAction.CancelEmergency) },
+                            onExtend = { onAction(UserAction.Extend) },
+                            onAnotherSite = if (content.offersAnotherSite) ({ onAction(UserAction.AnotherSite) }) else null,
+                            onGoBack = if (content.offersAnotherSite) ({ onAction(UserAction.GoBack) }) else null,
+                        ),
+                    modifier = modifier,
+                )
+            }
         }
 
         is OverlayContent.Cover -> {

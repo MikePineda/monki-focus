@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.monkifocus.android.core.ui.MonkiTheme
 import dev.monkifocus.android.core.ui.theme.MonkiRadius
@@ -32,6 +33,8 @@ import dev.monkifocus.android.core.ui.theme.MonkiSpacing
  * error: when [helperEmphasised] it turns `ink-1`, never red. [onDone] runs
  * from the keyboard's Done action, so Enter submits only while the field has
  * focus. [fieldModifier] reaches the editable node (test tags, focus).
+ * [address] makes it a web-address field: URI keyboard, no capitalisation
+ * or autocorrect, and a Go key that runs [onDone].
  */
 @Composable
 fun MonkiTextField(
@@ -44,6 +47,7 @@ fun MonkiTextField(
     modifier: Modifier = Modifier,
     fieldModifier: Modifier = Modifier,
     helperEmphasised: Boolean = false,
+    address: Boolean = false,
     onDone: () -> Unit = {},
 ) {
     val colors = MonkiTheme.colors
@@ -59,8 +63,18 @@ fun MonkiTextField(
             onValueChange = onValueChange,
             modifier = fieldModifier.fillMaxWidth(),
             textStyle = typography.body.copy(color = colors.ink1),
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onDone() }),
+            keyboardOptions =
+                if (address) {
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Go,
+                    )
+                } else {
+                    KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done)
+                },
+            keyboardActions = KeyboardActions(onDone = { onDone() }, onGo = { onDone() }),
             singleLine = true,
             cursorBrush = SolidColor(colors.ink1),
             decorationBox = { innerTextField ->

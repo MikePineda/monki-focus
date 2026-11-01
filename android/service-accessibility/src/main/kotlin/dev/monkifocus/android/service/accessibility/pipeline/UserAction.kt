@@ -18,6 +18,22 @@ sealed interface UserAction {
 
     data object CancelEmergency : UserAction
 
+    /** "Go to another site" on a gate or block screen over a page in a browser: shows the address entry. */
+    data object AnotherSite : UserAction
+
+    /** "Cancel" on the address entry: back to the gate or block screen. */
+    data object CancelAnotherSite : UserAction
+
+    /** "Go" on the address entry with what the user typed (kept in memory only, never logged). */
+    class GoTo(
+        val address: String,
+    ) : UserAction {
+        override fun toString(): String = "GoTo(⟨address⟩)"
+    }
+
+    /** "Go back" on a gate or block screen over a page in a browser: BACK in the browser. */
+    data object GoBack : UserAction
+
     /** "5 more min" on the timeout card. */
     data object Extend : UserAction
 

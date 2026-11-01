@@ -11,12 +11,21 @@ sealed interface OverlayContent {
      * screen's actions apply to (null for an engine error: nothing can lift
      * it). A [notice] follows a BACK from a blocked surface: Close only
      * dismisses it, and it stays while the user is in the same app.
+     *
+     * Over a page in a browser the screen [offersAnotherSite] ("Go to another
+     * site", "Go back"), so a blocked tab never makes the whole browser
+     * unusable; [typingAddress] shows the address entry instead of the gate.
      */
     data class Gate(
         val state: GateUiState,
         val group: String?,
         val notice: Boolean = false,
-    ) : OverlayContent
+        val offersAnotherSite: Boolean = false,
+        val typingAddress: Boolean = false,
+    ) : OverlayContent {
+        /** Whether a text field on screen needs the keyboard (a focusable overlay, or `GateActivity`). */
+        val needsKeyboard: Boolean get() = typingAddress || state is GateUiState.Asking
+    }
 
     /** The hide-feed cover over [region]; the bars around it stay usable. */
     data class Cover(

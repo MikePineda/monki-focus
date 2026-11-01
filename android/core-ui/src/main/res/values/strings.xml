@@ -67,6 +67,14 @@
     <string name="gate_emergency_guardian_notice">Your guardian will be notified.</string>
     <string name="gate_emergency_recorded_notice">This is recorded as emergency access.</string>
     <string name="gate_emergency_cancel">Cancel emergency</string>
+    <string name="gate_another_site">Go to another site</string>
+    <string name="gate_go_back">Go back</string>
+    <string name="gate_another_site_title">Where to instead?</string>
+    <string name="gate_another_site_label">Web address or search</string>
+    <string name="gate_another_site_placeholder">example.com</string>
+    <string name="gate_another_site_hint">Opens in this browser. Blocked sites stay blocked.</string>
+    <string name="gate_another_site_go">Go</string>
+    <string name="gate_another_site_cancel">Cancel</string>
 
     <!-- Timeout card. -->
     <string name="timeout_title_with_intention">Your %1$d min for “%2$s” are up.</string>

@@ -2,7 +2,9 @@
 package dev.monkifocus.android.service.accessibility.platform
 
 import android.accessibilityservice.AccessibilityService
+import android.app.SearchManager
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.SystemClock
@@ -10,11 +12,11 @@ import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import dev.monkifocus.android.feature.gate.state.GateUiState
 import dev.monkifocus.android.service.accessibility.action.ActionPerformer
 import dev.monkifocus.android.service.accessibility.action.GateHost
 import dev.monkifocus.android.service.accessibility.action.ImeProbe
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
+import dev.monkifocus.android.service.accessibility.action.TypedAddress
 
 /**
  * [ActionPerformer] on the device: global actions through the service, our
@@ -38,9 +40,9 @@ internal class AndroidActionPerformer(
     private val sample =
         object : Runnable {
             override fun run() {
-                val asking = (shown as? OverlayContent.Gate)?.state is GateUiState.Asking
+                val typing = (shown as? OverlayContent.Gate)?.needsKeyboard == true
                 val view = overlay.rootView
-                if (!asking || view == null) return
+                if (!typing || view == null) return
                 val ime = ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
                 val served = service.getSystemService(InputMethodManager::class.java)?.isAcceptingText == true && view.hasWindowFocus()
                 if (probe.sample(served, ime, SystemClock.elapsedRealtime())) {
@@ -64,7 +66,9 @@ internal class AndroidActionPerformer(
         val previous = shown
         shown = content
         val gate = content as? OverlayContent.Gate
-        if (gate != null && GateHost.choose(gate.state, Build.VERSION.SDK_INT, preferences.overlayImeFailed) == GateHost.ACTIVITY) {
+        if (gate != null &&
+            GateHost.choose(gate.state, Build.VERSION.SDK_INT, preferences.overlayImeFailed, gate.typingAddress) == GateHost.ACTIVITY
+        ) {
             handler.removeCallbacks(sample)
             overlay.clear()
             inActivity = true
@@ -76,15 +80,39 @@ internal class AndroidActionPerformer(
         }
         inActivity = false
         relay.post(null)
-        val asking = gate?.state is GateUiState.Asking
-        overlay.show(content, focusable = asking)
-        val newPrompt = asking && (previous as? OverlayContent.Gate)?.state !is GateUiState.Asking
+        val typing = gate?.needsKeyboard == true
+        overlay.show(content, focusable = typing)
+        val newPrompt = typing && (previous as? OverlayContent.Gate)?.needsKeyboard != true
         if (newPrompt) {
             probe.reset()
             handler.removeCallbacks(sample)
             handler.postDelayed(sample, PROBE_INTERVAL_MS)
-        } else if (!asking) {
+        } else if (!typing) {
             handler.removeCallbacks(sample)
+        }
+    }
+
+    override fun open(
+        browserPackage: String,
+        address: TypedAddress,
+    ) {
+        val attempts =
+            when (address) {
+                is TypedAddress.Web -> {
+                    listOf(Intent(Intent.ACTION_VIEW, Uri.parse(address.url)))
+                }
+
+                is TypedAddress.Search -> {
+                    listOf(
+                        Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, address.query),
+                        Intent(Intent.ACTION_SEARCH).putExtra(SearchManager.QUERY, address.query),
+                    )
+                }
+            }
+        // A browser that takes no search intent is at least opened: its own URL bar searches.
+        val fallback = listOfNotNull(service.packageManager.getLaunchIntentForPackage(browserPackage))
+        (attempts + fallback).firstOrNull { intent ->
+            runCatching { service.startActivity(intent.setPackage(browserPackage).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
         }
     }
 
