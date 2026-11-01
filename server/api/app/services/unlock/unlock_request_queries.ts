@@ -12,7 +12,7 @@ export const HISTORY_PAGE_SIZE = 20
  *
  * - the ward's own history (everything they asked, newest first);
  * - a guardian's requests, only through links that grant guardianship
- *   right now and only while the guardian has two-step verification on
+ *   right now (a revoking link shows only its pending, unexpired ones) and only while the guardian has two-step verification on
  *   (anything else lists nothing). A guardian sees the host or the app,
  *   never a path, plus the reason the ward wrote for them.
  */
@@ -44,17 +44,31 @@ export default class UnlockRequestQueries {
   async forGuardian(guardian: User, onlyPending: boolean, now: DateTime) {
     if (!guardian.twoFactorEnabled) return []
     const at = now.toJSDate()
+    // Active links show the history; a revoking link (the ward asked to
+    // leave) only what the guardian still decides: pending, unexpired.
     const query = UnlockRequest.query()
-      .whereIn('guardian_link_id', (links) =>
-        links
-          .from('guardian_links')
-          .select('id')
-          .where('guardian_user_id', guardian.id)
-          .where('status', 'active')
-          .where((deadline) =>
-            deadline
+      .where((visible) =>
+        visible
+          .whereIn('guardian_link_id', (links) =>
+            links
+              .from('guardian_links')
+              .select('id')
+              .where('guardian_user_id', guardian.id)
+              .where('status', 'active')
               .whereNull('revocation_effective_at')
-              .orWhere('revocation_effective_at', '>', at)
+          )
+          .orWhere((deciding) =>
+            deciding
+              .whereIn('guardian_link_id', (links) =>
+                links
+                  .from('guardian_links')
+                  .select('id')
+                  .where('guardian_user_id', guardian.id)
+                  .where('status', 'active')
+                  .where('revocation_effective_at', '>', at)
+              )
+              .where('status', 'pending')
+              .where('expires_at', '>', at)
           )
       )
       .orderBy('created_at', 'desc')

@@ -6,6 +6,7 @@ import { formatRfc3339Utc, UUID_PATTERN } from '@monki-focus/protocol'
 import Clock from '#services/clock'
 import { DeviceApiError } from '#exceptions/device_api_error'
 import { checkUnlockScope } from '#domain/unlock/unlock_scope'
+import { isRegistrableDomain } from '#services/public_suffix_list'
 import UnlockRequestCreation from '#services/unlock/unlock_request_creation'
 import DeviceUnlockRequests, { serverTime } from '#services/unlock/device_unlock_requests'
 import {
@@ -33,6 +34,14 @@ export default class DeviceUnlockRequestsController {
     const body = await request.validateUsing(createUnlockRequestValidator)
     const scope = checkUnlockScope(body.scope)
     if (!scope.ok) throw new DeviceApiError('validation_failed', 422, { scope: scope.reason })
+    // The issuer refuses subdomains of a public suffix: refuse it here, not at approval.
+    if (
+      scope.value.kind === 'domain' &&
+      scope.value.includeSubdomains &&
+      !isRegistrableDomain(scope.value.value)
+    ) {
+      throw new DeviceApiError('validation_failed', 422, { scope: 'scope_not_registrable' })
+    }
 
     const created = await creation.create(
       device,

@@ -10,6 +10,7 @@ import { UserFactory } from '#tests/factories/user_factory'
 import {
   actionUrls,
   createRequest,
+  newRequestUuid,
   statusOf,
   fakeNtfy,
   NtfyPublisher,
@@ -61,7 +62,7 @@ test.group('Unlock decisions', (group) => {
     assert.lengthOf(ledger, 1)
   })
 
-  test('test_web_approval_is_capped_by_the_links_max', async ({ client }) => {
+  test('test_web_approval_never_grants_more_than_asked_or_the_links_max', async ({ client }) => {
     const { guardian, uuid } = await pendingRequest(client)
 
     const response = await client
@@ -69,7 +70,7 @@ test.group('Unlock decisions', (group) => {
       .json({ minutes: 200 })
       .actingAs(guardian)
 
-    response.assertBodyContains({ request: { grantedMinutes: 30 } })
+    response.assertBodyContains({ request: { grantedMinutes: 15 } })
   })
 
   test('test_second_decision_on_a_request_is_rejected', async ({ client, assert }) => {
@@ -265,5 +266,70 @@ test.group('Unlock decisions', (group) => {
     const request = await UnlockRequest.findByOrFail('uuid', uuid)
     assert.equal(request.status, 'expired')
     assert.isNull(request.approveActionHash)
+  })
+
+  test('test_a_revoking_guardian_sees_only_pending_requests_never_the_history', async ({
+    client,
+    assert,
+  }) => {
+    const { guardian, uuid } = await pendingRequest(client, { state: 'revoking' })
+    await client.post(`/api/v1/guardian/unlock-requests/${uuid}/deny`).actingAs(guardian)
+    const { token } = await wardWithGuardian({ guardian, state: 'revoking' })
+    const pendingUuid = await newRequestUuid(client, token)
+
+    const response = await client.get('/api/v1/guardian/unlock-requests').actingAs(guardian)
+
+    assert.deepEqual(
+      response.body().requests.map((request: { uuid: string }) => request.uuid),
+      [pendingUuid]
+    )
+  })
+
+  test('test_the_expiry_job_drops_the_sealed_token_once_it_cannot_be_used', async ({
+    client,
+    assert,
+  }) => {
+    const { guardian, uuid } = await pendingRequest(client)
+    const revoked = await pendingRequest(client)
+    for (const [who, id] of [
+      [guardian, uuid],
+      [revoked.guardian, revoked.uuid],
+    ] as const) {
+      await client.post(`/api/v1/guardian/unlock-requests/${id}/approve`).json({}).actingAs(who)
+    }
+    await db
+      .from('unlock_tokens')
+      .where('request_uuid', revoked.uuid)
+      .update({ revoked_at: new Date() })
+    const { ExpireUnlockRequestsJob } = await import('#scheduler/expire_unlock_requests_job')
+    const tick = () =>
+      new ExpireUnlockRequestsJob().tick({
+        now: () => clock.now(),
+        signal: new AbortController().signal,
+      })
+
+    await tick()
+    const sealed = async (id: string) => {
+      const request = await UnlockRequest.findByOrFail('uuid', id)
+      return request.tokenSealed !== null
+    }
+    assert.isTrue(await sealed(uuid))
+    assert.isFalse(await sealed(revoked.uuid))
+    clock.advance({ hours: 5 })
+    await tick()
+    assert.isFalse(await sealed(uuid))
+  })
+
+  test('test_an_approval_never_answers_500_for_a_public_suffix_scope', async ({ client }) => {
+    fakeNtfy()
+    const { token } = await wardWithGuardian()
+
+    const response = await createRequest(client, token, {
+      ...UNLOCK_BODY,
+      scope: { kind: 'domain', value: 'github.io', includeSubdomains: true },
+    })
+
+    response.assertStatus(422)
+    response.assertBody({ code: 'validation_failed', fields: { scope: 'scope_not_registrable' } })
   })
 })
