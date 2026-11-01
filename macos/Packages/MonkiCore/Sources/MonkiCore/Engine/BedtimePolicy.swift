@@ -11,7 +11,7 @@ import Foundation
 let bedtimeMaxLevel = 25
 
 /// The escalation group of emergency overrides requested from the bedtime screen.
-let bedtimeGroup = "bedtime"
+public let bedtimeGroup = "bedtime"
 
 func bedtimePhaseAt(_ bedtime: Bedtime, _ epochSeconds: Int, _ zone: TimeZone) -> BedtimePhase {
     guard bedtime.enabled else { return .inactive }
