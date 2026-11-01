@@ -65,8 +65,13 @@ test.group('unlock minutes', () => {
   test('test_minutes_are_capped_by_guardian_max', ({ assert }) => {
     assert.equal(grantedMinutes({ requested: 60, linkMax: 30, ceiling: 120 }), 30)
     assert.equal(grantedMinutes({ requested: 15, linkMax: 30, ceiling: 120 }), 15)
-    assert.equal(grantedMinutes({ requested: 15, approved: 45, linkMax: 30, ceiling: 120 }), 30)
+    assert.equal(grantedMinutes({ requested: 25, approved: 45, linkMax: 30, ceiling: 120 }), 25)
     assert.equal(grantedMinutes({ requested: 60, approved: 5, linkMax: 30, ceiling: 120 }), 5)
+  })
+
+  test('test_the_guardian_may_grant_less_never_more_than_asked', ({ assert }) => {
+    assert.equal(grantedMinutes({ requested: 15, approved: 45, linkMax: 30, ceiling: 120 }), 15)
+    assert.equal(grantedMinutes({ requested: 15, approved: 10, linkMax: 30, ceiling: 120 }), 10)
   })
 
   test('test_minutes_never_exceed_the_protocol_or_instance_ceiling', ({ assert }) => {

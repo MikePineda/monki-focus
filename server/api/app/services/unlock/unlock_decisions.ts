@@ -5,6 +5,7 @@ import type { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import encryption from '@adonisjs/core/services/encryption'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import { CLOCK_SKEW_SECONDS } from '@monki-focus/protocol'
 import Device from '#models/device'
 import GuardianLink from '#models/guardian_link'
 import UnlockRequest from '#models/unlock_request'
@@ -134,11 +135,17 @@ export default class UnlockDecisions {
       { id: linkPeek.wardUserId, mode: 'key share' },
       { id: linkPeek.guardianUserId, mode: 'no key update' },
     ])
+    // Lock order users -> link -> request, as in rotation and revocation
+    // (users -> link): a concurrent "leave now" or strict-mode toggle
+    // commits before this check or waits for the decision.
+    const link = await GuardianLink.query({ client: trx })
+      .where('id', linkPeek.id)
+      .forShare()
+      .first()
     const request = await UnlockRequest.query({ client: trx })
       .where('id', requestId)
       .forUpdate()
       .first()
-    const link = await GuardianLink.query({ client: trx }).where('id', linkPeek.id).first()
     const guardian = await User.query({ client: trx }).where('id', linkPeek.guardianUserId).first()
     if (!request || !link || !guardian || request.guardianLinkId !== link.id) {
       return { ok: false, reason: 'not_found' }
@@ -175,9 +182,11 @@ export default class UnlockDecisions {
         trx
       )
       if (!issued.ok) throw new Error(`unlock token not issued: ${issued.reason}`)
+      // Readable only while a verifier could accept it (exp + 60 s skew).
+      const { issuedAt, expiresAt } = issued.value.ledger
       request.tokenSealed = encryption.encrypt(
         issued.value.token,
-        undefined,
+        `${expiresAt - issuedAt + CLOCK_SKEW_SECONDS}s`,
         UNLOCK_TOKEN_SEAL_PURPOSE
       )
       request.grantedMinutes = minutes
