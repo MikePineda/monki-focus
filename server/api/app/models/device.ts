@@ -100,6 +100,10 @@ export default class Device extends BaseModel {
   @column()
   declare clockOffsetMs: number | null
 
+  /** The rule set revision last reported as applied (heartbeat `ruleSetRevision`). */
+  @column({ serializeAs: null })
+  declare ruleSetRevision: number | null
+
   @column.dateTime()
   declare revokedAt: DateTime | null
 

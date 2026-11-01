@@ -25,5 +25,8 @@
   "E_NO_REVOCATION_PENDING": "No hay ninguna solicitud de salida que cancelar",
   "E_NOTIFICATIONS_UNAVAILABLE": "Las notificaciones no están configuradas en este servidor",
   "E_GUARDIAN_ONLY_ACCOUNT": "Esta cuenta se creó para ser guardián de alguien. Pide una invitación al administrador para proteger tus propios dispositivos",
-  "E_UNLOCK_REQUEST_CLOSED": "Esta solicitud ya se decidió o venció"
+  "E_UNLOCK_REQUEST_CLOSED": "Esta solicitud ya se decidió o venció",
+  "E_RULE_SET_IF_MATCH_REQUIRED": "Recarga tus reglas antes de guardarlas",
+  "E_RULE_SET_REVISION_MISMATCH": "Tus reglas cambiaron en otro dispositivo. Recárgalas y vuelve a guardar",
+  "E_RULE_SET_INVALID": "Estas reglas no son válidas. Revisa los campos marcados"
 }

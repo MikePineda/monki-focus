@@ -88,6 +88,8 @@ const SENSITIVE_KEYS = new Set([
   // Personal data
   'email',
   'fullname',
+  // Rule sets name the domains and apps a user restricts (S15)
+  'ruleset',
 ])
 
 /** Error fields where drivers and HTTP clients copy values, headers or bodies. */
@@ -236,6 +238,8 @@ const CAMEL_AND_SNAKE_FIELDS = [
   'email',
   'fullName',
   'full_name',
+  'ruleSet',
+  'rule_set',
 ]
 
 const HEADER_NAMES = [

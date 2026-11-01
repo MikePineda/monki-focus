@@ -51,11 +51,12 @@ The source of truth is `packages/protocol/openapi.yaml`; the server's
 contract test (`server/api/tests/functional/devices/device_api_contract.spec.ts`)
 fails when an implemented `/api/v1/keys` or `/api/v1/device/*` route is not
 an operation of it, or an operation is neither implemented nor owned by a
-later package. Implemented (S3, S4, S6): `GET /keys`, `POST /device/enroll`,
+later package. Implemented (S3, S4, S6, S15): `GET /keys`, `POST /device/enroll`,
 `POST /device/heartbeat`, `POST /device/bypass-events`,
 `POST /device/token/rotate`, `POST /device/unlock-requests`,
-`GET|DELETE /device/unlock-requests/{uuid}` and
-`POST /device/unlock-tokens/{jti}/consumed` (see "Unlock requests").
+`GET|DELETE /device/unlock-requests/{uuid}`,
+`POST /device/unlock-tokens/{jti}/consumed` (see "Unlock requests") and
+`GET|PUT /device/rule-set` (see "Rule set sync").
 
 - **Auth**: Bearer device tokens `mfd_<id>.<secret>` (`@adonisjs/auth`
   access tokens whose tokenable is a device), about 288 random bits, stored
@@ -79,8 +80,10 @@ later package. Implemented (S3, S4, S6): `GET /keys`, `POST /device/enroll`,
 - **Heartbeat**: every 15 minutes and on wake, at most 60 per hour per
   device. Answers a signed time token bound to the device, the request's
   nonce and boot id (with the device's pending revocations), the key-set
-  ETag, `rulesVersion` (0 until rule sets exist) and `tokenRotationDue`
-  (the token is 30 days old). Pinned kids the instance does not publish
+  ETag, `rulesVersion` (the owner's current rule set revision, 0 while none
+  is stored) and `tokenRotationDue` (the token is 30 days old). The request
+  may carry `ruleSetRevision`, the revision the device applied (stored on
+  the device and the heartbeat row). Pinned kids the instance does not publish
   raise one `key_pin_mismatch` per distinct set. The nonce is never stored.
 - **Bypass events**: batches of 1 to 100, 120 batches per hour per device,
   idempotent per device and `dedupeKey`. Client kinds only (the schema's
@@ -293,7 +296,8 @@ through a guardian pairing code, see [Guardians](#guardians-dashboard)).
   `invitationsCreated`, `devices` (`device[]`), `bypassEvents`
   (`{ id, kind, source, deviceUuid, details, occurredAt, resolvedAt, createdAt }`),
   `guardianLinks` (`link` plus `revokedAt`, both sides, revoked ones too;
-  see [Guardians](#guardians-dashboard)).
+  see [Guardians](#guardians-dashboard)), `ruleSet` (see
+  [Rule set sync](#rule-set-sync-s15)).
   Never a hash, seed, token, code, link or ntfy topic. Later packages add their
   sections; `?format=aw` (ActivityWatch) arrives with analytics.
 - **Operators**: `node ace user:reset-password <email>` (prompts twice, or
@@ -477,6 +481,59 @@ details, occurredAt, resolvedAt, acknowledgedAt }] } }`. `score` is null
 | `E_NO_REVOCATION_PENDING`          | 409    | Cancelling when the ward has not asked to leave              |
 | `E_NOTIFICATIONS_UNAVAILABLE`      | 409    | Neither `NTFY_PUBLIC_URL` nor `NTFY_BASE_URL` is set         |
 | `E_GUARDIAN_ONLY_ACCOUNT`          | 403    | A guardian-only account starting its own protection (closed) |
+
+## Rule set sync (S15)
+
+The user configures rules once and every device gets the same rule set.
+The server **only stores, versions and validates**; it never decides
+whether a change tightens or loosens. Every device applies an incoming set
+through its own `RuleChangePolicy` (`packages/rules/SEMANTICS.md` §8:
+tightening at once, loosening from the next local day), exactly as it
+applies a local edit.
+
+- **Storage**: one row per user in `rule_sets` (`revision`, `document`
+  jsonb, `content_hash`, `updated_at`, `updated_by_device_id`, null for the
+  web). No revision history. The account's deletion removes it (cascade);
+  the export carries it as `ruleSet` (`{ revision, contentHash, updatedAt,
+updatedByDeviceUuid, document }` or null).
+- **Revision**: the server's monotonic counter, starting at 1; revision 0
+  means nothing is stored. It is the strong `ETag` (`"<revision>"`). The
+  document's own `revision` and `updatedAt` members belong to the editor;
+  the server stores the document as sent and never rewrites them.
+- **Read**: `GET /device/rule-set` (device token) and `GET /rule-set`
+  (session) answer `{ revision, ruleSet }` (`ruleSet` null at revision 0)
+  with `ETag` and `Cache-Control: no-store`; a matching `If-None-Match`
+  answers 304.
+- **Write**: `PUT` with `{ ruleSet }` and `If-Match: "<revision>"` (one
+  strong tag; `"0"` for the first write). A missing or malformed
+  `If-Match` and a stale one answer 412 with the current revision
+  (`{ code: if_match_required | revision_mismatch, revision }` on the
+  device route; `{ message, code: E_RULE_SET_IF_MATCH_REQUIRED |
+E_RULE_SET_REVISION_MISMATCH, revision }` on the session route): the
+  client re-fetches, merges and retries. The precondition is a single
+  compare-and-swap statement, so two concurrent writers never both win.
+  A write equal to the stored set (same canonical hash) keeps the
+  revision. 200 `{ revision }` with the new `ETag`.
+- **Validation**: the shared validator of `@monki-focus/rules`
+  (`bundledSchemaValidator`, the one the extension runs) on the canonical
+  JSON: 256 KiB (`MAX_DOCUMENT_BYTES`), then the `ruleset` schema with its
+  extension keywords. A refusal is 422 and keeps the stored set; the
+  device route answers `validation_failed` with `fields` of
+  `ruleSet.<path>: <code>` (`schema`, `duplicate_key`, `invalid_domain`,
+  `invalid_time_zone`, `too_large`), the session route `{ errors: [{
+field, rule, message }] }`. Only JSON pointers come back (segments
+  outside `[A-Za-z0-9_]` masked as `*`, at most 20), never a value.
+- **Content hash**: unpadded base64url SHA-256 of the canonical JSON
+  (object keys sorted at every depth, no whitespace).
+- **Tenancy**: a device reaches only its owner's set and a session user
+  only their own; no route takes an id, so there is nothing to address
+  another user's set. A guardian never reads or writes a ward's rules (the
+  guardian DTO stays score, unlocks and bypasses); a guardian-only account
+  is refused with 403 `E_GUARDIAN_ONLY_ACCOUNT`.
+- **Throttles**: reads 120 and writes 60 per hour, per device (device
+  routes) or per user (session routes).
+- **Logs**: the document names domains and apps, so it is never logged;
+  `ruleSet` / `rule_set` keys are censored by the log scrubber.
 
 ## Unlock requests (S6)
 

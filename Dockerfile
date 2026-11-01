@@ -49,7 +49,8 @@ RUN npm ci -w server/api --ignore-scripts --no-audit --no-fund
 
 ########################################################################
 # build: compile the workspace packages the server imports at runtime
-# (@monki-focus/protocol: token signing and verification), then the server
+# (@monki-focus/protocol: token signing and verification;
+# @monki-focus/rules: the rule set schema validator), then the server
 # (TypeScript -> build/), and stamp its version (release-please bumps
 # server/api/package.json).
 ########################################################################
@@ -57,6 +58,11 @@ FROM deps AS build
 COPY packages/protocol/package.json packages/protocol/tsconfig.json packages/protocol/tsconfig.build.json ./packages/protocol/
 COPY packages/protocol/src ./packages/protocol/src
 RUN node_modules/.bin/tsc -p packages/protocol/tsconfig.build.json
+COPY packages/rules/package.json packages/rules/tsconfig.json packages/rules/tsconfig.build.json ./packages/rules/
+COPY packages/rules/src ./packages/rules/src
+COPY packages/rules/schema ./packages/rules/schema
+COPY packages/rules/data ./packages/rules/data
+RUN node_modules/.bin/tsc -p packages/rules/tsconfig.build.json
 COPY server/api ./server/api
 RUN cd server/api && node ace build \
  && node -p "require('./package.json').version" > build/.app-version \
@@ -87,6 +93,10 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/server/api/node_modules ./server/api/node_modules
 COPY --from=build /app/packages/protocol/package.json ./packages/protocol/package.json
 COPY --from=build /app/packages/protocol/dist ./packages/protocol/dist
+COPY --from=build /app/packages/rules/package.json ./packages/rules/package.json
+COPY --from=build /app/packages/rules/dist ./packages/rules/dist
+COPY --from=build /app/packages/rules/schema ./packages/rules/schema
+COPY --from=build /app/packages/rules/data ./packages/rules/data
 COPY --from=build /app/server/api/build ./server/api/build
 COPY --from=gitsha /git-sha ./server/api/build/.git-sha
 COPY docker/entrypoint.mjs ./server/api/build/entrypoint.mjs
