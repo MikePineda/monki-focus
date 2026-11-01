@@ -38,6 +38,14 @@ describe('reference invariants', () => {
     expect(checkFixtureInvariants(fixture).join('\n')).toMatch(/ruleId/)
   })
 
+  it('a_relaxed_bedtime_gate_may_name_no_rule', () => {
+    const fixture = firstDecision(
+      (f) => f.id === 'decision.relaxed_friday_night_bedtime_gates_instead_of_blocking'
+    )
+    expect(fixture.then.ruleId).toBeNull()
+    expect(checkFixtureInvariants(fixture)).toEqual([])
+  })
+
   it('reason_must_agree_with_access', () => {
     const fixture = firstDecision((f) => f.then.reason === 'schedule_bedtime')
     fixture.then.access = 'allow'

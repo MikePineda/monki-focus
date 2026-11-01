@@ -1,0 +1,144 @@
+{
+  "id": "rule-change.turning_off_relaxed_weekends_applies_immediately",
+  "kind": "rule-change",
+  "description": "Turning relaxed weekends off tightens, so it applies at once, even on a Saturday.",
+  "given": {
+    "old": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "starter-instagram-reels-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "instagram.reels"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-youtube-shorts-block",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.shorts"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      },
+      "relaxedWeekends": {
+        "enabled": true
+      }
+    },
+    "new": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-31T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "starter-instagram-reels-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "instagram.reels"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-youtube-shorts-block",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.shorts"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      },
+      "relaxedWeekends": {
+        "enabled": false
+      }
+    },
+    "now": "2026-10-31T15:00:00+11:00",
+    "pendingEffectiveFrom": null
+  },
+  "then": {
+    "effectiveToday": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "updatedAt": "2026-10-31T04:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "starter-instagram-reels-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "instagram.reels"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-youtube-shorts-block",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.shorts"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      },
+      "relaxedWeekends": {
+        "enabled": false
+      }
+    },
+    "effectiveFrom": null
+  }
+}

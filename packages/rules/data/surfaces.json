@@ -9,7 +9,8 @@
     {
       "id": "instagram.reels",
       "family": "instagram",
-      "kind": "feed"
+      "kind": "feed",
+      "shortVideo": true
     },
     {
       "id": "instagram.explore",
@@ -114,7 +115,8 @@
     {
       "id": "youtube.shorts",
       "family": "youtube",
-      "kind": "feed"
+      "kind": "feed",
+      "shortVideo": true
     },
     {
       "id": "youtube.watch",

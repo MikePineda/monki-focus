@@ -141,7 +141,10 @@ first difference decides:
 
 A rule is a candidate when `enabled` is true, its schedules are active at
 `now` (§6, in the pinned zone and, while a time-zone change waits, §6.3) and
-its target matches the normalised observation. A site observation that
+its target matches the normalised observation. On a relaxed day (§6.4) a
+candidate on a short-video surface with mode `block` or `hide-feed` takes
+part with mode `friction` everywhere below (both axes, §4 step 5, §5.5,
+§5.7). A site observation that
 normalises to `rejected` matches no rule and has category level 50. Two
 independent axes then choose a winner each with §4:
 
@@ -167,7 +170,12 @@ decision is final) or is **lifted** (continue with the next):
    the winner, so adding a more specific rule never hides a spent budget
    (`budgetedRulesFor`, §5.7). Hide-feed rules take no budget (schema).
 3. **Rule block**: access winner with mode `block` → `block`, `rule_match`.
-4. **Friction**: access winner with mode `friction` → `gate`, reason
+4. **Relaxed bedtime**: phase `active` in a relaxed night (§6.4) with the
+   category level of step 1 ≤ 25 → `gate`, reason `intention_required`,
+   `ruleId` null, group `bedtime`, with the gate of §7.4 computed on the
+   `bedtime` group alone. It comes after the rule block, so a relaxed night
+   never turns a rule block into a gate.
+5. **Friction**: access winner with mode `friction` → `gate`, reason
    `intention_required`, with the gate of §7.4.
 
 Lifts, tried in this order for each restriction:
@@ -178,7 +186,7 @@ Lifts, tried in this order for each restriction:
 - an **emergency override**: the escalation state of the restriction's group
   (the rule id, or `bedtime` for bedtime) has phase `override_active` and
   `now < overrideEndsAt` → reason `emergency_active`;
-- an **intention** (friction only): the group's state has phase `active` and
+- an **intention** (friction and relaxed bedtime only): the group's state has phase `active` and
   `now < intentionExpiresAt` → reason `intention_active`. Leaving an intention
   early (`leave`) ends it: it no longer lifts anything.
 
@@ -335,6 +343,32 @@ today's date in either zone, so a move to a zone behind never grants an extra
 budget day. The starter preset
 ships with `UTC`; clients set the device zone once at install.
 
+### 6.4 Relaxed weekends
+
+`ruleset.relaxedWeekends` (`{enabled}`, optional; absent means off) is a
+softer weekend chosen by the user. The day sets are fixed:
+
+- **Relaxed nights** are the bedtime windows that **start** on a Friday or
+  a Saturday (local start day, §6.1), including the part after midnight.
+  Bedtime is in a relaxed night at `now` when it is `active` in at least one
+  pinned zone and, in **every** zone where it is active, the active window
+  started on a Friday or Saturday (a stricter zone keeps the block, §6.3).
+  Then step 1 of §5.2 does not apply and step 4 gates instead. A Thursday
+  window running into Friday morning and a Sunday window running into Monday
+  morning are never relaxed.
+- **Relaxed days** are Saturdays and Sundays (local dates). `now` is in a
+  relaxed day when its local weekday is Saturday or Sunday in **every**
+  pinned zone. On a relaxed day a rule whose target is a `surface` that the
+  surface registry marks `shortVideo` (`instagram.reels`, `youtube.shorts`)
+  and whose mode is `block` or `hide-feed` counts as `friction` (§5.1): it
+  gates with an intention instead of blocking or hiding.
+
+`bedtimePhase` (§6.2) is unchanged, so the warning still fires; emergency
+overrides, unlocks, budgets, work hours and every other rule are unchanged.
+Relaxation only changes at bedtime boundaries and local midnights, which
+`validUntil` already visits (§5.6). Turning it on is loosening and turning it
+off is tightening (§8).
+
 ## 7. Escalation (`escalation`)
 
 `nextEscalation(state, event, now, guardianLinked) → {state, effects}`.
@@ -413,6 +447,9 @@ the counters, `lastAttemptAt`, `lastActivityAt` and `lastFrictionType` survive.
 
 For a friction restriction without a lift, `decide` returns:
 
+For the relaxed bedtime (§5.2.4) the group is `bedtime` and it is the only
+group taking part (no rule shares its escalation).
+
 - in `pausing` or `asking`: the state's current `gate`;
 - in `timed_out` or `override_waiting` (where a `visit` changes nothing): the
   **current gate** without a new attempt: level `min(max(attemptCount − 1, 0), 3)`,
@@ -485,6 +522,10 @@ tightening) waits. Each part is judged on its own:
 - **Bedtime:** tightening iff it becomes enabled, or stays enabled with
   `days` and window whose week set contains the old one.
   `warnMinutesBefore` is neutral.
+- **relaxedWeekends:** tightening iff it ends disabled (absent counts as
+  disabled) or is unchanged; turning it on waits, and while it waits
+  `effectiveToday` keeps the old value (absent stays absent). Its old window
+  is the old bedtime window.
 - **workHours** and **timeZone:** any change waits. A waiting `timeZone`
   change sets `effectiveToday.timeZone = old.timeZone` and
   `effectiveToday.pendingTimeZone = new.timeZone` (§6.3).
@@ -507,7 +548,8 @@ version (added loosening rules left out, removed restrictive rules kept), with
    end), the result is exactly `now` + 8 days. The old windows of the waiting
    parts are (an old bedtime window only while the old bedtime is enabled; a
    `workHours` reference resolves to the old `workHours`):
-   - bedtime or categories (they decide bedtime): the old bedtime window;
+   - bedtime, categories or relaxedWeekends (they decide bedtime): the old
+     bedtime window;
    - a rule whose `schedules` changed, and an enabled non-allow rule that is
      removed or disabled: its old schedule windows (deleting a block during
      its window waits until the window ends); a rule without schedules has

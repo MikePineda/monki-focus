@@ -142,7 +142,13 @@ function checkDecision(fixture: DecisionFixture, problems: string[]): void {
   }
 
   const nullRule = then.reason === 'no_rule' || then.reason === 'schedule_bedtime'
-  const eitherRule = then.reason === 'unlock_active' || then.reason === 'emergency_active'
+  // A relaxed bedtime (SEMANTICS.md §6.4) gates and is lifted by the bedtime group: no rule.
+  const eitherRule = [
+    'unlock_active',
+    'emergency_active',
+    'intention_required',
+    'intention_active',
+  ].includes(then.reason)
   if (nullRule && then.ruleId !== null)
     problems.push(`then.ruleId must be null for reason ${then.reason}`)
   if (!nullRule && !eitherRule && then.ruleId === null) {

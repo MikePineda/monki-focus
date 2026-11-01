@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://monkifocus.dev/schema/rules/v1/ruleset.schema.json",
   "title": "Ruleset",
-  "description": "A user's rule set: the document that is imported, exported, synced and enforced. `timeZone` pins the zone every schedule, bedtime and budget day is evaluated in (the device zone is never an input). `pendingTimeZone` is set only while a time-zone change waits (both zones apply, the stricter wins). `workHours` is the user's working hours, which rules opt into with `{ \"ref\": \"workHours\" }`. Strict: unknown fields are rejected, keys are unique (`x-uniqueBy`) and the serialised document must not exceed 256 KB.",
+  "description": "A user's rule set: the document that is imported, exported, synced and enforced. `timeZone` pins the zone every schedule, bedtime and budget day is evaluated in (the device zone is never an input). `pendingTimeZone` is set only while a time-zone change waits (both zones apply, the stricter wins). `workHours` is the user's working hours, which rules opt into with `{ \"ref\": \"workHours\" }`. `relaxedWeekends` (optional, off when absent) softens bedtime on Friday and Saturday nights and short-video surfaces on Saturdays and Sundays. Strict: unknown fields are rejected, keys are unique (`x-uniqueBy`) and the serialised document must not exceed 256 KB.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -56,6 +56,21 @@
     },
     "workHours": {
       "$ref": "schedule.schema.json"
+    },
+    "relaxedWeekends": {
+      "$ref": "#/$defs/relaxedWeekends"
+    }
+  },
+  "$defs": {
+    "relaxedWeekends": {
+      "title": "RelaxedWeekends",
+      "description": "Softer limits on weekends, chosen by the user (SEMANTICS.md §6.4). Absent means off. When enabled, a bedtime window that starts on a Friday or Saturday asks for an intention instead of blocking, and on Saturdays and Sundays (local dates) a `block` or `hide-feed` rule on a short-video surface asks for an intention instead. Turning it on is loosening (waits, §8); turning it off is tightening.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
     }
   }
 }
