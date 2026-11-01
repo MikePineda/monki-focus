@@ -34,7 +34,8 @@
     {
       "id": "facebook.reels",
       "family": "facebook",
-      "kind": "feed"
+      "kind": "feed",
+      "shortVideo": true
     },
     {
       "id": "facebook.search",

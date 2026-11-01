@@ -1,0 +1,70 @@
+{
+  "id": "decision.relaxed_saturday_facebook_reels_ask_for_intention",
+  "kind": "decision",
+  "description": "On a Saturday the block rule on Facebook Reels (a short-video surface) asks for an intention instead, until the relaxed bedtime takes over at 22:30.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "starter-facebook-reels-block",
+          "target": {
+            "kind": "surface",
+            "surface": "facebook.reels"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      },
+      "relaxedWeekends": {
+        "enabled": true
+      }
+    },
+    "now": "2026-10-31T14:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "app",
+      "package": "com.facebook.katana",
+      "surface": "facebook.reels"
+    }
+  },
+  "then": {
+    "access": "gate",
+    "content": "show",
+    "ruleId": "starter-facebook-reels-block",
+    "reason": "intention_required",
+    "gate": {
+      "level": 0,
+      "pauseSeconds": 5,
+      "frictionType": "countdown",
+      "requiresTypedIntention": false,
+      "requiresGuardianKey": false
+    },
+    "explanationKey": "decision.intention_required",
+    "validUntil": "2026-10-31T11:30:00Z"
+  }
+}
