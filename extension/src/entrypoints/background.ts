@@ -26,7 +26,10 @@ import {
   pendingRulesAlarm,
 } from '../background/rules/RuleChangeService'
 import { RulesetStore } from '../background/rules/RulesetStore'
-import { ShortsRedirectSync } from '../background/shorts/ShortsRedirectSync'
+import {
+  FACEBOOK_REELS_REDIRECT,
+  ShortsRedirectSync,
+} from '../background/shorts/ShortsRedirectSync'
 import { openMonkiDb } from '../background/storage/db'
 import { DbConnection } from '../background/storage/DbConnection'
 import { createTrackingModule } from '../background/tracking/TrackingModule'
@@ -63,6 +66,11 @@ export default defineBackground(() => {
     onPendingChanged: pendingRulesAlarm(browser.alarms),
   })
   const shortsRedirect = new ShortsRedirectSync(decisionService, browser.declarativeNetRequest)
+  const reelsRedirect = new ShortsRedirectSync(
+    decisionService,
+    browser.declarativeNetRequest,
+    FACEBOOK_REELS_REDIRECT
+  )
   const siteTabs = new SiteTabs({
     query: (query) => browser.tabs.query(query),
     sendMessage: (tabId, message) => browser.tabs.sendMessage(tabId, message),
@@ -70,6 +78,7 @@ export default defineBackground(() => {
   })
   const decisionsChanged = async () => {
     await shortsRedirect.sync().catch(() => undefined)
+    await reelsRedirect.sync().catch(() => undefined)
     await siteTabs.broadcast(decisionChangedMessage()).catch(() => undefined)
   }
   const restrictions = new RestrictionWatcher({
@@ -152,6 +161,7 @@ export default defineBackground(() => {
       decisions,
       stylesheets: new UserStylesheetInjector(catalog, browser.scripting),
       shortsRedirect,
+      reelsRedirect,
       tracking: tracking.commands,
       gate,
       intentions: gate.intentions,
@@ -196,6 +206,7 @@ export default defineBackground(() => {
   void browser.alarms.create(RESTRICTION_ALARM, { periodInMinutes: RESTRICTION_CHECK_MINUTES })
   void ruleChanges.promoteIfDue().catch(() => undefined)
   void shortsRedirect.sync().catch(() => undefined)
+  void reelsRedirect.sync().catch(() => undefined)
   void restrictions.check().catch(() => undefined)
   tracking.start()
   gate.start()

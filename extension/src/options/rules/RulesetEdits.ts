@@ -8,7 +8,7 @@ import type {
   Ruleset,
   Schedule,
 } from '@monki-focus/rules/pure'
-import { defaultCategories, normaliseDomain } from '@monki-focus/rules/pure'
+import { defaultCategories, normaliseDomain, surfaceRegistry } from '@monki-focus/rules/pure'
 
 /**
  * Pure edits of a rule set, as the options page makes them. Each returns a
@@ -98,6 +98,29 @@ export function addSiteRule(ruleset: Ruleset, domain: string, mode: RuleMode): R
   const rule: Rule = {
     id: uniqueId(ruleset, `site-${slug(domain)}`),
     target: { kind: 'site', domain },
+    mode,
+    schedules: [],
+    enabled: true,
+  }
+  return { ...ruleset, rules: [...ruleset.rules, rule] }
+}
+
+/**
+ * Feed surfaces a surface rule can be added for (Facebook Reels, YouTube
+ * Shorts, ...), from the bundled registry: an install that kept an older
+ * rule set can still turn on rules the starter preset gained later.
+ * Permalinks and utility surfaces are never offered.
+ */
+export const ADDABLE_SURFACES: readonly string[] = surfaceRegistry.surfaces
+  .filter((surface) => surface.kind === 'feed')
+  .map((surface) => surface.id)
+  .sort()
+
+/** Adds an always-on rule for the surface `surface` with `mode`. */
+export function addSurfaceRule(ruleset: Ruleset, surface: string, mode: RuleMode): Ruleset {
+  const rule: Rule = {
+    id: uniqueId(ruleset, `surface-${slug(surface)}`),
+    target: { kind: 'surface', surface },
     mode,
     schedules: [],
     enabled: true,

@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Synthetic stand-in for the Facebook home feed: real structure (ARIA roles, hrefs), fake content. -->
+<html lang="en" data-fixture="facebook-home">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture: facebook home</title>
+  </head>
+  <body>
+    <div role="navigation">
+      <a href="/">Home</a>
+      <a id="watch-tab" href="/watch/">Video</a>
+      <a id="reels-tab" href="/reels/">Reels</a>
+      <a id="marketplace-tab" href="/marketplace/">Marketplace</a>
+      <a href="/groups/feed/">Groups</a>
+    </div>
+    <div role="main">
+      <div role="feed">
+        <div id="post-unit">
+          <div role="article">
+            <a href="/ExamplePage/posts/1234567890">A synthetic post.</a>
+          </div>
+        </div>
+        <div id="reels-carousel">
+          <span>Reels</span>
+          <a href="/reel/1234567890123456">A synthetic reel.</a>
+          <a href="/reel/2234567890123456">Another synthetic reel.</a>
+        </div>
+        <div id="video-post">
+          <div role="article">
+            <a href="/ExamplePage/videos/3234567890123456/">A synthetic long video.</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button id="open-reel" type="button">Open a reel in-app</button>
+    <script>
+      // In-app navigation as the real site does it: pushState and a new title.
+      document.getElementById('open-reel').addEventListener('click', () => {
+        history.pushState({}, '', '/reel/1234567890123456')
+        document.title = 'Fixture: facebook reel'
+      })
+    </script>
+  </body>
+</html>

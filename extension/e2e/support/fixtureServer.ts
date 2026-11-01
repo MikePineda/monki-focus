@@ -14,6 +14,7 @@ export const FIXTURE_SITES = {
   // The mobile site has its own DOM (`ytm-*`), so its own fixture folder.
   'youtube-mobile': ['m.youtube.com'],
   'instagram': ['instagram.com', 'www.instagram.com'],
+  'facebook': ['facebook.com', 'www.facebook.com'],
 } as const
 
 export type FixtureSite = keyof typeof FIXTURE_SITES

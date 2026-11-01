@@ -19,6 +19,7 @@ function answer(restrict: string[]): FeedDecision {
 function makeHandlers(restrict: string[]) {
   const feedDecisionFor = vi.fn(() => Promise.resolve(answer(restrict)))
   const apply = vi.fn(() => Promise.resolve())
+  const applyReels = vi.fn(() => Promise.resolve())
   const inject = vi.fn(() => Promise.resolve(true))
   const handlers = createCommandHandlers({
     clock: fixedClock('2026-10-27T12:00:00Z'),
@@ -26,9 +27,10 @@ function makeHandlers(restrict: string[]) {
     decisions: { feedDecisionFor },
     stylesheets: { inject },
     shortsRedirect: { apply },
+    reelsRedirect: { apply: applyReels },
     tracking: UNUSED_TRACKING,
   })
-  return { handlers, feedDecisionFor, apply, inject }
+  return { handlers, feedDecisionFor, apply, applyReels, inject }
 }
 
 const sender = { id: 'own' }
@@ -71,6 +73,31 @@ describe('decision.get', () => {
     await handlers['decision.get']({ url: 'https://www.reddit.com/' }, sender)
 
     expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('a_facebook_page_keeps_the_reels_redirect_in_step', async () => {
+    const { handlers, apply, applyReels } = makeHandlers(['facebook.reels', 'facebook.watch'])
+
+    await handlers['decision.get']({ url: 'https://www.facebook.com/' }, sender)
+
+    expect(applyReels).toHaveBeenCalledWith(true)
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('a_facebook_page_without_restricted_reels_turns_the_reels_redirect_off', async () => {
+    const { handlers, applyReels } = makeHandlers(['facebook.watch'])
+
+    await handlers['decision.get']({ url: 'https://m.facebook.com/marketplace/' }, sender)
+
+    expect(applyReels).toHaveBeenCalledWith(false)
+  })
+
+  it('a_youtube_page_never_touches_the_reels_redirect', async () => {
+    const { handlers, applyReels } = makeHandlers(['youtube.shorts'])
+
+    await handlers['decision.get']({ url: 'https://www.youtube.com/' }, sender)
+
+    expect(applyReels).not.toHaveBeenCalled()
   })
 
   it('a_failed_toggle_never_fails_the_decision', async () => {

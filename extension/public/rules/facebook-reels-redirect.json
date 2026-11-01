@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "regexSubstitution": "https://www.facebook.com/watch/?v=\\1" }
+    },
+    "condition": {
+      "regexFilter": "^https://(?:www\\.|m\\.|web\\.)?facebook\\.com/reel/([0-9]+)$",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "regexSubstitution": "https://www.facebook.com/watch/?v=\\1" }
+    },
+    "condition": {
+      "regexFilter": "^https://(?:www\\.|m\\.|web\\.)?facebook\\.com/reel/([0-9]+)/.*",
+      "resourceTypes": ["main_frame"]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": { "regexSubstitution": "https://www.facebook.com/watch/?v=\\1" }
+    },
+    "condition": {
+      "regexFilter": "^https://(?:www\\.|m\\.|web\\.)?facebook\\.com/reel/([0-9]+)\\?.*",
+      "resourceTypes": ["main_frame"]
+    }
+  }
+]
