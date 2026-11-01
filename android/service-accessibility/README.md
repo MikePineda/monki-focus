@@ -47,12 +47,27 @@ active window is polled once a second while an overlay is up).
   bars (`keepVisible`), so typing a URL or opening a permalink stays one tap
   away. Permalinks never get a cover (the engine shows them). A focused URL
   bar removes the cover and is not read; an absent one changes nothing.
+- **A blocked site never blocks its browser.** The gate covers the whole
+  screen, URL bar included, and browsers restore the last tab on launch, so
+  Close (HOME) alone would bring the same block back with no way to reach
+  another site. Every block, pause, prompt and timeout screen over a page
+  read in a URL bar therefore offers "Go to another site" and "Go back"
+  (BACK). The address entry (`TypedAddress`) opens an `http`/`https` address
+  or a search (`ACTION_WEB_SEARCH`, then `ACTION_SEARCH`, then the browser's
+  launcher) in the same browser package with an explicit intent; a typed
+  address the engine blocks shows its block instead and opens nothing.
+  Going elsewhere counts as Close for escalation. Every page opened is read
+  and decided again, so this is no wider than the browser's own URL bar.
+  Not offered on bedtime, the emergency wait or the engine error. Chosen
+  over covering only the page (depends on per-browser bar geometry) and
+  over navigating the restored tab away (BACK on a fresh tab leaves the
+  browser).
 - **Overlay first, `GateActivity` as fallback.** Every screen starts in the
   `TYPE_ACCESSIBILITY_OVERLAY` window. A prompt that requires a typed
-  intention moves to `GateActivity` when the overlay keyboard cannot be
-  trusted: on API 29 (insets cannot report the IME) or once the `ImeProbe`
-  saw a text field hold the input for 1.5 s with no keyboard. The failure is
-  remembered per device.
+  intention, and the "Go to another site" entry, move to `GateActivity`
+  when the overlay keyboard cannot be trusted: on API 29 (insets cannot
+  report the IME) or once the `ImeProbe` saw a text field hold the input for
+  1.5 s with no keyboard. The failure is remembered per device.
 - **Engine error** blocks with Close only (nothing lifts it); the way out is
   "Exit and unlink", which never asks the engine.
 - **Unclassified cap**: when it applies, `decide` runs with one extra
@@ -127,4 +142,6 @@ against real bars; Reels → BACK, DM reel open, Shorts → BACK; reddit cover o
 the home page and none on permalinks; the gate escalating 5 → 15 → typed;
 the bounce card on every guarded screen in the device's language; the notice
 coming back after a swipe on Android 14+; the exit flow end to end; OEM
-battery killers.
+battery killers; "Go to another site" from a block on a tab the browser
+restored at launch (Chrome, Brave, Firefox: address, search, keyboard in the
+overlay, the new tab in front) and "Go back" from it.
