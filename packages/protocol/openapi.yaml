@@ -41,6 +41,7 @@ tags:
   - name: heartbeat
   - name: unlocks
   - name: bypass-events
+  - name: rule-sets
 paths:
   /keys:
     get:
@@ -384,7 +385,122 @@ paths:
           $ref: '#/components/responses/NotFound'
         '426':
           $ref: '#/components/responses/UpgradeRequired'
+  /device/rule-set:
+    parameters:
+      - $ref: '#/components/parameters/ClientVersion'
+    get:
+      operationId: getRuleSet
+      tags: [rule-sets]
+      summary: Pull the owner's current rule set
+      description: |
+        The rule set of the device's owner (never anyone else's; a guardian
+        never reads it). `revision` is the server's monotonic counter and the
+        strong `ETag` (`"<revision>"`); revision 0 with a null `ruleSet`
+        means nothing is stored yet. Send `If-None-Match` with the applied
+        revision to get `304`. Devices pull when the heartbeat's
+        `rulesVersion` is newer than the revision they applied.
+
+        The server only stores, versions and validates. It never decides
+        whether a change tightens or loosens: every device applies an
+        incoming set through its own `RuleChangePolicy`
+        (`packages/rules/SEMANTICS.md` §8: tightening at once, loosening
+        from the next local day). At most 120 reads per hour per device.
+      parameters:
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+            maxLength: 256
+          example: '"3"'
+      responses:
+        '200':
+          description: The current rule set.
+          headers:
+            ETag:
+              $ref: '#/components/headers/RuleSetETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleSetDocument'
+        '304':
+          description: The revision in `If-None-Match` is the current one.
+          headers:
+            ETag:
+              $ref: '#/components/headers/RuleSetETag'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    put:
+      operationId: putRuleSet
+      tags: [rule-sets]
+      summary: Replace the owner's rule set (optimistic concurrency)
+      description: |
+        `If-Match: "<revision>"` names the revision the device edited (one
+        strong tag; `"0"` for the first write). A stale or missing
+        `If-Match` answers `412` with the current revision: the device
+        re-fetches, merges its change and retries. The document is
+        validated with the shared schema of `@monki-focus/rules`
+        (`ruleset.schema.json`, at most 256 KiB of canonical UTF-8 JSON);
+        a refusal is `422` `validation_failed` whose `fields` are
+        `ruleSet.<path>: <rejection code>` (`schema`, `duplicate_key`,
+        `invalid_domain`, `invalid_time_zone`, `too_large`), never a value.
+        A write equal to the stored set (same canonical SHA-256) keeps the
+        revision. The server never judges tightening or loosening: each
+        device applies the result through its own `RuleChangePolicy`. At
+        most 60 writes per hour per device.
+      parameters:
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^"(0|[1-9][0-9]{0,9})"$'
+          example: '"3"'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuleSetWrite'
+      responses:
+        '200':
+          description: Stored (or unchanged); the answer carries the new revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/RuleSetETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleSetSaved'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '412':
+          description: Missing, malformed or stale `If-Match`; carries the current revision.
+          headers:
+            ETag:
+              $ref: '#/components/headers/RuleSetETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleSetConflict'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 components:
+  headers:
+    RuleSetETag:
+      description: The current rule set revision as a strong entity tag.
+      schema:
+        type: string
+        pattern: '^"(0|[1-9][0-9]{0,9})"$'
+      example: '"3"'
   securitySchemes:
     deviceToken:
       type: http
@@ -588,6 +704,50 @@ components:
       properties:
         token:
           $ref: '#/components/schemas/DeviceToken'
+    RuleSetRevision:
+      type: integer
+      minimum: 0
+      maximum: 2147483647
+      description: The server's monotonic rule set revision; 0 means nothing is stored.
+    RuleSetDocument:
+      type: object
+      additionalProperties: false
+      required: [revision, ruleSet]
+      properties:
+        revision:
+          $ref: '#/components/schemas/RuleSetRevision'
+        ruleSet:
+          type: [object, 'null']
+          description: |
+            The rule set exactly as stored: a document valid against
+            `packages/rules/schema/v1/ruleset.schema.json`, or null at
+            revision 0. Its own `revision` member is the editor's; the
+            server's revision is the one beside it.
+    RuleSetWrite:
+      type: object
+      additionalProperties: false
+      required: [ruleSet]
+      properties:
+        ruleSet:
+          type: object
+          description: A document valid against `packages/rules/schema/v1/ruleset.schema.json`.
+    RuleSetSaved:
+      type: object
+      additionalProperties: false
+      required: [revision]
+      properties:
+        revision:
+          $ref: '#/components/schemas/RuleSetRevision'
+    RuleSetConflict:
+      type: object
+      additionalProperties: false
+      required: [code, revision]
+      properties:
+        code:
+          type: string
+          enum: [if_match_required, revision_mismatch, revision_exhausted]
+        revision:
+          $ref: '#/components/schemas/RuleSetRevision'
     HeartbeatRequest:
       type: object
       additionalProperties: false
@@ -648,6 +808,11 @@ components:
         goingOffline:
           type: boolean
           description: The device announces a planned shutdown; it labels, never suppresses, a dead-man alert.
+        ruleSetRevision:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          description: The rule set revision this device has applied (0 or absent before its first pull).
     HeartbeatResponse:
       type: object
       additionalProperties: false
@@ -670,6 +835,11 @@ components:
         rulesVersion:
           type: integer
           minimum: 0
+          maximum: 2147483647
+          description: |
+            The owner's current rule set revision (0: none stored). When it
+            is newer than the revision the device applied, the device pulls
+            `getRuleSet` and applies it through its own `RuleChangePolicy`.
         tokenRotationDue:
           type: boolean
           description: The device token is 30 days old; call `rotateDeviceToken`.

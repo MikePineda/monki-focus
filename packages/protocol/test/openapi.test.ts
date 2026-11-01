@@ -63,6 +63,8 @@ describe('openapi.yaml', () => {
         'POST /device/unlock-requests',
         'GET /device/unlock-requests/{uuid}',
         'DELETE /device/unlock-requests/{uuid}',
+        'GET /device/rule-set',
+        'PUT /device/rule-set',
       ])
     )
   })
