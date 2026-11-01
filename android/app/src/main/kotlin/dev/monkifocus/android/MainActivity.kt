@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import dev.monkifocus.android.core.ui.MonkiScreenRoot
 import dev.monkifocus.android.core.ui.MonkiTheme
 import dev.monkifocus.android.feature.onboarding.flow.BatteryGuidance
 import dev.monkifocus.android.feature.onboarding.flow.OnboardingEffect
@@ -132,71 +133,74 @@ class MainActivity : ComponentActivity() {
                 BackHandler(enabled = route == Route.ONBOARDING && progress.step != OnboardingStep.WELCOME) {
                     onOnboardingEvent(OnboardingEvent.Back)
                 }
-                when (route) {
-                    Route.EXIT -> {
-                        ExitAndUnlinkScreen(exitFlow = graph.protection.exitFlow, onDone = ::goHome, onRearm = ::startSetup)
-                    }
+                // Edge to edge is enforced on Android 15+: one root keeps every route out of the system bars.
+                MonkiScreenRoot {
+                    when (route) {
+                        Route.EXIT -> {
+                            ExitAndUnlinkScreen(exitFlow = graph.protection.exitFlow, onDone = ::goHome, onRearm = ::startSetup)
+                        }
 
-                    Route.DISCLOSURE_AGAIN -> {
-                        DisclosureAgainScreen(
-                            onAgree = {
-                                graph.onboarding.reconsent()
-                                progress = graph.onboarding.progress
-                                goHome()
-                            },
-                            // Declining never disarms silently: Exit and unlink explains how protection ends.
-                            onNotNow = { route = Route.EXIT },
-                        )
-                    }
+                        Route.DISCLOSURE_AGAIN -> {
+                            DisclosureAgainScreen(
+                                onAgree = {
+                                    graph.onboarding.reconsent()
+                                    progress = graph.onboarding.progress
+                                    goHome()
+                                },
+                                // Declining never disarms silently: Exit and unlink explains how protection ends.
+                                onNotNow = { route = Route.EXIT },
+                            )
+                        }
 
-                    Route.STATS -> {
-                        StatsRoute(
-                            loader = graph.stats,
-                            clock = { graph.wallClock.millis() },
-                            onBack = ::goHome,
-                            onFixUsageAccess = { fix(OnboardingStep.USAGE_ACCESS) },
-                            refreshKey = resumes,
-                        )
-                    }
+                        Route.STATS -> {
+                            StatsRoute(
+                                loader = graph.stats,
+                                clock = { graph.wallClock.millis() },
+                                onBack = ::goHome,
+                                onFixUsageAccess = { fix(OnboardingStep.USAGE_ACCESS) },
+                                refreshKey = resumes,
+                            )
+                        }
 
-                    Route.RULES -> {
-                        RulesRoute(
-                            service = graph.ruleChanges,
-                            validator = { graph.rules.validator },
-                            onBack = ::goHome,
-                            surfaces = { graph.rules.surfaces },
-                            starter = { graph.rules.starter },
-                        )
-                    }
+                        Route.RULES -> {
+                            RulesRoute(
+                                service = graph.ruleChanges,
+                                validator = { graph.rules.validator },
+                                onBack = ::goHome,
+                                surfaces = { graph.rules.surfaces },
+                                starter = { graph.rules.starter },
+                            )
+                        }
 
-                    Route.ONBOARDING -> {
-                        OnboardingScreen(
-                            progress = progress,
-                            snapshot = snapshot,
-                            battery = battery,
-                            onEvent = ::onOnboardingEvent,
-                            onOpenBatteryGuide = { startFirst(SetupIntents.webPage(battery.url)) },
-                        )
-                    }
+                        Route.ONBOARDING -> {
+                            OnboardingScreen(
+                                progress = progress,
+                                snapshot = snapshot,
+                                battery = battery,
+                                onEvent = ::onOnboardingEvent,
+                                onOpenBatteryGuide = { startFirst(SetupIntents.webPage(battery.url)) },
+                            )
+                        }
 
-                    Route.HOME -> {
-                        StatusHome(
-                            home = home,
-                            status =
-                                StatusUi(
-                                    protection = protectionState,
-                                    checklist = StatusChecklist.of(snapshot, StatusChecklist.protectionWanted(armed, progress.mode)),
-                                    rules = rulesSummary,
-                                    noticePermitted = home.noticePermitted,
-                                    rulesUnavailable = rulesUnavailable,
-                                ),
-                            onFix = ::fix,
-                            onRequestNotice = ::askForNotice,
-                            onTurnOn = ::startSetup,
-                            onEditRules = { route = Route.RULES },
-                            onExitAndUnlink = { route = Route.EXIT },
-                            onOpenStats = { route = Route.STATS },
-                        )
+                        Route.HOME -> {
+                            StatusHome(
+                                home = home,
+                                status =
+                                    StatusUi(
+                                        protection = protectionState,
+                                        checklist = StatusChecklist.of(snapshot, StatusChecklist.protectionWanted(armed, progress.mode)),
+                                        rules = rulesSummary,
+                                        noticePermitted = home.noticePermitted,
+                                        rulesUnavailable = rulesUnavailable,
+                                    ),
+                                onFix = ::fix,
+                                onRequestNotice = ::askForNotice,
+                                onTurnOn = ::startSetup,
+                                onEditRules = { route = Route.RULES },
+                                onExitAndUnlink = { route = Route.EXIT },
+                                onOpenStats = { route = Route.STATS },
+                            )
+                        }
                     }
                 }
             }
