@@ -4,9 +4,9 @@
 // Decision` (SEMANTICS.md §5); the public `decide` wraps it fail-closed
 // (`FailClosedDecision`, §14). Two independent axes, access and content, each
 // choose a winner among the enabled, scheduled, matching rules. Access
-// restrictions are checked in order (bedtime, budget, rule block, friction);
-// each one either applies or is lifted (unlock, emergency override,
-// intention). `validUntil` (§5.6) evaluates the same inputs again at the
+// restrictions are checked in order (bedtime, budget, rule block, relaxed
+// bedtime, friction); each one either applies or is lifted (unlock, emergency
+// override, intention). `validUntil` (§5.6) evaluates the same inputs again at the
 // instants where the outcome can change (`DecisionValidity`).
 
 /// A restriction of §5.2 that matched; `group` is its escalation group.
@@ -15,8 +15,10 @@ private struct Restriction {
     let reason: ReasonCode
     let ruleId: String?
     let group: String
-    /// Friction: an active intention lifts it and an unlifted one shows a gate.
-    var friction: (winner: Rule, frictionRules: [Rule])?
+    /// Friction-like (friction and relaxed bedtime): an active intention lifts
+    /// it and an unlifted one shows the gate of `group`, whose counters these
+    /// other groups share (§7.4).
+    var frictionOtherGroups: [String]?
 }
 
 private struct AccessOutcome {
@@ -39,7 +41,9 @@ private func liftOf(_ restriction: Restriction, _ inputs: DecisionInputs, _ nowS
         return .unlockActive
     }
     if try isOverrideActive(state.escalation, group: restriction.group, nowSeconds) { return .emergencyActive }
-    if restriction.friction != nil, try isIntentionActive(state.escalation, group: restriction.group, nowSeconds) {
+    if restriction.frictionOtherGroups != nil,
+        try isIntentionActive(state.escalation, group: restriction.group, nowSeconds)
+    {
         return .intentionActive
     }
     return nil
@@ -54,9 +58,11 @@ private func restrictionsOf(
 ) -> [Restriction] {
     let subject = inputs.subject
     var restrictions: [Restriction] = []
-    if isBedtimeActive(subject.ruleset.bedtime, nowSeconds, zones: subject.zones),
-        inputs.categoryLevel <= bedtimeMaxLevel
-    {
+    let bedtimeApplies =
+        isBedtimeActive(subject.ruleset.bedtime, nowSeconds, zones: subject.zones)
+        && inputs.categoryLevel <= bedtimeMaxLevel
+    let relaxedNight = bedtimeApplies && isRelaxedNight(subject.ruleset, nowSeconds, zones: subject.zones)
+    if bedtimeApplies, !relaxedNight {
         restrictions.append(
             Restriction(access: .block, reason: .scheduleBedtime, ruleId: nil, group: bedtimeGroup)
         )
@@ -76,6 +82,18 @@ private func restrictionsOf(
             Restriction(access: .block, reason: .ruleMatch, ruleId: winner.rule.id, group: winner.rule.id)
         )
     }
+    // §5.2 step 4: after the rule block, so a relaxed night never turns a rule block into a gate.
+    if relaxedNight {
+        restrictions.append(
+            Restriction(
+                access: .gate,
+                reason: .intentionRequired,
+                ruleId: nil,
+                group: bedtimeGroup,
+                frictionOtherGroups: []
+            )
+        )
+    }
     if let winner, winner.mode == .friction {
         restrictions.append(
             Restriction(
@@ -83,7 +101,7 @@ private func restrictionsOf(
                 reason: .intentionRequired,
                 ruleId: winner.rule.id,
                 group: winner.rule.id,
-                friction: (winner.rule, frictionRulesOf(access))
+                frictionOtherGroups: frictionRulesOf(access).map(\.id).filter { $0 != winner.rule.id }
             )
         )
     }
@@ -104,12 +122,12 @@ private func accessOutcome(
             }
             continue
         }
-        guard let friction = restriction.friction else {
+        guard let otherGroups = restriction.frictionOtherGroups else {
             return AccessOutcome(access: restriction.access, reason: restriction.reason, ruleId: restriction.ruleId)
         }
         let gate = try decisionGate(
-            winner: friction.winner,
-            frictionRules: friction.frictionRules,
+            group: restriction.group,
+            otherGroups: otherGroups,
             states: inputs.state.escalation,
             nowSeconds: nowSeconds,
             guardianLinked: inputs.state.guardianLinked

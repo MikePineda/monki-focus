@@ -12,7 +12,8 @@ import Foundation
 // - at an instant, the **matching** rules (pool rules scheduled then whose
 //   target matches) and the **access pool**: the matching rules, or with an
 //   unknown path every scheduled pool rule. The access pool also takes part
-//   in the budget step (§5.2.2).
+//   in the budget step (§5.2.2). On a relaxed day (§6.4) both pools carry
+//   the friction copies of short-video `block` and `hide-feed` rules.
 
 /// The time-independent half of a decision: who is observed and which rules can apply.
 struct DecisionSubject {
@@ -46,10 +47,14 @@ struct CandidatePools {
     let access: [Rule]
 }
 
-/// The candidates at an instant (schedules in the pinned zones, §6.3).
+/// The candidates at an instant (schedules in the pinned zones, §6.3), with
+/// short-video rules taking part as friction on a relaxed day (§6.4).
 func candidatePoolsAt(_ subject: DecisionSubject, _ epochSeconds: Int) -> CandidatePools {
-    let scheduled = subject.pool.filter {
+    var scheduled = subject.pool.filter {
         isRuleScheduledAt($0, workHours: subject.ruleset.workHours, epochSeconds, zones: subject.zones)
+    }
+    if isRelaxedDay(subject.ruleset, epochSeconds, zones: subject.zones) {
+        scheduled = relaxedDayCandidates(scheduled, subject.catalog)
     }
     let matching = scheduled.filter { matchesTarget($0.target, subject.observation, subject.catalog) }
     return CandidatePools(matching: matching, access: subject.unknownPath ? scheduled : matching)
