@@ -13,7 +13,9 @@ import dev.monkifocus.android.feature.gate.state.GateUiState
 /**
  * A block (a block rule, a spent budget or the fail-closed engine error):
  * the title, the explanation of the engine's key, Close and, unless nothing
- * could lift it, the emergency footer. Nothing else.
+ * could lift it, the emergency footer. Over a page in a browser also "Go
+ * to another site" and "Go back" ([AnotherSiteActions]): only the site is
+ * blocked, never the browser.
  */
 @Composable
 fun BlockedScreen(
@@ -21,6 +23,8 @@ fun BlockedScreen(
     onClose: () -> Unit,
     onEmergency: () -> Unit,
     modifier: Modifier = Modifier,
+    onAnotherSite: (() -> Unit)? = null,
+    onGoBack: (() -> Unit)? = null,
 ) {
     val colors = MonkiTheme.colors
     val typography = MonkiTheme.typography
@@ -34,6 +38,7 @@ fun BlockedScreen(
         Text(text = stringResource(title, state.targetLabel), color = colors.ink1, style = typography.title)
         Text(text = stringResource(explanationTextRes(state.explanationKey)), color = colors.ink2, style = typography.body)
         GateCloseButton(onClose)
+        AnotherSiteActions(onAnotherSite, onGoBack)
         if (state.emergencyAvailable) {
             GateEmergencyFooter(onEmergency)
         }

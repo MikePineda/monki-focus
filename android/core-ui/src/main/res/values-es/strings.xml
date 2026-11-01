@@ -59,6 +59,14 @@
     <string name="gate_emergency_guardian_notice">Se avisará a tu guardián.</string>
     <string name="gate_emergency_recorded_notice">Esto queda registrado como acceso de emergencia.</string>
     <string name="gate_emergency_cancel">Cancelar emergencia</string>
+    <string name="gate_another_site">Ir a otro sitio</string>
+    <string name="gate_go_back">Volver atrás</string>
+    <string name="gate_another_site_title">¿Adónde quieres ir?</string>
+    <string name="gate_another_site_label">Dirección web o búsqueda</string>
+    <string name="gate_another_site_placeholder">example.com</string>
+    <string name="gate_another_site_hint">Se abre en este navegador. Los sitios bloqueados siguen bloqueados.</string>
+    <string name="gate_another_site_go">Ir</string>
+    <string name="gate_another_site_cancel">Cancelar</string>
 
     <!-- Timeout card. -->
     <string name="timeout_title_with_intention">Tus %1$d min para «%2$s» terminaron.</string>

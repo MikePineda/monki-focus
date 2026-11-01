@@ -25,7 +25,7 @@ fun GateScreen(
         GateUiState.Hidden -> {}
 
         is GateUiState.Pausing -> {
-            PausingScreen(state, actions.onClose, actions.onEmergency, modifier)
+            PausingScreen(state, actions.onClose, actions.onEmergency, modifier, actions.onAnotherSite, actions.onGoBack)
         }
 
         is GateUiState.Asking -> {
@@ -41,11 +41,13 @@ fun GateScreen(
                 onClose = actions.onClose,
                 onEmergency = actions.onEmergency,
                 modifier = modifier,
+                onAnotherSite = actions.onAnotherSite,
+                onGoBack = actions.onGoBack,
             )
         }
 
         is GateUiState.Blocked -> {
-            BlockedScreen(state, actions.onClose, actions.onEmergency, modifier)
+            BlockedScreen(state, actions.onClose, actions.onEmergency, modifier, actions.onAnotherSite, actions.onGoBack)
         }
 
         is GateUiState.EmergencyWait -> {
@@ -53,7 +55,7 @@ fun GateScreen(
         }
 
         is GateUiState.Timeout -> {
-            TimeoutScreen(state, actions.onClose, actions.onExtend, modifier)
+            TimeoutScreen(state, actions.onClose, actions.onExtend, modifier, actions.onAnotherSite, actions.onGoBack)
         }
 
         is GateUiState.BedtimeCover -> {

@@ -13,7 +13,8 @@ import dev.monkifocus.android.feature.gate.state.GateUiState
  * failed the [ImeProbe] before, or it runs API 29, where IME visibility
  * cannot be read from the window insets to check. Prompts with an optional
  * intention stay in the overlay (the user can continue without typing), and
- * the probe still runs there.
+ * the probe still runs there. The "Go to another site" address entry
+ * ([typingAddress]) is nothing but typing, so it moves the same way.
  */
 enum class GateHost {
     OVERLAY,
@@ -28,8 +29,9 @@ enum class GateHost {
             state: GateUiState,
             apiLevel: Int,
             overlayImeFailed: Boolean,
+            typingAddress: Boolean = false,
         ): GateHost {
-            val needsTyping = state is GateUiState.Asking && state.requiresTypedIntention
+            val needsTyping = typingAddress || (state is GateUiState.Asking && state.requiresTypedIntention)
             return if (needsTyping && (overlayImeFailed || apiLevel < INSETS_IME_API)) ACTIVITY else OVERLAY
         }
     }

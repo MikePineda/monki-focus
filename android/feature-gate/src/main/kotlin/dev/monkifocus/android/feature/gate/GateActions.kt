@@ -12,6 +12,10 @@ import androidx.compose.runtime.Immutable
  * - [onEmergency]: `emergency_request`.
  * - [onCancelEmergency]: cancel the emergency wait (`close` in `override_waiting`).
  * - [onExtend]: "5 more min" after a timeout (`extend`, counts as broken).
+ * - [onAnotherSite], [onGoBack]: "Go to another site" and "Go back" over a
+ *   page in a browser (null elsewhere: the buttons are not shown). Offered
+ *   on the block, pause, prompt and timeout screens; never on the emergency
+ *   wait or bedtime.
  */
 @Immutable
 class GateActions(
@@ -20,4 +24,6 @@ class GateActions(
     val onEmergency: () -> Unit = {},
     val onCancelEmergency: () -> Unit = {},
     val onExtend: () -> Unit = {},
+    val onAnotherSite: (() -> Unit)? = null,
+    val onGoBack: (() -> Unit)? = null,
 )

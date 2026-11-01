@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 package dev.monkifocus.android.service.accessibility.action
 
+import dev.monkifocus.android.core.domain.rules.ExplanationKey
 import dev.monkifocus.android.detectors.Rect
 import dev.monkifocus.android.feature.gate.state.GateUiState
 import dev.monkifocus.android.service.accessibility.pipeline.ObservationKey
@@ -54,6 +55,16 @@ class ActionPiecesTest {
     fun a_typed_intention_moves_to_the_activity_when_the_overlay_keyboard_cannot_be_trusted() {
         assertEquals(GateHost.ACTIVITY, GateHost.choose(typedPrompt, apiLevel = 35, overlayImeFailed = true))
         assertEquals(GateHost.ACTIVITY, GateHost.choose(typedPrompt, apiLevel = 29, overlayImeFailed = false))
+    }
+
+    @Test
+    fun the_address_entry_moves_to_the_activity_when_the_overlay_keyboard_cannot_be_trusted() {
+        val blocked = GateUiState.Blocked("example.com", ExplanationKey.BLOCKED_BY_RULE, emergencyAvailable = true)
+
+        assertEquals(GateHost.OVERLAY, GateHost.choose(blocked, apiLevel = 35, overlayImeFailed = false, typingAddress = true))
+        assertEquals(GateHost.ACTIVITY, GateHost.choose(blocked, apiLevel = 35, overlayImeFailed = true, typingAddress = true))
+        assertEquals(GateHost.ACTIVITY, GateHost.choose(blocked, apiLevel = 29, overlayImeFailed = false, typingAddress = true))
+        assertEquals(GateHost.OVERLAY, GateHost.choose(blocked, apiLevel = 29, overlayImeFailed = true))
     }
 
     @Test

@@ -22,7 +22,8 @@ import dev.monkifocus.android.feature.gate.state.IntentionRule
  * intention field (optional at L0–L1, at least three words from L2), the
  * 5/10/15 duration picker with no default, and "Continue to …", disabled
  * with a caption that says why until the choice is valid. Stateless: the
- * draft ([intention], [minutes]) is hoisted.
+ * draft ([intention], [minutes]) is hoisted. Over a page in a browser the
+ * [AnotherSiteActions] follow Close.
  */
 @Composable
 fun AskingScreen(
@@ -35,6 +36,8 @@ fun AskingScreen(
     onClose: () -> Unit,
     onEmergency: () -> Unit,
     modifier: Modifier = Modifier,
+    onAnotherSite: (() -> Unit)? = null,
+    onGoBack: (() -> Unit)? = null,
 ) {
     val colors = MonkiTheme.colors
     val typography = MonkiTheme.typography
@@ -45,6 +48,7 @@ fun AskingScreen(
     GateLayout(modifier) {
         GateContextLine(state.targetLabel)
         GateCloseButton(onClose)
+        AnotherSiteActions(onAnotherSite, onGoBack)
         Text(text = stringResource(R.string.gate_intention_title), color = colors.ink1, style = typography.title)
         IntentionField(state, intention, onIntentionChange, onDone = submit)
         Column(verticalArrangement = Arrangement.spacedBy(MonkiSpacing.spaceSm)) {

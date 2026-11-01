@@ -13,4 +13,9 @@ object GateTestTags {
     const val EMERGENCY = "gate_emergency"
     const val CANCEL_EMERGENCY = "gate_cancel_emergency"
     const val EXTEND = "gate_extend"
+    const val ANOTHER_SITE = "gate_another_site"
+    const val GO_BACK = "gate_go_back"
+    const val ADDRESS = "gate_address"
+    const val GO = "gate_go"
+    const val CANCEL_ADDRESS = "gate_cancel_address"
 }
