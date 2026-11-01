@@ -21,6 +21,10 @@ export const DISPATCH_BATCH = 50
  * in-flight send instead of racing it, and the renderer re-reads the
  * link's current topic inside the same transaction.
  *
+ * A row whose link no longer grants guardianship (but `pairing_ended`
+ * and `topic_rotated`) or whose unlock request closed is given up with
+ * `last_error = 'obsolete'` instead of published.
+ *
  * Failures retry after 10 s, 30 s and 2 min; the fourth gives up with
  * `last_error` (a status code or error code, never a topic, URL, token or
  * body). Without NTFY_BASE_URL nothing is claimed: rows wait.
@@ -84,11 +88,19 @@ export default class OutboxDispatcher {
     row: OutboxRow,
     now: DateTime
   ): Promise<DispatchResult> {
-    const message = await this.renderer.render(row, trx)
-    const published = await this.publisher.publish(message)
-    const attempts = row.attempts + 1
     const at = now.toJSDate()
     const query = trx.from(NOTIFICATION_OUTBOX_TABLE).where('id', row.id)
+    const message = await this.renderer.render(row, trx, now)
+    if (message === null) {
+      await query.update({
+        last_error: 'obsolete',
+        gave_up_at: at,
+        payload: trx.raw(`payload - 'sealedActions'`),
+      })
+      return 'gave_up'
+    }
+    const published = await this.publisher.publish(message)
+    const attempts = row.attempts + 1
 
     if (published.ok) {
       await query.update({
