@@ -15,6 +15,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.monkifocus.android.core.domain.ports.RulesetSource
+import dev.monkifocus.android.core.domain.rules.Ruleset
+import dev.monkifocus.android.core.domain.rules.Surface
 import dev.monkifocus.android.core.domain.validation.RulesetValidator
 import dev.monkifocus.android.feature.rules.change.RuleChangeOutcome
 import dev.monkifocus.android.feature.rules.change.RuleChangeService
@@ -37,7 +39,8 @@ import java.io.IOException
  * picks (at most the 256 KiB the validator accepts, plus one byte to tell),
  * validates it whole and proposes it like any edit, so a looser import waits.
  * A refused change reloads the rules, so the next edit starts from what is
- * stored.
+ * stored. The bundled [surfaces] and [starter] preset feed "Add rule" and
+ * "Add suggested rules"; both are read off the main thread.
  */
 @Composable
 fun RulesRoute(
@@ -45,12 +48,15 @@ fun RulesRoute(
     validator: () -> RulesetValidator,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    surfaces: () -> List<Surface> = { emptyList() },
+    starter: () -> Ruleset? = { null },
 ) {
     val scope = rememberCoroutineScope()
     val resolver = LocalContext.current.contentResolver
     var state by remember { mutableStateOf<RulesState?>(null) }
     var message by remember { mutableStateOf<RulesMessage?>(null) }
     var unavailable by remember { mutableStateOf(false) }
+    var catalogue by remember { mutableStateOf<Pair<List<Surface>, Ruleset?>>(emptyList<Surface>() to null) }
 
     /** Runs rule-set work off the main thread; a stored set that cannot be read shows "unavailable" (the service fails closed). */
     suspend fun <T : Any> guarded(work: suspend () -> T): T? {
@@ -60,6 +66,7 @@ fun RulesRoute(
     }
 
     LaunchedEffect(service) { state = guarded { service.state() } }
+    LaunchedEffect(surfaces, starter) { readable { offMain { surfaces() to starter() } }?.let { catalogue = it } }
 
     fun settle(outcome: RuleChangeOutcome) {
         message = RulesMessage.of(outcome)
@@ -115,6 +122,8 @@ fun RulesRoute(
             ),
         modifier = modifier,
         unavailable = unavailable,
+        surfaces = catalogue.first,
+        starter = catalogue.second,
     )
 }
 

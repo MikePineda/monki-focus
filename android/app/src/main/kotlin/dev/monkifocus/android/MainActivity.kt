@@ -160,7 +160,13 @@ class MainActivity : ComponentActivity() {
                     }
 
                     Route.RULES -> {
-                        RulesRoute(service = graph.ruleChanges, validator = { graph.rules.validator }, onBack = ::goHome)
+                        RulesRoute(
+                            service = graph.ruleChanges,
+                            validator = { graph.rules.validator },
+                            onBack = ::goHome,
+                            surfaces = { graph.rules.surfaces },
+                            starter = { graph.rules.starter },
+                        )
                     }
 
                     Route.ONBOARDING -> {
