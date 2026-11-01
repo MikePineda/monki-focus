@@ -114,6 +114,20 @@ test.group('Database schema', () => {
     )
   })
 
+  test('test_the_ledger_request_key_never_fails_on_rows_older_than_requests', async ({
+    assert,
+  }) => {
+    const result = await db.rawQuery<{ rows: Array<{ definition: string }> }>(
+      `SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+        WHERE conname = 'unlock_tokens_request_uuid_foreign'`
+    )
+
+    assert.deepEqual(
+      result.rows.map((row) => row.definition),
+      ['FOREIGN KEY (request_uuid) REFERENCES unlock_requests(uuid) ON DELETE CASCADE NOT VALID']
+    )
+  })
+
   test('test_a_pairing_code_outlives_the_link_it_made', async ({ assert }) => {
     const result = await db.rawQuery<{ rows: Array<{ definition: string }> }>(
       `SELECT conrelid::regclass || '.' || pg_get_constraintdef(oid) AS definition
