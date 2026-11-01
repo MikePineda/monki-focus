@@ -11,12 +11,25 @@ import GRDB
 public enum MonkiDatabaseMigrator {
     /// Every migration identifier, in order. A shipped identifier never
     /// changes or moves; new ones are appended.
-    public static let identifiers = ["v1-activity-buckets-events"]
+    public static let identifiers = ["v1-activity-buckets-events", "v2-outbox"]
 
     public static func make() -> DatabaseMigrator {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1-activity-buckets-events", migrate: createActivityTables)
+        migrator.registerMigration("v2-outbox", migrate: createOutbox)
         return migrator
+    }
+
+    /// Records waiting for the optional server sync (a later work package),
+    /// as in the extension's outbox. Only bypass events enter for now: a
+    /// `BypassEventRecord` JSON, which cannot carry a title, URL or bundle id.
+    private static func createOutbox(_ db: Database) throws {
+        try db.create(table: "outbox") { table in
+            table.autoIncrementedPrimaryKey("id")
+            table.column("kind", .text).notNull().check { ["bypass"].contains($0) }
+            table.column("payload", .text).notNull()
+            table.column("enqueued_at", .text).notNull()
+        }
     }
 
     /// ActivityWatch-compatible buckets and events (plan §3.1). An event
