@@ -32,6 +32,8 @@ export interface RulesCatalog {
   readonly defaultCategories: readonly CategoryAssignment[]
   /** Kind of a registered surface, or null for an unknown id. */
   surfaceKind(surface: string): SurfaceKind | null
+  /** Whether a registered surface is short-video (`shortVideo`, relaxed weekends §6.4). */
+  isShortVideo(surface: string): boolean
   /** §3.1 normalisation of a rule, category or unlock domain. */
   normaliseDomain(domain: string): string
   /** The profile whose domain equals the (normalised) host or is a dot-suffix of it. */
@@ -54,11 +56,15 @@ export function createRulesCatalog(input: RulesCatalogInput): RulesCatalog {
     // Longest domain first: a profile for a subdomain wins over its parent's.
     .sort((a, b) => b.domain.length - a.domain.length)
   const kinds = new Map(input.surfaces.map((surface) => [surface.id, surface.kind]))
+  const shortVideo = new Set(
+    input.surfaces.filter((surface) => surface.shortVideo === true).map(({ id }) => id)
+  )
   return {
     aliases,
     profiles,
     defaultCategories: input.defaultCategories,
     surfaceKind: (surface) => kinds.get(surface) ?? null,
+    isShortVideo: (surface) => shortVideo.has(surface),
     normaliseDomain: (domain) => normaliseDomain(domain, aliases),
     profileForHost: (host) =>
       profiles.find((profile) => isDomainOrSubdomain(host, profile.domain)) ?? null,

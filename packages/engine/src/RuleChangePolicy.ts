@@ -9,6 +9,7 @@
  */
 import type { Instant, Rule, Ruleset, UtcInstant } from '@monki-focus/rules'
 import { bedtimeChangeWaits } from './BedtimeTightening.ts'
+import { relaxedWeekendsChangeWaits } from './RelaxedWeekendsTightening.ts'
 import { planCategories } from './CategoryTightening.ts'
 import type { DailyWindowSpec } from './DailyWindow.ts'
 import { effectiveFromOf } from './EffectiveFromCalculator.ts'
@@ -109,6 +110,7 @@ export function effectiveRuleSet(
   const timeZoneWaits = old.timeZone !== next.timeZone
   const workHoursWait = !jsonEqual(old.workHours, next.workHours)
   const bedtimeWaits = bedtimeChangeWaits(old.bedtime, next.bedtime)
+  const relaxedWeekendsWait = relaxedWeekendsChangeWaits(old, next)
   const categories = planCategories(old.categories, next.categories, catalog)
   const workHoursToday = workHoursWait ? old.workHours : next.workHours
   const parts = ruleParts(old, next, workHoursToday, catalog)
@@ -116,7 +118,12 @@ export function effectiveRuleSet(
   const waitingRules = parts.filter((part) => !applicable.has(part.id))
 
   const somethingWaits =
-    timeZoneWaits || workHoursWait || bedtimeWaits || categories.waits || waitingRules.length > 0
+    timeZoneWaits ||
+    workHoursWait ||
+    bedtimeWaits ||
+    relaxedWeekendsWait ||
+    categories.waits ||
+    waitingRules.length > 0
   if (!somethingWaits) return { effectiveToday: next, effectiveFrom: null }
 
   // A waiting zone change keeps the old zone and evaluates the new one alongside it (§6.3).
@@ -136,10 +143,13 @@ export function effectiveRuleSet(
     bedtime: bedtimeWaits ? old.bedtime : next.bedtime,
     workHours: workHoursToday,
   }
+  const relaxedWeekendsToday = relaxedWeekendsWait ? old.relaxedWeekends : next.relaxedWeekends
+  if (relaxedWeekendsToday !== undefined) effectiveToday.relaxedWeekends = relaxedWeekendsToday
 
   // §8 step 2: old windows of the waiting parts that must run to their end.
   const windows: DailyWindowSpec[] = []
-  if ((bedtimeWaits || categories.waits || timeZoneWaits) && old.bedtime.enabled) {
+  const decidesBedtime = bedtimeWaits || categories.waits || relaxedWeekendsWait || timeZoneWaits
+  if (decidesBedtime && old.bedtime.enabled) {
     windows.push(old.bedtime)
   }
   if (workHoursWait) windows.push(old.workHours)
