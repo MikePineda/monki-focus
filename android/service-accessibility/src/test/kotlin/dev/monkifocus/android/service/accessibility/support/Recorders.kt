@@ -40,11 +40,15 @@ internal class RecordingPerformer : ActionPerformer {
 
     override fun isOnTop(): Boolean = onTop
 
+    /** Whether the browser takes what is opened; a test sets it false for a browser with no search intent. */
+    var opens = true
+
     override fun open(
         browserPackage: String,
         address: TypedAddress,
-    ) {
-        calls += Call.Open(browserPackage, address)
+    ): Boolean {
+        if (opens) calls += Call.Open(browserPackage, address)
+        return opens
     }
 
     override fun openApp(notificationSettings: Boolean) {

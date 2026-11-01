@@ -4,6 +4,7 @@ package dev.monkifocus.android.service.accessibility.pipeline
 import dev.monkifocus.android.core.domain.rules.Access
 import dev.monkifocus.android.core.domain.rules.AppObservation
 import dev.monkifocus.android.core.domain.rules.Decision
+import dev.monkifocus.android.core.domain.rules.ExplanationKey
 import dev.monkifocus.android.core.domain.rules.Observation
 import dev.monkifocus.android.core.domain.rules.SiteObservation
 import dev.monkifocus.android.detectors.DetectorPack
@@ -89,6 +90,7 @@ class EventPipeline(
         val notice: Boolean,
         val site: Boolean = false,
         val typing: Boolean = false,
+        val unopened: Boolean = false,
     )
 
     private var cap = UnclassifiedTimeCap.INITIAL
@@ -208,6 +210,8 @@ class EventPipeline(
         val group = shown?.group
         when (action) {
             UserAction.Close -> {
+                // Nothing of ours is up (the BACK of "Go back" reaching a closing GateActivity): nothing to leave, no HOME.
+                if (shown == null && showing !is OverlayContent.Gate) return
                 group?.let { coordinator.close(it, nowEpochMs) }
                 dismiss()
                 if (shown?.notice != true) performer.home()
@@ -267,7 +271,7 @@ class EventPipeline(
 
             UserAction.AnotherSite, UserAction.CancelAnotherSite -> {
                 if (shown == null || !offersAnotherSite(shown, (showing as? OverlayContent.Gate)?.state)) return
-                presented = shown.copy(typing = action == UserAction.AnotherSite)
+                presented = shown.copy(typing = action == UserAction.AnotherSite, unopened = false)
                 repaint(nowEpochMs)
             }
 
@@ -310,9 +314,14 @@ class EventPipeline(
                 return
             }
         }
+        if (!performer.open(shown.packageName, address)) {
+            // The browser takes no search intent: nothing was fired, the entry stays and says to type an address.
+            presented = shown.copy(typing = true, unopened = true)
+            repaint(nowEpochMs)
+            return
+        }
         shown.group?.let { coordinator.close(it, nowEpochMs) }
         dismiss()
-        performer.open(shown.packageName, address)
     }
 
     /**
@@ -328,7 +337,7 @@ class EventPipeline(
         shown.site &&
             shown.group != null &&
             (
-                state is GateUiState.Blocked ||
+                (state is GateUiState.Blocked && state.explanationKey != ExplanationKey.ENGINE_ERROR) ||
                     state is GateUiState.Pausing ||
                     state is GateUiState.Asking ||
                     state is GateUiState.Timeout
@@ -528,8 +537,8 @@ class EventPipeline(
         }
         val group = GateGroup.of(evaluation.decision)
         // The blocked page is read again behind the address entry: the entry stays while the user types.
-        val typing = presented?.let { it.typing && it.group == group && it.packageName == pkg } == true
-        val next = Presented(evaluation.decision, group, label, pkg, notice, site, typing)
+        val kept = presented?.takeIf { it.typing && it.group == group && it.packageName == pkg }
+        val next = Presented(evaluation.decision, group, label, pkg, notice, site, kept != null, kept?.unopened == true)
         presented = next
         show(gateContent(next, state))
     }
@@ -539,7 +548,14 @@ class EventPipeline(
         state: GateUiState,
     ): OverlayContent.Gate {
         val offers = offersAnotherSite(shown, state)
-        return OverlayContent.Gate(state, shown.group, shown.notice, offersAnotherSite = offers, typingAddress = offers && shown.typing)
+        return OverlayContent.Gate(
+            state,
+            shown.group,
+            shown.notice,
+            offersAnotherSite = offers,
+            typingAddress = offers && shown.typing,
+            addressUnopened = offers && shown.typing && shown.unopened,
+        )
     }
 
     /** Re-renders the gate on screen from its group's current state (countdowns, transitions). */

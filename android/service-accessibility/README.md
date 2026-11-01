@@ -52,10 +52,17 @@ active window is polled once a second while an overlay is up).
   Close (HOME) alone would bring the same block back with no way to reach
   another site. Every block, pause, prompt and timeout screen over a page
   read in a URL bar therefore offers "Go to another site" and "Go back"
-  (BACK). The address entry (`TypedAddress`) opens an `http`/`https` address
-  or a search (`ACTION_WEB_SEARCH`, then `ACTION_SEARCH`, then the browser's
-  launcher) in the same browser package with an explicit intent; a typed
-  address the engine blocks shows its block instead and opens nothing.
+  (BACK). The address entry (`TypedAddress`: host lower-cased, punycode, no
+  trailing dot, no credentials) opens an `http`/`https` address or a search
+  (`ACTION_WEB_SEARCH`, then `ACTION_SEARCH`; never a search URL of ours) in
+  the same browser package with an explicit intent (`BrowserIntent`, only
+  `FLAG_ACTIVITY_NEW_TASK`); a typed address the engine blocks shows its
+  block instead and opens nothing. A browser that takes neither search
+  intent gets no intent at all (launching it would bring the restored
+  blocked tab back): the entry stays and asks for a web address, the way
+  out that always works. "Go back" fires BACK only once our focused screen
+  is gone (`BackTiming`), and a BACK reaching a closing `GateActivity` only
+  finishes it, never Close and HOME.
   Going elsewhere counts as Close for escalation. Every page opened is read
   and decided again, so this is no wider than the browser's own URL bar.
   Not offered on bedtime, the emergency wait or the engine error. Chosen

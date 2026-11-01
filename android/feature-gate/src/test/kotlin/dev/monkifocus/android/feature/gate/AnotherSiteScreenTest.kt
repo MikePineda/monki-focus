@@ -83,6 +83,14 @@ class AnotherSiteScreenTest {
     }
 
     @Test
+    fun a_browser_that_cannot_search_is_asked_for_a_web_address() {
+        compose.setContent { MonkiTheme { AnotherSiteScreen(onGo = {}, onCancel = {}, onClose = {}, searchUnavailable = true) } }
+
+        compose.onNodeWithText("This browser can’t search from here. Type a web address, like example.com.").assertExists()
+        compose.onNodeWithText("Opens in this browser. Blocked sites stay blocked.").assertDoesNotExist()
+    }
+
+    @Test
     fun the_address_entry_can_be_cancelled_or_closed() {
         compose.setContent {
             MonkiTheme { AnotherSiteScreen(onGo = { calls += "go" }, onCancel = { calls += "cancel" }, onClose = { calls += "close" }) }

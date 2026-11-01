@@ -97,8 +97,10 @@ requirements on every client:
 7. A blocked site never blocks its browser. On Android every block, pause,
    prompt and timeout screen over a page in a browser offers "Go to another
    site" (a web address or a search, opened in the same browser with an
-   explicit intent; only `http`/`https` addresses, an address the engine
-   blocks shows its own block instead) and "Go back" (BACK), so a browser
+   explicit intent; only `http`/`https` addresses without credentials, an
+   address the engine blocks shows its own block instead, and a browser
+   with no search intent gets no intent, so typing a web address is the
+   way out that always works) and "Go back" (BACK), so a browser
    that restores a blocked tab on launch stays usable. This adds no bypass:
    it is the same as typing in the browser's own URL bar, and every page it
    opens is read and decided again. Bedtime, the emergency wait and the

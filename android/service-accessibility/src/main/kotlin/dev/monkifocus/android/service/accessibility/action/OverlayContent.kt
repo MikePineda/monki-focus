@@ -14,7 +14,9 @@ sealed interface OverlayContent {
      *
      * Over a page in a browser the screen [offersAnotherSite] ("Go to another
      * site", "Go back"), so a blocked tab never makes the whole browser
-     * unusable; [typingAddress] shows the address entry instead of the gate.
+     * unusable; [typingAddress] shows the address entry instead of the gate,
+     * with [addressUnopened] after a search the browser does not take (the
+     * entry then asks for a web address).
      */
     data class Gate(
         val state: GateUiState,
@@ -22,6 +24,7 @@ sealed interface OverlayContent {
         val notice: Boolean = false,
         val offersAnotherSite: Boolean = false,
         val typingAddress: Boolean = false,
+        val addressUnopened: Boolean = false,
     ) : OverlayContent {
         /** Whether a text field on screen needs the keyboard (a focusable overlay, or `GateActivity`). */
         val needsKeyboard: Boolean get() = typingAddress || state is GateUiState.Asking

@@ -2,9 +2,7 @@
 package dev.monkifocus.android.service.accessibility.platform
 
 import android.accessibilityservice.AccessibilityService
-import android.app.SearchManager
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.SystemClock
@@ -13,6 +11,7 @@ import android.view.inputmethod.InputMethodManager
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import dev.monkifocus.android.service.accessibility.action.ActionPerformer
+import dev.monkifocus.android.service.accessibility.action.BackTiming
 import dev.monkifocus.android.service.accessibility.action.GateHost
 import dev.monkifocus.android.service.accessibility.action.ImeProbe
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
@@ -54,8 +53,26 @@ internal class AndroidActionPerformer(
             }
         }
 
+    /** Whether the screen [clear] last removed held input focus (a focusable overlay or `GateActivity`). */
+    private var clearedFocusedScreen = false
+
     override fun back() {
-        service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+        val heldFocus = clearedFocusedScreen
+        clearedFocusedScreen = false
+        backAfter(heldFocus, waitedMs = 0L)
+    }
+
+    /** BACK once our focused screen is gone ([BackTiming]), so it reaches the browser and not our closing window. */
+    private fun backAfter(
+        heldFocus: Boolean,
+        waitedMs: Long,
+    ) {
+        val delay = BackTiming.delayMs(heldFocus, relay.activityVisible, waitedMs)
+        if (delay == null) {
+            service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
+        } else {
+            handler.postDelayed({ backAfter(heldFocus, waitedMs + delay) }, delay)
+        }
     }
 
     override fun home() {
@@ -63,6 +80,7 @@ internal class AndroidActionPerformer(
     }
 
     override fun show(content: OverlayContent) {
+        clearedFocusedScreen = false
         val previous = shown
         shown = content
         val gate = content as? OverlayContent.Gate
@@ -95,25 +113,9 @@ internal class AndroidActionPerformer(
     override fun open(
         browserPackage: String,
         address: TypedAddress,
-    ) {
-        val attempts =
-            when (address) {
-                is TypedAddress.Web -> {
-                    listOf(Intent(Intent.ACTION_VIEW, Uri.parse(address.url)))
-                }
-
-                is TypedAddress.Search -> {
-                    listOf(
-                        Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, address.query),
-                        Intent(Intent.ACTION_SEARCH).putExtra(SearchManager.QUERY, address.query),
-                    )
-                }
-            }
-        // A browser that takes no search intent is at least opened: its own URL bar searches.
-        val fallback = listOfNotNull(service.packageManager.getLaunchIntentForPackage(browserPackage))
-        (attempts + fallback).firstOrNull { intent ->
-            runCatching { service.startActivity(intent.setPackage(browserPackage).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
-        }
+    ): Boolean {
+        val intent = BrowserIntent.of(browserPackage, address, service.packageManager) ?: return false
+        return runCatching { service.startActivity(intent) }.isSuccess
     }
 
     override fun openApp(notificationSettings: Boolean) {
@@ -129,6 +131,7 @@ internal class AndroidActionPerformer(
     override fun isOnTop(): Boolean = if (inActivity) relay.activityVisible else overlay.attached
 
     override fun clear() {
+        clearedFocusedScreen = inActivity || (shown as? OverlayContent.Gate)?.needsKeyboard == true
         shown = null
         inActivity = false
         handler.removeCallbacks(sample)

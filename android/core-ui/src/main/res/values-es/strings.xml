@@ -65,6 +65,7 @@
     <string name="gate_another_site_label">Dirección web o búsqueda</string>
     <string name="gate_another_site_placeholder">example.com</string>
     <string name="gate_another_site_hint">Se abre en este navegador. Los sitios bloqueados siguen bloqueados.</string>
+    <string name="gate_another_site_search_unavailable">Este navegador no puede buscar desde aquí. Escribe una dirección web, como example.com.</string>
     <string name="gate_another_site_go">Ir</string>
     <string name="gate_another_site_cancel">Cancelar</string>
 

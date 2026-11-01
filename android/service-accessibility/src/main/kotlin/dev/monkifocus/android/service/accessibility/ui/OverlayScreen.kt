@@ -53,6 +53,7 @@ private fun ScreenOf(
                     onCancel = { onAction(UserAction.CancelAnotherSite) },
                     onClose = { onAction(UserAction.Close) },
                     modifier = modifier,
+                    searchUnavailable = content.addressUnopened,
                 )
             } else {
                 GateScreen(
