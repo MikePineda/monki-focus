@@ -69,7 +69,7 @@ class DetectorPackLoaderTest {
 
     @Test
     fun every_bundled_pack_loads() {
-        assertEquals(listOf("instagram", "youtube", "browsers", "settings"), RulesResources.bundledPacks.map { it.packId })
+        assertEquals(listOf("facebook", "instagram", "youtube", "browsers", "settings"), RulesResources.bundledPacks.map { it.packId })
     }
 
     @Test

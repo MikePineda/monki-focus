@@ -306,6 +306,16 @@
     <string name="rules_file_failed">No se pudo leer o escribir el archivo.</string>
 
     <!-- Surfaces (data/surfaces.json), as the rules list names them. -->
+    <string name="surface_facebook_home">Feed de inicio de Facebook</string>
+    <string name="surface_facebook_reels">Reels de Facebook</string>
+    <string name="surface_facebook_watch">Facebook Watch (videos)</string>
+    <string name="surface_facebook_video">Video de Facebook</string>
+    <string name="surface_facebook_post">Publicación de Facebook</string>
+    <string name="surface_facebook_marketplace">Marketplace de Facebook</string>
+    <string name="surface_facebook_groups">Grupos de Facebook</string>
+    <string name="surface_facebook_events">Eventos de Facebook</string>
+    <string name="surface_facebook_search">Búsqueda de Facebook</string>
+    <string name="surface_facebook_messages">Mensajes de Facebook</string>
     <string name="surface_instagram_home">Feed de inicio de Instagram</string>
     <string name="surface_instagram_reels">Reels de Instagram</string>
     <string name="surface_instagram_explore">Explorar de Instagram</string>

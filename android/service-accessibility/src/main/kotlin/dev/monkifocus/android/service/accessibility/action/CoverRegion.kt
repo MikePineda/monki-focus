@@ -7,7 +7,8 @@ import dev.monkifocus.android.detectors.Rect
  * The band of the screen a hide-feed cover hides, in pixels from the top
  * (plan §2.3 `CoverRegion`): everything between the bars the pack keeps
  * visible (`keepVisible`: the URL bar, Instagram's action and tab bars,
- * YouTube's pivot bar), so the user can still type a URL or switch tabs.
+ * YouTube's pivot bar, Facebook's tab bar), so the user can still type a URL
+ * or switch tabs.
  * Bars whose centre is in the top half bound it from above, the others from
  * below; without bars it is the whole screen.
  */

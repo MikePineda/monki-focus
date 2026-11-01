@@ -200,6 +200,23 @@ class RulesScreenTest {
     }
 
     @Test
+    fun facebook_rules_are_named_through_the_catalog() {
+        val facebook =
+            aRuleset(
+                rules =
+                    listOf(
+                        aRule("fb-reels", SurfaceTarget("facebook.reels"), RuleMode.BLOCK),
+                        aRule("fb-watch", SurfaceTarget("facebook.watch"), RuleMode.HIDE_FEED),
+                    ),
+            )
+
+        show(RulesState(facebook, null))
+
+        compose.onNodeWithText("Facebook Reels").assertExists()
+        compose.onNodeWithText("Facebook Watch").assertExists()
+    }
+
+    @Test
     fun allowed_communities_are_named_through_the_catalog() {
         show(RulesState(RulesetEdits.allowSubreddit(ruleset, "AskScience"), null))
 

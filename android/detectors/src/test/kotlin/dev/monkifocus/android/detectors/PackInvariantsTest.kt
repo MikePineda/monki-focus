@@ -35,6 +35,15 @@ class PackInvariantsTest {
     }
 
     @Test
+    fun the_facebook_pack_only_emits_facebook_surfaces() {
+        val facebook = RulesResources.bundledPack("facebook")
+        val foreign = SurfaceDetector("instagram.reels", 90, all = listOf(NodePredicate(viewId = "clips_viewer_view_pager")))
+
+        assertTrue(invariants.holds(facebook))
+        assertFalse(invariants.holds(facebook.copy(surfaces = facebook.surfaces + foreign)))
+    }
+
+    @Test
     fun the_settings_pack_covers_every_guarded_screen() {
         val settings = RulesResources.bundledPack("settings")
 
@@ -50,9 +59,10 @@ class PackInvariantsTest {
     }
 
     @Test
-    fun instagram_and_youtube_keep_the_safety_net() {
+    fun facebook_instagram_and_youtube_keep_the_safety_net() {
         assertFalse(invariants.holds(instagram.copy(unclassifiedCapMinutes = 4)))
         assertFalse(invariants.holds(RulesResources.bundledPack("youtube").copy(unclassifiedCapMinutes = 0)))
+        assertFalse(invariants.holds(RulesResources.bundledPack("facebook").copy(unclassifiedCapMinutes = 4)))
         assertTrue(invariants.holds(instagram.copy(unclassifiedCapMinutes = 5)))
     }
 

@@ -58,6 +58,40 @@ class SurfaceClassifierTest {
     }
 
     @Test
+    fun facebook_reels_viewer_is_reels_by_view_id() {
+        val match = classifier.classify(RulesResources.screen("com.facebook.katana/synthetic/reels-01.xml"), packs)
+
+        assertEquals(SurfaceMatch("facebook.reels", "facebook", MatchBasis.VIEW_ID), match)
+    }
+
+    @Test
+    fun renamed_facebook_reels_ids_fall_back_to_the_selected_reels_tab() {
+        val match = classifier.classify(RulesResources.screen("com.facebook.katana/synthetic/reels-02.xml"), packs)
+
+        assertEquals(SurfaceMatch("facebook.reels", "facebook", MatchBasis.LABEL), match)
+    }
+
+    @Test
+    fun facebook_reels_shelf_on_home_is_not_reels() {
+        // The shelf reuses the viewer id for its previews; it covers a quarter of the screen.
+        val home = "com.facebook.katana/synthetic/home-01.xml"
+
+        assertNotEquals("facebook.reels", surfaceOf(home))
+        assertEquals("facebook.home", surfaceOf(home))
+    }
+
+    @Test
+    fun facebook_video_tab_is_watch() {
+        assertEquals("facebook.watch", surfaceOf("com.facebook.katana/synthetic/watch-01.xml"))
+        assertEquals("facebook.watch", surfaceOf("com.facebook.katana/synthetic/watch-02.xml"))
+    }
+
+    @Test
+    fun facebook_marketplace_tab_is_marketplace() {
+        assertEquals("facebook.marketplace", surfaceOf("com.facebook.katana/synthetic/marketplace-01.xml"))
+    }
+
+    @Test
     fun detectors_run_by_descending_priority() {
         val pager = NodePredicate(viewId = "pager")
         val pack =
