@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "domain": "facebook.com",
+  "aliases": ["fb.com"],
+  "spaNavigation": "history",
+  "surfaces": {
+    "facebook.home": ["/", "/home.php"],
+    "facebook.reels": ["/reel/**", "/reels/**"],
+    "facebook.watch": ["/watch", "/watch/*", "/video"],
+    "facebook.video": ["/*/videos/*", "/*/videos/*/*", "/videos/*", "/video.php"],
+    "facebook.post": ["/*/posts/*", "/permalink.php", "/story.php", "/photo", "/photo.php"],
+    "facebook.marketplace": ["/marketplace/**"],
+    "facebook.groups": ["/groups/**"],
+    "facebook.events": ["/events/**"],
+    "facebook.search": ["/search/**"],
+    "facebook.messages": ["/messages/**"]
+  }
+}

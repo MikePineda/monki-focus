@@ -6,6 +6,7 @@
  */
 import defaultCategoriesJson from '../data/categories/default.json' with { type: 'json' }
 import starterPresetJson from '../data/presets/starter.ruleset.json' with { type: 'json' }
+import facebook from '../data/sites/facebook.com.json' with { type: 'json' }
 import instagram from '../data/sites/instagram.com.json' with { type: 'json' }
 import reddit from '../data/sites/reddit.com.json' with { type: 'json' }
 import x from '../data/sites/x.com.json' with { type: 'json' }
@@ -22,6 +23,7 @@ export const surfaceRegistry = surfaceRegistryJson as SurfaceRegistry
 
 /** Every `data/sites/*.json` profile, ordered by file name. */
 export const siteProfiles: readonly SiteProfile[] = [
+  facebook as SiteProfile,
   instagram as SiteProfile,
   reddit as SiteProfile,
   x as SiteProfile,

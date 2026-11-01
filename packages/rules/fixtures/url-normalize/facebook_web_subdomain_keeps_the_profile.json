@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.facebook_web_subdomain_keeps_the_profile",
+  "kind": "url-normalize",
+  "description": "web.facebook.com is a subdomain of the profile domain, so its paths resolve to Facebook surfaces.",
+  "given": {
+    "urlText": "https://web.facebook.com/watch/live"
+  },
+  "then": {
+    "host": "web.facebook.com",
+    "path": "/watch/live",
+    "pathKnown": true,
+    "surface": "facebook.watch"
+  }
+}

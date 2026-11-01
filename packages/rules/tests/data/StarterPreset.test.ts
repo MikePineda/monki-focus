@@ -50,8 +50,8 @@ describe('starter preset', () => {
     expect(rulesFor('friction')).toEqual(['reddit.com', 'x.com'])
   })
 
-  it('starter_blocks_youtube_shorts', () => {
-    expect(rulesFor('block')).toEqual(['youtube.shorts'])
+  it('starter_blocks_youtube_shorts_and_facebook_reels', () => {
+    expect(rulesFor('block')).toEqual(['facebook.reels', 'youtube.shorts'])
   })
 
   it('starter_rules_are_always_active', () => {
@@ -86,6 +86,16 @@ describe('starter preset', () => {
     for (const rule of preset.rules) {
       if (rule.target.kind === 'surface') expect(registered.has(rule.target.surface)).toBe(true)
     }
+  })
+
+  it('starter_hides_the_facebook_watch_feed_but_not_home_or_marketplace', () => {
+    const hidden = rulesFor('hide-feed')
+    expect(hidden).toContain('facebook.watch')
+    expect(hidden).not.toContain('facebook.home')
+    expect(hidden).not.toContain('facebook.marketplace')
+    expect(preset.rules.map((rule) => rule.id)).toEqual(
+      expect.arrayContaining(['starter-facebook-reels-block', 'starter-facebook-watch-hide'])
+    )
   })
 
   it('starter_relies_on_default_categories', () => {

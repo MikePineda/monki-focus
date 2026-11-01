@@ -2,6 +2,56 @@
   "schemaVersion": 1,
   "surfaces": [
     {
+      "id": "facebook.events",
+      "family": "facebook",
+      "kind": "utility"
+    },
+    {
+      "id": "facebook.groups",
+      "family": "facebook",
+      "kind": "utility"
+    },
+    {
+      "id": "facebook.home",
+      "family": "facebook",
+      "kind": "feed"
+    },
+    {
+      "id": "facebook.marketplace",
+      "family": "facebook",
+      "kind": "utility"
+    },
+    {
+      "id": "facebook.messages",
+      "family": "facebook",
+      "kind": "utility"
+    },
+    {
+      "id": "facebook.post",
+      "family": "facebook",
+      "kind": "permalink"
+    },
+    {
+      "id": "facebook.reels",
+      "family": "facebook",
+      "kind": "feed"
+    },
+    {
+      "id": "facebook.search",
+      "family": "facebook",
+      "kind": "utility"
+    },
+    {
+      "id": "facebook.video",
+      "family": "facebook",
+      "kind": "permalink"
+    },
+    {
+      "id": "facebook.watch",
+      "family": "facebook",
+      "kind": "feed"
+    },
+    {
       "id": "instagram.home",
       "family": "instagram",
       "kind": "feed"

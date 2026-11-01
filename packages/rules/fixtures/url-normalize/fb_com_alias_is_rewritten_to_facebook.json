@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.fb_com_alias_is_rewritten_to_facebook",
+  "kind": "url-normalize",
+  "description": "fb.com is an alias of facebook.com.",
+  "given": {
+    "urlText": "https://www.fb.com/marketplace/"
+  },
+  "then": {
+    "host": "facebook.com",
+    "path": "/marketplace",
+    "pathKnown": true,
+    "surface": "facebook.marketplace"
+  }
+}
