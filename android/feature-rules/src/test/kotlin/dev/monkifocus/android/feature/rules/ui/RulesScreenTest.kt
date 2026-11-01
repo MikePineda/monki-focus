@@ -124,6 +124,16 @@ class RulesScreenTest {
     }
 
     @Test
+    fun the_relaxed_weekends_switch_is_explained_and_edits_the_ruleset() {
+        show(RulesState(ruleset, null))
+
+        compose.onNodeWithText("Relaxed weekends").performScrollTo().assertExists()
+        compose.onNodeWithTag(RulesTestTags.RELAXED_WEEKENDS).performScrollTo().performClick()
+
+        assertEquals(RulesetEdits.setRelaxedWeekends(ruleset, enabled = true), edits.single())
+    }
+
+    @Test
     fun a_refused_change_says_why() {
         show(RulesState(ruleset, null), RulesMessage.Rejected(RuleChangeRejection.ZONE_CHANGE_PENDING))
 

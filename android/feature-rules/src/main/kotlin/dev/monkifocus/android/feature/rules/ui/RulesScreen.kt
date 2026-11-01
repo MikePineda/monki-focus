@@ -258,6 +258,20 @@ private fun Bedtime(
             actions.onEdit { RulesetEdits.setBedtime(it, it.bedtime.copy(start = draft.start, end = draft.end, days = draft.days)) }
         },
     )
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(R.string.rules_relaxed_weekends),
+            color = MonkiTheme.colors.ink1,
+            style = MonkiTheme.typography.body,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = configured.relaxedWeekends?.enabled == true,
+            onCheckedChange = { on -> actions.onEdit { RulesetEdits.setRelaxedWeekends(it, on) } },
+            modifier = Modifier.testTag(RulesTestTags.RELAXED_WEEKENDS),
+        )
+    }
+    Body(stringResource(R.string.rules_relaxed_weekends_body))
 }
 
 @Composable

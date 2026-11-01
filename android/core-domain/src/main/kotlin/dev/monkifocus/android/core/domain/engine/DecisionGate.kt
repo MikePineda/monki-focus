@@ -36,18 +36,39 @@ fun effectiveEscalationState(
     now: String,
 ): EscalationState = effectiveEscalationStateAt(winner, frictionRules, states, epochSecondsOf(now))
 
+/**
+ * [effectiveEscalationState] for a group by id: the relaxed bedtime (§5.2
+ * step 4) has group `bedtime` and no other group (`otherGroups` empty).
+ */
+fun effectiveGroupEscalationState(
+    group: String,
+    otherGroups: List<String>,
+    states: List<EscalationState>,
+    now: String,
+): EscalationState = effectiveGroupStateAt(group, otherGroups, states, epochSecondsOf(now))
+
 internal fun effectiveEscalationStateAt(
     winner: Rule,
     frictionRules: List<Rule>,
     states: List<EscalationState>,
     nowSeconds: Long,
+): EscalationState = effectiveGroupStateAt(winner.id, frictionRules.map { it.id }, states, nowSeconds)
+
+/**
+ * The group's state with the counters it shares with `otherGroups` (the
+ * other matching friction groups; the relaxed bedtime has none, §7.4).
+ */
+internal fun effectiveGroupStateAt(
+    group: String,
+    otherGroups: List<String>,
+    states: List<EscalationState>,
+    nowSeconds: Long,
 ): EscalationState {
-    val own = escalationStateOf(states, winner.id)
+    val own = escalationStateOf(states, group)
     // Other groups in id order, so a tie between them never depends on rule order.
     val others =
-        frictionRules
-            .filter { it.id != winner.id }
-            .map { it.id }
+        otherGroups
+            .filter { it != group }
             .sorted()
             .map { escalationStateOf(states, it) }
     var attemptCount = 0
@@ -68,19 +89,20 @@ internal fun effectiveEscalationStateAt(
     )
 }
 
+/** The gate of a friction restriction of `group` without a lift; `otherGroups` share its escalation. */
 internal fun decisionGate(
-    winner: Rule,
-    frictionRules: List<Rule>,
+    group: String,
+    otherGroups: List<String>,
     states: List<EscalationState>,
     nowSeconds: Long,
     guardianLinked: Boolean,
 ): Gate {
-    val own = escalationStateOf(states, winner.id)
+    val own = escalationStateOf(states, group)
     val storedGate = own.gate
     if ((own.phase == EscalationPhase.PAUSING || own.phase == EscalationPhase.ASKING) && storedGate != null) return storedGate
     if (own.phase == EscalationPhase.TIMED_OUT || own.phase == EscalationPhase.OVERRIDE_WAITING) {
         return fullGate(own.attemptCount, own.brokenCount, own.lastFrictionType ?: FrictionType.COUNTDOWN, guardianLinked)
     }
-    val effective = effectiveEscalationStateAt(winner, frictionRules, states, nowSeconds)
+    val effective = effectiveGroupStateAt(group, otherGroups, states, nowSeconds)
     return visitOutcome(effective, nowSeconds, guardianLinked).gate
 }

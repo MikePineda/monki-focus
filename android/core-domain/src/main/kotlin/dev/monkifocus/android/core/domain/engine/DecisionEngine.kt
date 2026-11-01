@@ -16,16 +16,20 @@ import dev.monkifocus.android.core.domain.rules.Ruleset
  * Decision` (SEMANTICS.md §5); the public `decide` wraps it fail-closed
  * (`FailClosedDecision.kt`, §14). Two independent axes, access and content,
  * each choose a winner among the enabled, scheduled, matching rules. Access
- * restrictions are checked in order (bedtime, budget, rule block, friction);
+ * restrictions are checked in order (bedtime, budget, rule block, relaxed
+ * bedtime, friction);
  * each one either applies or is lifted (unlock, emergency override, intention).
  * `validUntil` (§5.6) evaluates the same inputs again at the instants where
  * the outcome can change (`DecisionValidity.kt`).
  */
 
-/** The friction part of a restriction: an active intention lifts it and an unlifted one shows a gate. */
+/**
+ * The friction part of a restriction: an active intention lifts it and an
+ * unlifted one shows a gate. `otherGroups` share the restriction's escalation
+ * (the other friction candidates; none for the relaxed bedtime, §7.4).
+ */
 private data class FrictionRestriction(
-    val winner: Rule,
-    val frictionRules: List<Rule>,
+    val otherGroups: List<String>,
 )
 
 /** A restriction of §5.2 that matched; `group` is its escalation group. */
@@ -76,13 +80,20 @@ private fun restrictionsOf(
     val ruleset = subject.ruleset
     val catalog = subject.catalog
     val restrictions = mutableListOf<Restriction>()
-    if (isBedtimeActive(ruleset.bedtime, nowSeconds, zonesOf(ruleset)) && categoryLevel <= BEDTIME_MAX_LEVEL) {
+    val bedtimeApplies = isBedtimeActive(ruleset.bedtime, nowSeconds, zonesOf(ruleset)) && categoryLevel <= BEDTIME_MAX_LEVEL
+    // A relaxed night (§6.4) asks for an intention after the rule block instead of blocking first.
+    val relaxedNight = bedtimeApplies && isRelaxedNightAt(ruleset, nowSeconds)
+    if (bedtimeApplies && !relaxedNight) {
         restrictions += Restriction(Access.BLOCK, ReasonCode.SCHEDULE_BEDTIME, null, BEDTIME_GROUP)
     }
     val budget = exhaustedBudgetRule(budgetCandidates, state.usage, localDatesAt(ruleset, nowSeconds), catalog)
     if (budget != null) restrictions += Restriction(Access.BLOCK, ReasonCode.BUDGET_EXHAUSTED, budget.id, budget.id)
     if (winner?.mode == AccessMode.BLOCK) {
         restrictions += Restriction(Access.BLOCK, ReasonCode.RULE_MATCH, winner.rule.id, winner.rule.id)
+    }
+    if (relaxedNight) {
+        restrictions +=
+            Restriction(Access.GATE, ReasonCode.INTENTION_REQUIRED, null, BEDTIME_GROUP, FrictionRestriction(emptyList()))
     }
     if (winner?.mode == AccessMode.FRICTION) {
         restrictions +=
@@ -91,7 +102,7 @@ private fun restrictionsOf(
                 ReasonCode.INTENTION_REQUIRED,
                 winner.rule.id,
                 winner.rule.id,
-                FrictionRestriction(winner.rule, frictionRulesOf(access)),
+                FrictionRestriction(frictionRulesOf(access).map { it.id }),
             )
     }
     return restrictions
@@ -113,8 +124,8 @@ private fun accessOutcome(
         val friction = restriction.friction ?: return AccessOutcome(restriction.access, restriction.reason, restriction.ruleId)
         val gate =
             decisionGate(
-                friction.winner,
-                friction.frictionRules,
+                restriction.group,
+                friction.otherGroups,
                 inputs.state.escalation,
                 nowSeconds,
                 inputs.state.guardianLinked,

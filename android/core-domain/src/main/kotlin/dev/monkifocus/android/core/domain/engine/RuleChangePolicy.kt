@@ -104,13 +104,15 @@ fun effectiveRuleSet(
     val timeZoneWaits = old.timeZone != next.timeZone
     val workHoursWait = old.workHours != next.workHours
     val bedtimeWaits = bedtimeChangeWaits(old.bedtime, next.bedtime)
+    val relaxedWeekendsWait = relaxedWeekendsChangeWaits(old.relaxedWeekends, next.relaxedWeekends)
     val categories = planCategories(old.categories, next.categories, catalog)
     val workHoursToday = if (workHoursWait) old.workHours else next.workHours
     val parts = ruleParts(old, next, workHoursToday, catalog)
     val applicable = applicableRuleIds(parts, workHoursToday, catalog)
     val waitingRules = parts.filter { it.id !in applicable }
 
-    val somethingWaits = timeZoneWaits || workHoursWait || bedtimeWaits || categories.waits || waitingRules.isNotEmpty()
+    val somethingWaits =
+        timeZoneWaits || workHoursWait || bedtimeWaits || relaxedWeekendsWait || categories.waits || waitingRules.isNotEmpty()
     if (!somethingWaits) return EffectiveRuleSet(next, null)
 
     val effectiveToday =
@@ -123,11 +125,14 @@ fun effectiveRuleSet(
             categories = categories.categoriesToday,
             bedtime = if (bedtimeWaits) old.bedtime else next.bedtime,
             workHours = workHoursToday,
+            // A waiting turn-on keeps the old value; absent stays absent.
+            relaxedWeekends = if (relaxedWeekendsWait) old.relaxedWeekends else next.relaxedWeekends,
         )
 
     // §8 step 2: old windows of the waiting parts that must run to their end.
     val windows = mutableListOf<DailyWindowSpec>()
-    if ((bedtimeWaits || categories.waits || timeZoneWaits) && old.bedtime.enabled) windows += old.bedtime
+    val bedtimeDecided = bedtimeWaits || categories.waits || relaxedWeekendsWait || timeZoneWaits
+    if (bedtimeDecided && old.bedtime.enabled) windows += old.bedtime
     if (workHoursWait) windows += old.workHours
     val windowedOldRules =
         if (timeZoneWaits) {

@@ -22,6 +22,8 @@ sealed interface PendingChange {
 
     data object BedtimeChanged : PendingChange
 
+    data object RelaxedWeekendsChanged : PendingChange
+
     data object WorkHoursChanged : PendingChange
 
     data object CategoriesChanged : PendingChange

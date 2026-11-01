@@ -26,6 +26,10 @@ object PendingChanges {
         }
         for ((id, rule) in before) if (id !in after) changes += PendingChange.RuleRemoved(id, rule.target)
         if (effective.bedtime != configured.bedtime) changes += PendingChange.BedtimeChanged
+        // Absent and disabled are both off.
+        if ((effective.relaxedWeekends?.enabled == true) != (configured.relaxedWeekends?.enabled == true)) {
+            changes += PendingChange.RelaxedWeekendsChanged
+        }
         if (effective.workHours != configured.workHours) changes += PendingChange.WorkHoursChanged
         // Category assignments compare as a set: the engine may reorder them.
         if (effective.categories.toSet() != configured.categories.toSet()) changes += PendingChange.CategoriesChanged

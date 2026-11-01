@@ -5,6 +5,7 @@ import dev.monkifocus.android.core.domain.engine.BEDTIME_GROUP
 import dev.monkifocus.android.core.domain.engine.MIN_INTENTION_WORDS
 import dev.monkifocus.android.core.domain.engine.RulesCatalog
 import dev.monkifocus.android.core.domain.engine.effectiveEscalationState
+import dev.monkifocus.android.core.domain.engine.effectiveGroupEscalationState
 import dev.monkifocus.android.core.domain.engine.epochSecondsOf
 import dev.monkifocus.android.core.domain.engine.frictionCandidates
 import dev.monkifocus.android.core.domain.engine.initialEscalationState
@@ -241,15 +242,21 @@ class GateCoordinator(
         nowEpochMs: Long,
     ) {
         val ruleset = evaluation.ruleset ?: return
-        val winner = ruleset.rules.firstOrNull { it.id == group } ?: return
         val now = instantOf(nowEpochMs)
         // A group the snapshot does not list yet (an added rule) starts from stateOf, conservative while unknown.
         val listed = snapshots.snapshot?.escalation.orEmpty()
         val states = if (listed.any { it.targetGroup == group }) listed else listed + stateOf(group)
-        // The engine's own friction candidates (SEMANTICS.md §5.7): exactly the rules `decide` combined.
-        val candidateIds = frictionCandidates(ruleset, evaluation.observation, now, catalog).toSet()
-        val candidates = ruleset.rules.filter { it.id in candidateIds }
-        val effective = effectiveEscalationState(winner, candidates, states, now)
+        val effective =
+            if (group == BEDTIME_GROUP) {
+                // The relaxed-night gate (SEMANTICS.md §5.2 step 4) escalates in the bedtime group alone.
+                effectiveGroupEscalationState(BEDTIME_GROUP, emptyList(), states, now)
+            } else {
+                val winner = ruleset.rules.firstOrNull { it.id == group } ?: return
+                // The engine's own friction candidates (SEMANTICS.md §5.7): exactly the rules `decide` combined.
+                val candidateIds = frictionCandidates(ruleset, evaluation.observation, now, catalog).toSet()
+                val candidates = ruleset.rules.filter { it.id in candidateIds }
+                effectiveEscalationState(winner, candidates, states, now)
+            }
         val result = nextEscalation(effective, EscalationEvent.Visit, now, guardianLinked)
         if (result.state != effective) store(result.state)
     }

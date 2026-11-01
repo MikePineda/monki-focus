@@ -15,7 +15,8 @@ import dev.monkifocus.android.core.domain.rules.Ruleset
  * - at an instant, the **matching** rules (pool rules scheduled then whose
  *   target matches) and the **access pool**: the matching rules, or with an
  *   unknown path every scheduled pool rule. The access pool also takes part
- *   in the budget step (§5.2.2).
+ *   in the budget step (§5.2.2). On a relaxed day (§6.4) short-video blocks
+ *   and hide-feeds are in both pools as friction copies.
  */
 
 /** The time-independent half of a decision: who is observed and which rules can apply. */
@@ -62,7 +63,10 @@ internal fun candidatePoolsAt(
     subject: DecisionSubject,
     epochSeconds: Long,
 ): CandidatePools {
-    val scheduled = subject.pool.filter { rule -> isRuleScheduledAt(rule, subject.ruleset, epochSeconds) }
+    val scheduledRules = subject.pool.filter { rule -> isRuleScheduledAt(rule, subject.ruleset, epochSeconds) }
+    // On a relaxed day short-video blocks and hide-feeds take part as friction everywhere below (§6.4).
+    val scheduled =
+        if (isRelaxedDayAt(subject.ruleset, epochSeconds)) scheduledRules.map { relaxedDayRule(it, subject.catalog) } else scheduledRules
     val matching = scheduled.filter { rule -> matchesTarget(rule.target, subject.observation, subject.catalog) }
     return CandidatePools(matching, if (subject.unknownPath) scheduled else matching)
 }
