@@ -41,6 +41,7 @@ class PackVersionPolicy(
             PackVersionPolicy(
                 minimumVersions =
                     mapOf(
+                        "facebook" to "2026.11.01.1",
                         "instagram" to "2026.10.25.2",
                         "youtube" to "2026.10.25.2",
                         "browsers" to "2026.10.25.2",

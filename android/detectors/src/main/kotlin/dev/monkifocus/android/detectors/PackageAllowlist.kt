@@ -24,6 +24,7 @@ class PackageAllowlist(
         val COMPILED =
             PackageAllowlist(
                 mapOf(
+                    "facebook" to setOf("com.facebook.katana"),
                     "instagram" to setOf("com.instagram.android"),
                     "youtube" to setOf("com.google.android.youtube"),
                     "browsers" to

@@ -30,10 +30,17 @@ object RulesData {
         RulesetValidator(schemas, siteProfiles.flatMap { profile -> profile.aliases.map { it to profile.domain } }.toMap())
     }
 
+    private val surfaces by lazy {
+        RulesJson.decodeFromString(SurfaceRegistry.serializer(), file("data/surfaces.json").readText()).surfaces
+    }
+
+    /** The surface ids of `data/surfaces.json`. */
+    val surfaceIds: List<String> by lazy { surfaces.map { it.id } }
+
     val catalog: RulesCatalog by lazy {
         RulesCatalog(
             siteProfiles = siteProfiles,
-            surfaces = RulesJson.decodeFromString(SurfaceRegistry.serializer(), file("data/surfaces.json").readText()).surfaces,
+            surfaces = surfaces,
             defaultCategories =
                 RulesJson.decodeFromString(CategoryCatalog.serializer(), file("data/categories/default.json").readText()).assignments,
         )

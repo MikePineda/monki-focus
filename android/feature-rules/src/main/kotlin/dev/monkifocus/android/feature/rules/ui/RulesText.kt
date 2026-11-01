@@ -56,6 +56,16 @@ internal object RulesText {
     /** A surface id of `data/surfaces.json` by its name in the catalog; an unknown one is shown as its id. */
     private val SURFACES: Map<String, Int> =
         mapOf(
+            "facebook.home" to R.string.surface_facebook_home,
+            "facebook.reels" to R.string.surface_facebook_reels,
+            "facebook.watch" to R.string.surface_facebook_watch,
+            "facebook.video" to R.string.surface_facebook_video,
+            "facebook.post" to R.string.surface_facebook_post,
+            "facebook.marketplace" to R.string.surface_facebook_marketplace,
+            "facebook.groups" to R.string.surface_facebook_groups,
+            "facebook.events" to R.string.surface_facebook_events,
+            "facebook.search" to R.string.surface_facebook_search,
+            "facebook.messages" to R.string.surface_facebook_messages,
             "instagram.home" to R.string.surface_instagram_home,
             "instagram.reels" to R.string.surface_instagram_reels,
             "instagram.explore" to R.string.surface_instagram_explore,
@@ -83,6 +93,9 @@ internal object RulesText {
             "youtube.search" to R.string.surface_youtube_search,
             "youtube.library" to R.string.surface_youtube_library,
         )
+
+    /** The catalog label of a registered surface id, or null when the catalog has none. */
+    fun surfaceLabel(surface: String): Int? = SURFACES[surface]
 
     @Composable
     fun target(target: Target): String =

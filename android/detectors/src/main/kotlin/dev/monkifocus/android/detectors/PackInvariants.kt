@@ -12,7 +12,7 @@ package dev.monkifocus.android.detectors
  *   `instagram`, `guard.*` for `settings`) and, outside `guard.*`, exists in
  *   `data/surfaces.json`;
  * - the settings pack covers all four [GuardedScreen]s;
- * - Instagram and YouTube keep the unclassified safety net at
+ * - Facebook, Instagram and YouTube keep the unclassified safety net at
  *   [MIN_UNCLASSIFIED_CAP_MINUTES] or more;
  * - an allow-only surface is only recognised with its compiled evidence
  *   ([AllowOnlySurfaces]);
@@ -73,13 +73,19 @@ class PackInvariants(
     companion object {
         /** Pack id → the surface family it may emit. */
         val FAMILIES: Map<String, String> =
-            mapOf("instagram" to "instagram", "youtube" to "youtube", "browsers" to "browsers", "settings" to "guard")
+            mapOf(
+                "facebook" to "facebook",
+                "instagram" to "instagram",
+                "youtube" to "youtube",
+                "browsers" to "browsers",
+                "settings" to "guard",
+            )
 
         const val MIN_UNCLASSIFIED_CAP_MINUTES = 5
 
         private const val SETTINGS_PACK = "settings"
         private const val GUARD_FAMILY = "guard"
         private val URL_BAR_PACKS = setOf("browsers")
-        private val CAPPED_PACKS = setOf("instagram", "youtube")
+        private val CAPPED_PACKS = setOf("facebook", "instagram", "youtube")
     }
 }

@@ -314,6 +314,16 @@
     <string name="rules_file_failed">The file could not be read or written.</string>
 
     <!-- Surfaces (data/surfaces.json), as the rules list names them. -->
+    <string name="surface_facebook_home">Facebook home feed</string>
+    <string name="surface_facebook_reels">Facebook Reels</string>
+    <string name="surface_facebook_watch">Facebook Watch</string>
+    <string name="surface_facebook_video">Facebook video</string>
+    <string name="surface_facebook_post">Facebook post</string>
+    <string name="surface_facebook_marketplace">Facebook Marketplace</string>
+    <string name="surface_facebook_groups">Facebook groups</string>
+    <string name="surface_facebook_events">Facebook events</string>
+    <string name="surface_facebook_search">Facebook search</string>
+    <string name="surface_facebook_messages">Facebook messages</string>
     <string name="surface_instagram_home">Instagram home feed</string>
     <string name="surface_instagram_reels">Instagram Reels</string>
     <string name="surface_instagram_explore">Instagram Explore</string>

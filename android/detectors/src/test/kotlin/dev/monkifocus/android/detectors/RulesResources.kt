@@ -51,7 +51,7 @@ object RulesResources {
             is PackLoadResult.Rejected -> error("bundled pack $packId rejected: ${result.reason}")
         }
 
-    val bundledPacks: List<DetectorPack> by lazy { listOf("instagram", "youtube", "browsers", "settings").map(::bundledPack) }
+    val bundledPacks: List<DetectorPack> by lazy { listOf("facebook", "instagram", "youtube", "browsers", "settings").map(::bundledPack) }
 
     val catalog: RulesCatalog by lazy {
         RulesCatalog(

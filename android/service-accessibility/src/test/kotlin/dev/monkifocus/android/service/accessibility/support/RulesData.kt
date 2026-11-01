@@ -70,7 +70,7 @@ object RulesData {
         DetectorPackLoader(validator, SignatureVerifier { _, _ -> false }, surfaces.map { it.id }.toSet())
     }
 
-    val packIds = listOf("browsers", "instagram", "settings", "youtube")
+    val packIds = listOf("browsers", "facebook", "instagram", "settings", "youtube")
 
     fun packBytes(packId: String): ByteArray = file("detectors/android/$packId.pack.json").readBytes()
 

@@ -28,6 +28,6 @@ class ActivePacksTest {
     fun a_bundled_pack_that_fails_its_checks_is_left_out() {
         val packs = ActivePacks(RulesData.loader).load(bundled + ("youtube" to "{}".toByteArray()), emptyMap(), now)
 
-        assertEquals(listOf("browsers", "instagram", "settings"), packs.map { it.packId })
+        assertEquals(listOf("browsers", "facebook", "instagram", "settings"), packs.map { it.packId })
     }
 }

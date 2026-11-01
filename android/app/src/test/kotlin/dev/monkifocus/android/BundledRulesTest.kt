@@ -21,7 +21,7 @@ class BundledRulesTest {
 
         val packs = ActivePacks(inputs.packLoader).load(inputs.bundledPacks(), emptyMap(), Instant.now())
 
-        assertEquals(listOf("browsers", "instagram", "settings", "youtube"), packs.map { it.packId })
+        assertEquals(listOf("browsers", "facebook", "instagram", "settings", "youtube"), packs.map { it.packId })
     }
 
     @Test
