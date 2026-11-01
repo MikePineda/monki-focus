@@ -193,6 +193,79 @@ test.group('Rule set sync: device routes', (group) => {
     assert.equal(await storedRows(user.id), 0)
   })
 
+  test('test a nul character in a note answers 422 and stores nothing', async ({
+    client,
+    assert,
+  }) => {
+    const { user, token } = await enrolledDevice()
+    const ruleSet = aRuleSet()
+    ruleSet.rules[0] = { ...ruleSet.rules[0], note: 'before\u0000after' }
+
+    const response = await putFromDevice(client, token, '"0"', ruleSet)
+
+    response.assertStatus(422)
+    response.assertBody({ code: 'validation_failed', fields: { 'ruleSet.rules.0.note': 'schema' } })
+    assert.equal(await storedRows(user.id), 0)
+  })
+
+  test('test a lone surrogate answers 422 and stores nothing', async ({ client, assert }) => {
+    const { user, token } = await enrolledDevice()
+    const ruleSet = aRuleSet()
+    // JSON.stringify sends it as the escape `\ud800`, which jsonb refuses.
+    ruleSet.rules[0] = { ...ruleSet.rules[0], note: 'x\ud800' }
+
+    const response = await putFromDevice(client, token, '"0"', ruleSet)
+
+    response.assertStatus(422)
+    response.assertBody({ code: 'validation_failed', fields: { 'ruleSet.rules.0.note': 'schema' } })
+    assert.equal(await storedRows(user.id), 0)
+  })
+
+  test('test a deeply nested rule set answers 422 not 500', async ({ client, assert }) => {
+    const { user, token } = await enrolledDevice()
+    const nestedRules = (depth: number) => {
+      let deep: unknown = []
+      for (let level = 0; level < depth; level++) deep = [deep]
+      return { ...aRuleSet(), rules: deep }
+    }
+
+    const deep = await putFromDevice(client, token, '"0"', nestedRules(100))
+    // Far deeper bodies are already refused by the body parser, never a 500.
+    const deeper = await putFromDevice(client, token, '"0"', nestedRules(5000))
+
+    deep.assertStatus(422)
+    assert.deepEqual(deep.body().code, 'validation_failed')
+    assert.isAtLeast(deeper.status(), 400)
+    assert.isBelow(deeper.status(), 500)
+    assert.equal(await storedRows(user.id), 0)
+  })
+
+  test('test an empty note round-trips unchanged', async ({ client, assert }) => {
+    const { token } = await enrolledDevice()
+    const ruleSet = aRuleSet()
+    ruleSet.rules[0] = { ...ruleSet.rules[0], note: '' }
+
+    const put = await putFromDevice(client, token, '"0"', ruleSet)
+    const get = await client.get('/api/v1/device/rule-set').asDevice(token)
+
+    put.assertStatus(200)
+    assert.deepEqual(get.body().ruleSet, ruleSet)
+  })
+
+  test('test a rule set in the query string is never read', async ({ client, assert }) => {
+    const { user, token } = await enrolledDevice()
+    const query = encodeURIComponent(JSON.stringify(aRuleSet()))
+
+    const response = await client
+      .put(`/api/v1/device/rule-set?ruleSet=${query}`)
+      .header('If-Match', '"0"')
+      .json({})
+      .asDevice(token)
+
+    response.assertStatus(422)
+    assert.equal(await storedRows(user.id), 0)
+  })
+
   test('test a missing rule set member answers 422', async ({ client }) => {
     const { token } = await enrolledDevice()
 

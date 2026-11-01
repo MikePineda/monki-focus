@@ -6,6 +6,7 @@ import { isNotModified } from '#domain/rules/rule_set_etag'
 import { checkIfMatch, type IfMatchRefusal } from '#domain/rules/rule_set_precondition'
 import { canonicalJson, ruleSetContentHash } from '#domain/rules/rule_set_content_hash'
 import { ruleSetProblems } from '#domain/rules/rule_set_problems'
+import { findUnstorableValue } from '#domain/rules/rule_set_storable_value'
 import RuleSetStore from '#services/rules/rule_set_store'
 
 export type RuleSetRead =
@@ -37,7 +38,10 @@ export interface RuleSetWriteRequest {
  * once, loosening from the next local day).
  *
  * A write is checked in this order: `If-Match` against the current revision
- * (412), then the document with the shared schema validator of
+ * (412), then what Postgres `jsonb` could not store or the server should
+ * not recurse into (U+0000, lone surrogates, nesting deeper than 64; 422
+ * at the pointer, so a driver error carrying the document never happens),
+ * then the document with the shared schema validator of
  * `@monki-focus/rules` (the same one the extension runs: 256 KiB of
  * canonical UTF-8, JSON, schema; 422), then a compare-and-swap. A write
  * whose content hash equals the stored one keeps the revision.
@@ -59,6 +63,18 @@ export default class RuleSetSync {
     const precondition = checkIfMatch(request.ifMatch, current)
     if (!precondition.ok) {
       return { kind: 'precondition_failed', reason: precondition.reason, revision: current }
+    }
+
+    const unstorable = findUnstorableValue(request.ruleSet ?? null)
+    if (unstorable !== null) {
+      return {
+        kind: 'invalid',
+        fields: ruleSetProblems({
+          valid: false,
+          code: 'schema',
+          errors: [`${unstorable.pointer} is not storable`],
+        }),
+      }
     }
 
     const validation = bundledSchemaValidator().validateDocument(
