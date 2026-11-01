@@ -503,15 +503,18 @@ reason?}`: `scope.kind` is `domain`, `path` or `app` (`rule` is out of v1:
   `allow_notification_actions` are re-checked; a second decision or an
   expired request is refused (409 `E_UNLOCK_REQUEST_CLOSED` on the web,
   the neutral 404 for actions). Granted minutes are
-  `min(asked, link max, 120, token lifetime)`. An approval signs the
+  `min(approved ?? asked, asked, link max, 120, token lifetime)`: the
+  guardian may grant less, never more than asked. An approval signs the
   PASETO v4.public unlock token (ledger row in the same transaction).
 - **Delivery**: `GET /device/unlock-requests/:uuid?wait=` (cap 25 s)
   answers `{uuid, status, serverTime, grantedMinutes?, token?, timeToken?}`;
   the token is returned again while the ledger says it is usable and not
-  revoked (online revalidation). Another device's or user's uuid is a 404.
+  revoked (online revalidation); its APP_KEY seal expires with the token
+  and the expiry job clears it once the ledger row is revoked or unusable. Another device's or user's uuid is a 404.
   `DELETE` cancels a pending request (204 either way).
 - **Lists**: `GET /guardian/unlock-requests[?status=pending]` shows a
-  guardian only requests of links granting guardianship, with the scope
+  guardian only requests of active links (a revoking link shows only its
+  pending, unexpired requests, never the history), with the scope
   reduced to its host or app (never a path) and the ward's reason;
   `GET /unlock-requests` is the ward's own paginated history.
 - **ntfy**: the outbox dispatcher (job `outbox_dispatch`, every tick, and
@@ -524,6 +527,8 @@ reason?}`: `scope.kind` is `domain`, `path` or `app` (`rule` is out of v1:
   `resources/lang/<locale>/notifications.json`; it never carries the
   scope, the reason or a name. Failures retry after 10 s, 30 s and 2 min,
   then the row is given up (`gave_up_at`, `last_error` a status or error
-  code only). The unsent request row keeps the action tokens only sealed
+  code only). A row whose link no longer grants guardianship (except
+  `pairing_ended` and `topic_rotated`) or whose unlock request closed is
+  given up as `obsolete` instead of published. The unsent request row keeps the action tokens only sealed
   with APP_KEY (15 minutes) and drops the seal once sent.
 - **Jobs**: `expire_unlock_requests` and `outbox_dispatch`, every tick.
