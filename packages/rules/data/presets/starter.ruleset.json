@@ -103,6 +103,26 @@
       "mode": "hide-feed",
       "schedules": [],
       "enabled": true
+    },
+    {
+      "id": "starter-facebook-reels-block",
+      "target": {
+        "kind": "surface",
+        "surface": "facebook.reels"
+      },
+      "mode": "block",
+      "schedules": [],
+      "enabled": true
+    },
+    {
+      "id": "starter-facebook-watch-hide",
+      "target": {
+        "kind": "surface",
+        "surface": "facebook.watch"
+      },
+      "mode": "hide-feed",
+      "schedules": [],
+      "enabled": true
     }
   ],
   "categories": [],

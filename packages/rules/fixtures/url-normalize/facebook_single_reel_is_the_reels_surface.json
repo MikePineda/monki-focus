@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.facebook_single_reel_is_the_reels_surface",
+  "kind": "url-normalize",
+  "description": "A single Facebook Reel resolves to the Reels surface (short video), unlike an Instagram reel permalink.",
+  "given": {
+    "urlText": "https://www.facebook.com/reel/1234567890123456/?s=ifu"
+  },
+  "then": {
+    "host": "facebook.com",
+    "path": "/reel/1234567890123456",
+    "pathKnown": true,
+    "surface": "facebook.reels"
+  }
+}

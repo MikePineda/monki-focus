@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.facebook_video_id_query_is_dropped_on_watch",
+  "kind": "url-normalize",
+  "description": "The query is dropped, so /watch/?v=<id> resolves to the Watch surface; the extension hides only its feed list, never the player.",
+  "given": {
+    "urlText": "https://www.facebook.com/watch/?v=1234567890123456"
+  },
+  "then": {
+    "host": "facebook.com",
+    "path": "/watch",
+    "pathKnown": true,
+    "surface": "facebook.watch"
+  }
+}

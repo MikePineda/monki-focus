@@ -1,0 +1,14 @@
+{
+  "id": "url-normalize.facebook_page_video_is_a_permalink",
+  "kind": "url-normalize",
+  "description": "A video on a page (/<page>/videos/<id>) is a permalink.",
+  "given": {
+    "urlText": "https://m.facebook.com/ExamplePage/videos/1234567890123456/"
+  },
+  "then": {
+    "host": "facebook.com",
+    "path": "/ExamplePage/videos/1234567890123456",
+    "pathKnown": true,
+    "surface": "facebook.video"
+  }
+}

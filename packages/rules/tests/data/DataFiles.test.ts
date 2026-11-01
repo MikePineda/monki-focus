@@ -95,9 +95,15 @@ describe('data files', () => {
     }
   })
 
-  it('site_profiles_cover_reddit_x_youtube_and_instagram', () => {
+  it('site_profiles_cover_reddit_x_youtube_instagram_and_facebook', () => {
     const domains = loadSiteProfiles().map(({ profile }) => profile.domain)
-    expect(domains.sort()).toEqual(['instagram.com', 'reddit.com', 'x.com', 'youtube.com'])
+    expect(domains.sort()).toEqual([
+      'facebook.com',
+      'instagram.com',
+      'reddit.com',
+      'x.com',
+      'youtube.com',
+    ])
   })
 
   it('site_profiles_only_use_registered_surfaces_of_their_family', () => {
@@ -182,5 +188,37 @@ describe('data files', () => {
     const instagram = loadSiteProfiles().find(({ profile }) => profile.domain === 'instagram.com')
     expect(instagram?.profile.surfaces['instagram.reels']).toContain('/reels/**')
     expect(instagram?.profile.surfaces['instagram.reel_permalink']).toContain('/reel/*')
+  })
+
+  it('facebook_single_reels_and_the_reels_tab_are_one_short_video_surface', () => {
+    const facebook = loadSiteProfiles().find(({ profile }) => profile.domain === 'facebook.com')
+    expect(facebook?.profile.surfaces['facebook.reels']).toEqual(['/reel/**', '/reels/**'])
+    const kinds = new Map(loadSurfaceRegistry().surfaces.map((s) => [s.id, s.kind]))
+    expect(kinds.get('facebook.reels')).toBe('feed')
+  })
+
+  it('facebook_profile_rewrites_fb_com', () => {
+    const facebook = loadSiteProfiles().find(({ profile }) => profile.domain === 'facebook.com')
+    expect(facebook?.profile.aliases).toEqual(['fb.com'])
+  })
+
+  it('facebook_watch_is_a_feed_and_single_videos_and_posts_are_permalinks', () => {
+    const kinds = new Map(loadSurfaceRegistry().surfaces.map((s) => [s.id, s.kind]))
+    expect(kinds.get('facebook.watch')).toBe('feed')
+    expect(kinds.get('facebook.video')).toBe('permalink')
+    expect(kinds.get('facebook.post')).toBe('permalink')
+  })
+
+  it('facebook_marketplace_groups_events_search_and_messages_are_utility', () => {
+    const kinds = new Map(loadSurfaceRegistry().surfaces.map((s) => [s.id, s.kind]))
+    for (const id of [
+      'facebook.marketplace',
+      'facebook.groups',
+      'facebook.events',
+      'facebook.search',
+      'facebook.messages',
+    ]) {
+      expect(kinds.get(id), id).toBe('utility')
+    }
   })
 })

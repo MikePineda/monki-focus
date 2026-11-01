@@ -66,6 +66,26 @@ The generated types are committed so that typecheck, lint and tests never
 depend on build order and schema changes show up in review as type diffs; a
 test fails if the file drifts from the schemas.
 
+## Site profile notes
+
+Profiles carry no free-text field (the schema is strict), so notes on URL
+shapes live here.
+
+- **facebook.com** (alias `fb.com`; `www.` and `m.` are dropped, `web.` and
+  other subdomains resolve through the profile domain). `facebook.reels`
+  covers the Reels tab and single reels (`/reel/**`, `/reels/**`): a reel is a
+  short video, blocked like `youtube.shorts`, unlike `instagram.reel_permalink`.
+  `facebook.watch` is the Watch / Video tab feed (`/watch`, `/watch/*`). The
+  query is dropped, so a shared `/watch/?v=<id>` link also resolves to
+  `facebook.watch`; the extension hides only the feed list there, never the
+  player. `facebook.video` (`/<page>/videos/<id>`, `/videos/<id>`,
+  `/video.php`) is a long-video permalink and never hidden. Marketplace,
+  groups, events, search and messages are utility surfaces. **Unverified**
+  (confirm in the live smoke): the newer Video tab path `/video`, the
+  two-segment page video form `/<page>/videos/<slug>/<id>`, and whether
+  `/watch/<show>/<id>` pages need mapping; profiles (`/<name>`) and
+  `fb.watch` short links are not mapped.
+
 ## Changing a contract
 
 Change the fixture first, then the schema and `SEMANTICS.md`, regenerate the
