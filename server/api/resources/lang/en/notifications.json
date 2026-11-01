@@ -1,0 +1,48 @@
+{
+  "unlock_request": {
+    "title": "Unlock request",
+    "message": "{minutes} minutes requested. Approve, deny or open the request.",
+    "approve": "Approve {minutes} min",
+    "deny": "Deny",
+    "view": "Open"
+  },
+  "unlock_decided": {
+    "approved": {
+      "title": "Unlock approved",
+      "message": "{minutes} minutes granted."
+    },
+    "denied": {
+      "title": "Unlock denied",
+      "message": "The request was denied."
+    }
+  },
+  "bypass_alert": {
+    "title": "Protection event",
+    "message": "A device reported a change to its protection. Open the dashboard for details."
+  },
+  "guardian_notice": {
+    "revocation_requested": {
+      "title": "Link ending",
+      "message": "The person you guard asked to end the link. It ends on {effectiveAt}."
+    },
+    "revocation_cancelled": {
+      "title": "Link continues",
+      "message": "The request to end the link was withdrawn."
+    },
+    "pairing_ended": {
+      "title": "Pairing ended",
+      "message": "The pairing ended."
+    },
+    "topic_rotated": {
+      "title": "Subscribe again",
+      "message": "Notifications moved to a new topic. Open the dashboard and subscribe again."
+    }
+  },
+  "action_page": {
+    "title": "Confirm your decision",
+    "explain": "Opening this link does nothing by itself. Confirm to send your decision.",
+    "confirm": "Confirm",
+    "done": "Your decision was recorded.",
+    "unavailable": "This link is no longer valid. Open the dashboard to see the request."
+  }
+}

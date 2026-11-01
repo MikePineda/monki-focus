@@ -1,0 +1,48 @@
+{
+  "unlock_request": {
+    "title": "Solicitud de desbloqueo",
+    "message": "Se piden {minutes} minutos. Aprueba, rechaza o abre la solicitud.",
+    "approve": "Aprobar {minutes} min",
+    "deny": "Rechazar",
+    "view": "Abrir"
+  },
+  "unlock_decided": {
+    "approved": {
+      "title": "Desbloqueo aprobado",
+      "message": "Se concedieron {minutes} minutos."
+    },
+    "denied": {
+      "title": "Desbloqueo rechazado",
+      "message": "La solicitud fue rechazada."
+    }
+  },
+  "bypass_alert": {
+    "title": "Evento de protección",
+    "message": "Un dispositivo informó un cambio en su protección. Abre el panel para ver los detalles."
+  },
+  "guardian_notice": {
+    "revocation_requested": {
+      "title": "La vinculación termina",
+      "message": "La persona a la que acompañas pidió terminar la vinculación. Termina el {effectiveAt}."
+    },
+    "revocation_cancelled": {
+      "title": "La vinculación sigue",
+      "message": "Se retiró la petición de terminar la vinculación."
+    },
+    "pairing_ended": {
+      "title": "Vinculación terminada",
+      "message": "La vinculación terminó."
+    },
+    "topic_rotated": {
+      "title": "Suscríbete de nuevo",
+      "message": "Las notificaciones pasaron a un tema nuevo. Abre el panel y suscríbete de nuevo."
+    }
+  },
+  "action_page": {
+    "title": "Confirma tu decisión",
+    "explain": "Abrir este enlace no hace nada por sí solo. Confirma para enviar tu decisión.",
+    "confirm": "Confirmar",
+    "done": "Tu decisión quedó registrada.",
+    "unavailable": "Este enlace ya no es válido. Abre el panel para ver la solicitud."
+  }
+}
