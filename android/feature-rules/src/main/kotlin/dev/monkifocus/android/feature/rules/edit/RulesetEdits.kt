@@ -95,9 +95,9 @@ object RulesetEdits {
             .removePrefix("old.")
             .removePrefix("m.")
 
-    private fun slug(text: String): String = text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+    internal fun slug(text: String): String = text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 
-    private fun uniqueId(
+    internal fun uniqueId(
         ruleset: Ruleset,
         base: String,
     ): String {
