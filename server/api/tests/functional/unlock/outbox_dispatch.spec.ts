@@ -134,6 +134,47 @@ test.group('ntfy outbox dispatch', (group) => {
     assert.equal(row.attempts, 0)
   })
 
+  test('test_a_retry_is_given_up_once_the_link_or_the_request_is_over', async ({
+    client,
+    assert,
+  }) => {
+    const ntfy = fakeNtfy()
+    ntfy.failing = true
+    const closed = await wardWithGuardian()
+    await createRequest(client, closed.token)
+    const ended = await wardWithGuardian()
+    await createRequest(client, ended.token)
+    await db
+      .from('unlock_requests')
+      .where('device_id', closed.device.id)
+      .update({ status: 'cancelled' })
+    ended.link.status = 'revoked'
+    ended.link.revokedAt = DateTime.fromISO(NOW)
+    await ended.link.save()
+    await db.transaction((trx) =>
+      new GuardianNotices().queue(
+        trx,
+        ended.link,
+        { kind: 'pairing_ended', linkId: ended.link.id },
+        DateTime.fromISO(NOW)
+      )
+    )
+
+    ntfy.failing = false
+    clock.advance({ seconds: 10 })
+    await dispatchDue()
+
+    assert.deepEqual(
+      ntfy.messages.map((message) => message.title),
+      ['Pairing ended']
+    )
+    for (const who of [closed.guardian, ended.guardian]) {
+      const [request] = await outboxOf(who)
+      assert.isNotNull(request.gave_up_at)
+      assert.isNull(request.sent_at)
+    }
+  })
+
   test('test_bypass_alerts_skip_guardian_kinds_and_collapse_a_batch', async ({ assert }) => {
     const { ward, guardian } = await guardianPair({ state: 'active' })
     const events = []
