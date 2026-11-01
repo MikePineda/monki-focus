@@ -7,7 +7,8 @@ import Foundation
 // effective set. A change that only tightens applies at once; anything else
 // waits for the next local midnight (or the end of an old window running
 // then) and never earlier than a pending change. Each part (rule by id,
-// bedtime, work hours, time zone, category by target) is judged on its own.
+// bedtime, relaxed weekends, work hours, time zone, category by target) is
+// judged on its own.
 
 private struct RulePart {
     let id: String
@@ -79,13 +80,16 @@ public func effectiveRuleSet(
     let timeZoneWaits = old.timeZone != next.timeZone
     let workHoursWait = old.workHours != next.workHours
     let bedtimeWaits = bedtimeChangeWaits(old.bedtime, next.bedtime)
+    let relaxedWeekendsWait = relaxedWeekendsChangeWaits(old.relaxedWeekends, next.relaxedWeekends)
     let categories = CategoryPlan(previous: old.categories, next: next.categories, catalog)
     let workHoursToday = workHoursWait ? old.workHours : next.workHours
     let parts = ruleParts(old, next, workHoursToday: workHoursToday, catalog)
     let applicable = applicableRuleIds(parts, workHoursToday: workHoursToday, catalog)
     let waitingRules = parts.filter { !applicable.contains($0.id) }
 
-    let somethingWaits = timeZoneWaits || workHoursWait || bedtimeWaits || categories.waits || !waitingRules.isEmpty
+    let somethingWaits =
+        timeZoneWaits || workHoursWait || bedtimeWaits || relaxedWeekendsWait || categories.waits
+        || !waitingRules.isEmpty
     guard somethingWaits else { return EffectiveRuleSet(effectiveToday: next, effectiveFrom: nil) }
 
     // A waiting zone change keeps the old zone and evaluates the new one alongside it (§6.3).
@@ -99,10 +103,13 @@ public func effectiveRuleSet(
     effectiveToday.categories = categories.categoriesToday
     effectiveToday.bedtime = bedtimeWaits ? old.bedtime : next.bedtime
     effectiveToday.workHours = workHoursToday
+    // Absent stays absent while turning relaxed weekends on waits.
+    effectiveToday.relaxedWeekends = relaxedWeekendsWait ? old.relaxedWeekends : next.relaxedWeekends
 
     // §8 step 2: old windows of the waiting parts that must run to their end.
+    // Bedtime, categories and relaxedWeekends all decide bedtime.
     var windows: [Schedule] = []
-    if bedtimeWaits || categories.waits || timeZoneWaits, old.bedtime.enabled {
+    if bedtimeWaits || categories.waits || relaxedWeekendsWait || timeZoneWaits, old.bedtime.enabled {
         windows.append(old.bedtime.window)
     }
     if workHoursWait { windows.append(old.workHours) }

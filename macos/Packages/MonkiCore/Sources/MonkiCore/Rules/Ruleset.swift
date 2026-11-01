@@ -3,6 +3,7 @@
 /// A user's rule set (`ruleset.schema.json`). `timeZone` pins the zone every
 /// schedule, bedtime and budget day is evaluated in; `pendingTimeZone` is set
 /// only while a zone change waits (both zones apply, the stricter wins).
+/// `relaxedWeekends` is optional and off when absent (SEMANTICS.md §6.4).
 public struct Ruleset: Hashable, Sendable, Codable {
     public var schemaVersion: Int
     public var revision: Int
@@ -13,6 +14,7 @@ public struct Ruleset: Hashable, Sendable, Codable {
     public var categories: [CategoryAssignment]
     public var bedtime: Bedtime
     public var workHours: Schedule
+    public var relaxedWeekends: RelaxedWeekends?
 
     public init(
         schemaVersion: Int = 1,
@@ -23,7 +25,8 @@ public struct Ruleset: Hashable, Sendable, Codable {
         rules: [Rule],
         categories: [CategoryAssignment],
         bedtime: Bedtime,
-        workHours: Schedule
+        workHours: Schedule,
+        relaxedWeekends: RelaxedWeekends? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.revision = revision
@@ -34,10 +37,12 @@ public struct Ruleset: Hashable, Sendable, Codable {
         self.categories = categories
         self.bedtime = bedtime
         self.workHours = workHours
+        self.relaxedWeekends = relaxedWeekends
     }
 
     enum CodingKeys: String, CodingKey, CaseIterable {
         case schemaVersion, revision, updatedAt, timeZone, pendingTimeZone, rules, categories, bedtime, workHours
+        case relaxedWeekends
     }
 
     public init(from decoder: any Decoder) throws {
@@ -51,5 +56,6 @@ public struct Ruleset: Hashable, Sendable, Codable {
         categories = try container.decode([CategoryAssignment].self, forKey: .categories)
         bedtime = try container.decode(Bedtime.self, forKey: .bedtime)
         workHours = try container.decode(Schedule.self, forKey: .workHours)
+        relaxedWeekends = try container.decodeIfPresent(RelaxedWeekends.self, forKey: .relaxedWeekends)
     }
 }

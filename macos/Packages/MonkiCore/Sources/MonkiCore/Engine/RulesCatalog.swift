@@ -19,6 +19,7 @@ public struct RulesCatalog: Hashable, Sendable {
     let profiles: [CompiledProfile]
     public let defaultCategories: [CategoryAssignment]
     private let kinds: [String: SurfaceKind]
+    private let shortVideoSurfaces: Set<String>
 
     public init(siteProfiles: [SiteProfile], surfaces: [Surface], defaultCategories: [CategoryAssignment]) {
         var aliasMap: [String: String] = [:]
@@ -45,11 +46,15 @@ public struct RulesCatalog: Hashable, Sendable {
         var kinds: [String: SurfaceKind] = [:]
         for surface in surfaces { kinds[surface.id] = surface.kind }
         self.kinds = kinds
+        shortVideoSurfaces = Set(surfaces.filter(\.shortVideo).map(\.id))
         self.defaultCategories = defaultCategories
     }
 
     /// Kind of a registered surface, or nil for an unknown id.
     func surfaceKind(_ surface: String) -> SurfaceKind? { kinds[surface] }
+
+    /// Whether the registry marks the surface `shortVideo` (§6.4); false for an unknown id.
+    public func isShortVideo(_ surface: String) -> Bool { shortVideoSurfaces.contains(surface) }
 
     /// §3.1 normalisation of a rule, category or unlock domain.
     func normaliseDomain(_ domain: String) -> String {

@@ -11,9 +11,17 @@
 //   new rule id never resets it. Adapters call `nextEscalation` for the
 //   winner's group with that effective state (`effectiveEscalationState`),
 //   so the stored gate equals the returned one.
+//
+// The relaxed bedtime (§5.2 step 4) uses the same gate for the `bedtime`
+// group alone: no rule shares its escalation.
 
 private func lastActivitySeconds(_ state: EscalationState) throws -> Int? {
     try state.lastActivityAt.map { try epochSecondsOf($0) }
+}
+
+/// The other friction groups sharing the winner's escalation: every friction rule but the winner.
+private func otherGroupsOf(winner: Rule, frictionRules: [Rule]) -> [String] {
+    frictionRules.filter { $0.id != winner.id }.map(\.id)
 }
 
 /// The winner group's state with the counters every matching friction group
@@ -26,9 +34,25 @@ func effectiveEscalationState(
     states: [EscalationState],
     nowSeconds: Int
 ) throws -> EscalationState {
-    let own = escalationStateOf(states, winner.id)
+    try effectiveEscalationState(
+        group: winner.id,
+        otherGroups: otherGroupsOf(winner: winner, frictionRules: frictionRules),
+        states: states,
+        nowSeconds: nowSeconds
+    )
+}
+
+/// `effectiveEscalationState` by group id: `group` is the winner's and
+/// `otherGroups` share its counters (none for the relaxed bedtime, §7.4).
+func effectiveEscalationState(
+    group: String,
+    otherGroups: [String],
+    states: [EscalationState],
+    nowSeconds: Int
+) throws -> EscalationState {
+    let own = escalationStateOf(states, group)
     // Other groups in id order, so a tie between them never depends on rule order.
-    let others = frictionRules.filter { $0.id != winner.id }.map(\.id).sorted(by: CodeUnitOrder.less)
+    let others = otherGroups.filter { $0 != group }.sorted(by: CodeUnitOrder.less)
         .map { escalationStateOf(states, $0) }
     var attemptCount = 0
     var brokenCount = 0
@@ -75,7 +99,24 @@ func decisionGate(
     nowSeconds: Int,
     guardianLinked: Bool
 ) throws -> Gate {
-    let own = escalationStateOf(states, winner.id)
+    try decisionGate(
+        group: winner.id,
+        otherGroups: otherGroupsOf(winner: winner, frictionRules: frictionRules),
+        states: states,
+        nowSeconds: nowSeconds,
+        guardianLinked: guardianLinked
+    )
+}
+
+/// The gate of §7.4 for the escalation group `group`, sharing counters with `otherGroups`.
+func decisionGate(
+    group: String,
+    otherGroups: [String],
+    states: [EscalationState],
+    nowSeconds: Int,
+    guardianLinked: Bool
+) throws -> Gate {
+    let own = escalationStateOf(states, group)
     if own.phase == .pausing || own.phase == .asking, let gate = own.gate { return gate }
     if own.phase == .timedOut || own.phase == .overrideWaiting {
         return fullGate(
@@ -86,8 +127,8 @@ func decisionGate(
         )
     }
     let effective = try effectiveEscalationState(
-        winner: winner,
-        frictionRules: frictionRules,
+        group: group,
+        otherGroups: otherGroups,
         states: states,
         nowSeconds: nowSeconds
     )
