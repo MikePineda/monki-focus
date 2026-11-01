@@ -44,9 +44,11 @@ The source of truth is `packages/protocol/openapi.yaml`; the server's
 contract test (`server/api/tests/functional/devices/device_api_contract.spec.ts`)
 fails when an implemented `/api/v1/keys` or `/api/v1/device/*` route is not
 an operation of it, or an operation is neither implemented nor owned by a
-later package. Implemented (S3, S4): `GET /keys`, `POST /device/enroll`,
+later package. Implemented (S3, S4, S6): `GET /keys`, `POST /device/enroll`,
 `POST /device/heartbeat`, `POST /device/bypass-events`,
-`POST /device/token/rotate`. Unlock requests land with S6.
+`POST /device/token/rotate`, `POST /device/unlock-requests`,
+`GET|DELETE /device/unlock-requests/{uuid}` and
+`POST /device/unlock-tokens/{jti}/consumed` (see "Unlock requests").
 
 - **Auth**: Bearer device tokens `mfd_<id>.<secret>` (`@adonisjs/auth`
   access tokens whose tokenable is a device), about 288 random bits, stored
@@ -103,8 +105,9 @@ later package. Implemented (S3, S4): `GET /keys`, `POST /device/enroll`,
   while the locked device row still has the scanned `last_seen_at`, so a
   heartbeat that just landed never gets a false alert. Raising
   `deadmanHours` from the dashboard takes effect at once and stores
-  `deadman_threshold_raised` (`fromHours`, `toHours`); lowering it does not. New events go to the `BypassAlerts` port (guardian
-  notifications arrive with S6).
+  `deadman_threshold_raised` (`fromHours`, `toHours`); lowering it does not. New events go to the `BypassAlerts` port: one neutral `bypass_alert`
+  outbox row per guardian link per batch (no kind in the text), and
+  `notified_at` on each event; `guardian_*` kinds are skipped.
 - **Retention**: a daily job prunes heartbeats older than
   `HEARTBEAT_RETENTION_DAYS` (30), enrolment codes a day after expiry and
   expired tokens. Bypass events are kept.
@@ -427,8 +430,8 @@ confirmedAt, revocationRequestedAt, revocationEffectiveAt, createdAt }`,
   transaction of the change: `revocation_requested`, `revocation_cancelled`,
   `pairing_ended` (the ward's cooldown ran out, the ward left with no
   cooldown, or the ward deleted the account) and `topic_rotated`. The ntfy
-  notifier (S6) publishes them in the guardian's language, neutrally
-  ("pairing ended").
+  outbox dispatcher publishes them in the guardian's language and time
+  zone, neutrally ("pairing ended").
 - **Ward's log**: link changes are server bypass events (`source:
 "server"`, keys `s:<kind>:<link id>[:<instant>]`, details allowlisted to
   enums and bounded integers): `guardian_linked`,
@@ -467,3 +470,53 @@ details, occurredAt, resolvedAt, acknowledgedAt }] } }`. `score` is null
 | `E_NO_REVOCATION_PENDING`          | 409    | Cancelling when the ward has not asked to leave              |
 | `E_NOTIFICATIONS_UNAVAILABLE`      | 409    | Neither `NTFY_PUBLIC_URL` nor `NTFY_BASE_URL` is set         |
 | `E_GUARDIAN_ONLY_ACCOUNT`          | 403    | A guardian-only account starting its own protection (closed) |
+
+## Unlock requests (S6)
+
+- **Create** `POST /device/unlock-requests` `{ruleId, scope, minutes,
+reason?}`: `scope.kind` is `domain`, `path` or `app` (`rule` is out of v1:
+  422 `fields.scope = scope_kind`). 201 with the request; 409
+  `no_active_guardian` without a link granting guardianship (active or
+  revoking, guardian with two-step verification), 409 `policy_unknown`
+  before the device's first heartbeat (the token's `pol`), 429 above 6 per
+  hour per device. The request goes to one guardian: the ward's oldest link
+  nobody asked to leave, else the oldest revoking one. It lives
+  `UNLOCK_REQUEST_TTL_MINUTES` (15).
+- **Capabilities**: two 32-byte base64url action tokens (approve, deny),
+  only their SHA-256 stored, 15 minutes, single use; any decision,
+  cancellation or expiry clears both. `POST /api/v1/actions/:token` decides
+  (no session, no CSRF, 30 per minute per IP); unknown, used, expired or
+  disabled tokens all answer the same 404 `{status: "unavailable"}`. `GET`
+  on the same URL only renders a confirmation page that never looks the
+  token up.
+- **Decision**: from an action (`decided_via: notification`) or
+  `POST /guardian/unlock-requests/:uuid/approve {minutes?}` / `deny`
+  (`web`). One transaction: users rows, then the request `FOR UPDATE`; the
+  link, the guardian's second factor and (for actions)
+  `allow_notification_actions` are re-checked; a second decision or an
+  expired request is refused (409 `E_UNLOCK_REQUEST_CLOSED` on the web,
+  the neutral 404 for actions). Granted minutes are
+  `min(asked, link max, 120, token lifetime)`. An approval signs the
+  PASETO v4.public unlock token (ledger row in the same transaction).
+- **Delivery**: `GET /device/unlock-requests/:uuid?wait=` (cap 25 s)
+  answers `{uuid, status, serverTime, grantedMinutes?, token?, timeToken?}`;
+  the token is returned again while the ledger says it is usable and not
+  revoked (online revalidation). Another device's or user's uuid is a 404.
+  `DELETE` cancels a pending request (204 either way).
+- **Lists**: `GET /guardian/unlock-requests[?status=pending]` shows a
+  guardian only requests of links granting guardianship, with the scope
+  reduced to its host or app (never a path) and the ward's reason;
+  `GET /unlock-requests` is the ward's own paginated history.
+- **ntfy**: the outbox dispatcher (job `outbox_dispatch`, every tick, and
+  once inside the creating request) claims rows `FOR UPDATE SKIP LOCKED`,
+  re-reads the link's current topic at send time (except `topic_rotated`),
+  and posts `{topic, title, message, priority, tags, actions}` to
+  `NTFY_BASE_URL` with `Bearer NTFY_PUBLISH_TOKEN`. At most three actions
+  (approve http POST with `clear`, deny http POST, view
+  `/guardian/requests/:uuid`); only the view in strict mode. Text comes from
+  `resources/lang/<locale>/notifications.json`; it never carries the
+  scope, the reason or a name. Failures retry after 10 s, 30 s and 2 min,
+  then the row is given up (`gave_up_at`, `last_error` a status or error
+  code only). The unsent request row keeps the action tokens only sealed
+  with APP_KEY (15 minutes) and drops the seal once sent.
+- **Jobs**: `expire_unlock_requests` and `outbox_dispatch`, every tick.
