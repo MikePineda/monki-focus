@@ -142,14 +142,15 @@ export class ServerClient {
     }
     if (token !== null) all.Authorization = `Bearer ${token}`
     if (body !== undefined) all['Content-Type'] = 'application/json'
-    return this.options.fetch(`${this.options.origin}${API}${path}`, {
+    const init: RequestInit = {
       method,
       headers: all,
-      body: body === undefined ? undefined : JSON.stringify(body),
       redirect: 'error',
       credentials: 'omit',
       cache: 'no-store',
-    })
+    }
+    if (body !== undefined) init.body = JSON.stringify(body)
+    return this.options.fetch(`${this.options.origin}${API}${path}`, init)
   }
 }
 
