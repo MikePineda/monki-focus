@@ -1,7 +1,18 @@
 {
   "description": "What a sanitised UI dump may keep. Text-bearing attributes hold only the placeholder, a generic UI label a pack compares, our own app label or a URL on a reserved example host (RFC 2606). Every other attribute must be a known uiautomator attribute. scripts/sanitize-uidump.mjs and the Kotlin uidump_fixtures_are_sanitized test both read this file.",
   "placeholder": "⟨t⟩",
-  "labels": ["Home", "Inicio", "Instagram Home Feed", "Reels", "Shorts", "monki-focus"],
+  "labels": [
+    "Home",
+    "Inicio",
+    "Instagram Home Feed",
+    "Marketplace",
+    "Reels",
+    "Shorts",
+    "Video",
+    "Vídeo",
+    "Watch",
+    "monki-focus"
+  ],
   "placeholderHosts": ["example.com", "example.net", "example.org"],
   "textAttributes": [
     "text",

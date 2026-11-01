@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "packId": "facebook",
+  "packVersion": "2026.11.01.1",
+  "minSchemaVersion": 1,
+  "packages": ["com.facebook.katana"],
+  "testedAppVersions": [],
+  "unclassifiedCapMinutes": 10,
+  "keepVisible": ["tab_bar"],
+  "surfaces": [
+    {
+      "surface": "facebook.reels",
+      "priority": 100,
+      "any": [
+        {"viewId": "reels_viewer_pager", "onScreen": true, "minHeightRatio": 0.8},
+        {"viewId": "reels_viewer_container", "onScreen": true, "minHeightRatio": 0.8}
+      ]
+    },
+    {
+      "surface": "facebook.reels",
+      "priority": 90,
+      "all": [{"viewId": "tab_bar", "onScreen": true}],
+      "any": [{"viewId": "tab_bar_item", "contentDescPrefix": "Reels", "selected": true}]
+    },
+    {
+      "surface": "facebook.watch",
+      "priority": 80,
+      "all": [{"viewId": "video_home_feed", "onScreen": true, "minHeightRatio": 0.5}]
+    },
+    {
+      "surface": "facebook.watch",
+      "priority": 75,
+      "all": [{"viewId": "tab_bar", "onScreen": true}],
+      "any": [
+        {"viewId": "tab_bar_item", "contentDescPrefix": "Video", "selected": true},
+        {"viewId": "tab_bar_item", "contentDescPrefix": "Vídeo", "selected": true},
+        {"viewId": "tab_bar_item", "contentDescPrefix": "Watch", "selected": true}
+      ]
+    },
+    {
+      "surface": "facebook.marketplace",
+      "priority": 60,
+      "all": [{"viewId": "tab_bar", "onScreen": true}],
+      "any": [{"viewId": "tab_bar_item", "contentDescPrefix": "Marketplace", "selected": true}]
+    },
+    {
+      "surface": "facebook.home",
+      "priority": 50,
+      "all": [{"viewId": "tab_bar", "onScreen": true}],
+      "any": [
+        {"viewId": "tab_bar_item", "contentDescPrefix": "Home", "selected": true},
+        {"viewId": "tab_bar_item", "contentDescPrefix": "Inicio", "selected": true}
+      ]
+    }
+  ]
+}

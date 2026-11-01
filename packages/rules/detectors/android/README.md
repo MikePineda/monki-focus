@@ -9,6 +9,7 @@ The Android `:detectors` module evaluates them (`SurfaceClassifier`,
 
 | Pack                 | Packages                                                          | Classifies                                                                                                                                  |
 | -------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `facebook.pack.json`  | `com.facebook.katana`                                             | `facebook.reels` (viewer ids, then the selected "Reels" tab) > `facebook.watch` (video feed id, then the "Video" tab) > `marketplace` > `home` |
 | `instagram.pack.json` | `com.instagram.android`                                           | `instagram.reel_from_dm` (100) > `instagram.reels` (90) > `instagram.stories` (80) > `instagram.direct` (70) > `search` > `explore` > `home` |
 | `youtube.pack.json`   | `com.google.android.youtube`                                      | `youtube.shorts` (player ids, then the selected "Shorts" tab), `youtube.home`                                                               |
 | `browsers.pack.json`  | Chrome, Brave, Vivaldi, Cromite, Vanadium, Firefox, Samsung       | no surfaces: `urlBarViewIds` in fallback order (`url_bar`, `omnibox_url_text`, …); the engine normalises the URL                           |
@@ -57,7 +58,8 @@ applies wins. A surface may have several detectors (alternative signals).
 - **Safety net.** `unclassifiedCapMinutes` (SEMANTICS.md §11): when a package
   has an enabled surface `block` rule and its screens were unclassified for at
   least the cap within the last 2 × cap minutes (sliding window), app-level
-  friction applies (Instagram and YouTube: 10, at least 5 by compiled rule).
+  friction applies (Facebook, Instagram and YouTube: 10, at least 5 by
+  compiled rule).
 - **Traversal.** At most 2,500 nodes and 40 levels per screen read, breadth
   first.
 - **Settings.** `guard.*` surfaces only describe a screen's shape. The app
@@ -98,5 +100,9 @@ placeholder text), not captured from a device. Real captures land per app
 version (`<package>/<versionName>/`) during on-device validation, and ids
 marked unverified there are corrected with a `packVersion` bump. Unverified
 today: Instagram `direct`, `search` and `explore` ids; the YouTube tab id
-`pivot_bar_item_tab`, its labels and `selected` flag; Settings and
-package-installer ids per Android version.
+`pivot_bar_item_tab`, its labels and `selected` flag; every Facebook id
+(`reels_viewer_pager`, `reels_viewer_container`, `video_home_feed`, `tab_bar`,
+`tab_bar_item`), its tab labels and `selected` flag (no reference project
+covers `com.facebook.katana`, and release builds may strip resource names, in
+which case the pack needs another shape); Settings and package-installer ids
+per Android version.

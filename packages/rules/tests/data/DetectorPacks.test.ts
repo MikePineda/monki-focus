@@ -29,8 +29,14 @@ function priorityOf(packId: string, surface: string): number {
 }
 
 describe('android detector packs', () => {
-  it('ships_the_instagram_youtube_browsers_and_settings_packs', () => {
-    expect([...packs.keys()].sort()).toEqual(['browsers', 'instagram', 'settings', 'youtube'])
+  it('ships_the_facebook_instagram_youtube_browsers_and_settings_packs', () => {
+    expect([...packs.keys()].sort()).toEqual([
+      'browsers',
+      'facebook',
+      'instagram',
+      'settings',
+      'youtube',
+    ])
   })
 
   it('pack_file_name_matches_its_pack_id', () => {
@@ -42,7 +48,7 @@ describe('android detector packs', () => {
 
   it('app_packs_only_use_registered_surfaces_of_their_family', () => {
     const registered = new Set(loadSurfaceRegistry().surfaces.map((surface) => surface.id))
-    for (const id of ['instagram', 'youtube']) {
+    for (const id of ['facebook', 'instagram', 'youtube']) {
       for (const detector of pack(id).surfaces) {
         expect(registered.has(detector.surface), detector.surface).toBe(true)
         expect(detector.surface.startsWith(`${id}.`), detector.surface).toBe(true)
@@ -108,9 +114,43 @@ describe('android detector packs', () => {
     }
   })
 
-  it('instagram_and_youtube_keep_the_unclassified_safety_net', () => {
+  it('facebook_instagram_and_youtube_keep_the_unclassified_safety_net', () => {
+    expect(pack('facebook').unclassifiedCapMinutes).toBeGreaterThanOrEqual(5)
     expect(pack('instagram').unclassifiedCapMinutes).toBeGreaterThanOrEqual(5)
     expect(pack('youtube').unclassifiedCapMinutes).toBeGreaterThanOrEqual(5)
+  })
+
+  it('facebook_reels_outranks_watch_marketplace_and_home', () => {
+    expect(priorityOf('facebook', 'facebook.reels')).toBeGreaterThan(
+      priorityOf('facebook', 'facebook.watch')
+    )
+    expect(priorityOf('facebook', 'facebook.watch')).toBeGreaterThan(
+      priorityOf('facebook', 'facebook.marketplace')
+    )
+    expect(priorityOf('facebook', 'facebook.marketplace')).toBeGreaterThan(
+      priorityOf('facebook', 'facebook.home')
+    )
+  })
+
+  it('facebook_reels_viewer_ids_need_most_of_the_screen', () => {
+    const viewer = pack('facebook').surfaces.filter(
+      (s) => s.surface === 'facebook.reels' && !(s.any ?? []).some((p) => p.contentDescPrefix)
+    )
+    expect(viewer.length).toBeGreaterThan(0)
+    for (const detector of viewer) {
+      for (const predicate of [...(detector.all ?? []), ...(detector.any ?? [])]) {
+        expect(predicate.minHeightRatio ?? 0, detector.surface).toBeGreaterThanOrEqual(0.6)
+      }
+    }
+  })
+
+  it('facebook_tab_labels_cover_english_and_spanish', () => {
+    const labels = pack('facebook').surfaces.flatMap((detector) =>
+      (detector.any ?? []).map((predicate) => predicate.contentDescPrefix).filter(Boolean)
+    )
+    expect(labels).toEqual(
+      expect.arrayContaining(['Reels', 'Video', 'Vídeo', 'Home', 'Inicio', 'Marketplace'])
+    )
   })
 
   it('shorts_player_ids_need_most_of_the_screen', () => {
@@ -134,7 +174,7 @@ describe('android detector packs', () => {
   })
 
   it('only_browser_packs_declare_url_bars', () => {
-    for (const id of ['instagram', 'youtube', 'settings']) {
+    for (const id of ['facebook', 'instagram', 'youtube', 'settings']) {
       expect(pack(id).urlBarViewIds, id).toBeUndefined()
     }
   })
