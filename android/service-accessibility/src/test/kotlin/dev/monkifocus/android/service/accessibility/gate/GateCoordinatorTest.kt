@@ -4,6 +4,7 @@ package dev.monkifocus.android.service.accessibility.gate
 import dev.monkifocus.android.core.domain.engine.BEDTIME_GROUP
 import dev.monkifocus.android.core.domain.rules.AppObservation
 import dev.monkifocus.android.core.domain.rules.EscalationPhase
+import dev.monkifocus.android.core.domain.rules.RelaxedWeekends
 import dev.monkifocus.android.core.domain.rules.RuleMode
 import dev.monkifocus.android.core.domain.rules.SiteObservation
 import dev.monkifocus.android.feature.gate.state.GateUiState
@@ -116,6 +117,21 @@ class GateCoordinatorTest {
         h.coordinator.tick(now - 3_600_000, onScreenGroup = "reddit")
 
         assertEquals(EscalationPhase.IDLE, h.phaseOf("reddit"))
+    }
+
+    @Test
+    fun a_relaxed_friday_night_gate_escalates_in_the_bedtime_group() {
+        // 2026-01-09T23:00:00Z, a Friday inside the 22:30–07:00 bedtime in UTC.
+        val fridayNight = NIGHT_MS + 4 * 86_400_000L
+        val relaxed = aRuleset(bedtime = BEDTIME_ON).copy(relaxedWeekends = RelaxedWeekends(enabled = true))
+        val h = PipelineHarness(relaxed, startWallMs = fridayNight)
+        val instagram = AppObservation("com.instagram.android", null)
+        val evaluation = DecisionEvaluator(RulesData.catalog).evaluate(h.snapshots.snapshot, instagram, null, fridayNight)
+
+        val shown = h.coordinator.present(evaluation, "app", fridayNight)
+
+        assertTrue(shown !is GateUiState.BedtimeCover)
+        assertEquals(EscalationPhase.PAUSING, h.phaseOf(BEDTIME_GROUP))
     }
 
     @Test

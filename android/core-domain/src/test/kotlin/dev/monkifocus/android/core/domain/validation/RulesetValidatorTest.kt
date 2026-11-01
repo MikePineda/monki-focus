@@ -2,7 +2,11 @@
 package dev.monkifocus.android.core.domain.validation
 
 import dev.monkifocus.android.core.domain.fixtures.RulesPackage
+import dev.monkifocus.android.core.domain.rules.RelaxedWeekends
+import dev.monkifocus.android.core.domain.rules.RulesJson
+import dev.monkifocus.android.core.domain.rules.Ruleset
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 /** SEMANTICS.md §1: the size limit, JSON syntax and the `x-*` keywords beyond the `invalid` fixtures. */
@@ -56,6 +60,24 @@ class RulesetValidatorTest {
     fun time_zone_links_are_accepted() {
         assertEquals(null, codeOf("ruleset", withZone("Asia/Calcutta")))
         assertEquals(null, codeOf("ruleset", withZone("UTC")))
+    }
+
+    private fun withRelaxedWeekends(json: String): String = starter.trimEnd().removeSuffix("}") + ", \"relaxedWeekends\": $json}"
+
+    @Test
+    fun relaxed_weekends_is_accepted_and_strict_about_its_fields() {
+        assertEquals(null, codeOf("ruleset", withRelaxedWeekends("{\"enabled\": true}")))
+        assertEquals("schema", codeOf("ruleset", withRelaxedWeekends("{\"enabled\": true, \"days\": [\"sat\"]}")))
+        assertEquals("schema", codeOf("ruleset", withRelaxedWeekends("{}")))
+    }
+
+    @Test
+    fun relaxed_weekends_round_trips_and_stays_absent_when_absent() {
+        val absent = RulesJson.decodeFromString<Ruleset>(starter)
+        val on = absent.copy(relaxedWeekends = RelaxedWeekends(enabled = true))
+
+        assertFalse(RulesJson.encodeToString(absent).contains("relaxedWeekends"))
+        assertEquals(on, RulesJson.decodeFromString<Ruleset>(RulesJson.encodeToString(on)))
     }
 
     @Test

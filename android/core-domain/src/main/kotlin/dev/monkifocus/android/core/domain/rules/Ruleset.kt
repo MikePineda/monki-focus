@@ -19,4 +19,6 @@ data class Ruleset(
     val categories: List<CategoryAssignment>,
     val bedtime: Bedtime,
     val workHours: Schedule,
+    /** Optional; absent means off (§6.4). */
+    val relaxedWeekends: RelaxedWeekends? = null,
 )

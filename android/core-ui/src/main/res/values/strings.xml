@@ -263,6 +263,8 @@
     <string name="rules_subreddits_empty">No communities allowed yet.</string>
     <string name="rules_bedtime_title">Bedtime</string>
     <string name="rules_bedtime_enabled">Bedtime on</string>
+    <string name="rules_relaxed_weekends">Relaxed weekends</string>
+    <string name="rules_relaxed_weekends_body">On Friday and Saturday nights bedtime asks for an intention instead of blocking. On Saturdays and Sundays, blocked or hidden Reels and Shorts ask for an intention too. Turning it on waits like any loosening.</string>
     <string name="rules_work_title">Work hours</string>
     <string name="rules_work_body">Rules set to follow your work hours apply in this window.</string>
     <string name="rules_start">Start</string>
@@ -285,6 +287,7 @@
     <string name="rules_pending_rule_changed">%1$s: changed</string>
     <string name="rules_pending_rule_removed">%1$s: removed</string>
     <string name="rules_pending_bedtime">Bedtime</string>
+    <string name="rules_pending_relaxed_weekends">Relaxed weekends</string>
     <string name="rules_pending_work_hours">Work hours</string>
     <string name="rules_pending_categories">Categories</string>
     <string name="rules_pending_time_zone">Time zone</string>

@@ -119,6 +119,7 @@ internal object RulesText {
             is PendingChange.RuleChanged -> stringResource(R.string.rules_pending_rule_changed, target(change.target))
             is PendingChange.RuleRemoved -> stringResource(R.string.rules_pending_rule_removed, target(change.target))
             PendingChange.BedtimeChanged -> stringResource(R.string.rules_pending_bedtime)
+            PendingChange.RelaxedWeekendsChanged -> stringResource(R.string.rules_pending_relaxed_weekends)
             PendingChange.WorkHoursChanged -> stringResource(R.string.rules_pending_work_hours)
             PendingChange.CategoriesChanged -> stringResource(R.string.rules_pending_categories)
             PendingChange.TimeZoneChanged -> stringResource(R.string.rules_pending_time_zone)

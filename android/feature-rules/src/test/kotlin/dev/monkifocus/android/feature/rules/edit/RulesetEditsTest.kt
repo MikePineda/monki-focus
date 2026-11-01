@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 package dev.monkifocus.android.feature.rules.edit
 
+import dev.monkifocus.android.core.domain.rules.RelaxedWeekends
 import dev.monkifocus.android.core.domain.rules.RuleMode
 import dev.monkifocus.android.core.domain.rules.Schedule
 import dev.monkifocus.android.core.domain.rules.SiteTarget
@@ -76,6 +77,20 @@ class RulesetEditsTest {
         assertEquals(ruleset.rules, edited.rules)
         assertEquals(bedtime, edited.bedtime)
         assertEquals(hours, edited.workHours)
+    }
+
+    @Test
+    fun relaxed_weekends_toggle_updates_the_ruleset() {
+        val ruleset = aRuleset()
+
+        val on = RulesetEdits.setRelaxedWeekends(ruleset, enabled = true)
+        val off = RulesetEdits.setRelaxedWeekends(on, enabled = false)
+
+        assertNull(ruleset.relaxedWeekends)
+        assertEquals(RelaxedWeekends(enabled = true), on.relaxedWeekends)
+        assertEquals(RelaxedWeekends(enabled = false), off.relaxedWeekends)
+        assertEquals(ruleset.copy(relaxedWeekends = RelaxedWeekends(enabled = false)), off)
+        assertEquals(ValidationResult.Valid, RulesetCheck.of(RulesData.validator).check(on))
     }
 
     @Test

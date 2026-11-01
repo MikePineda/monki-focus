@@ -57,6 +57,20 @@ class PendingChangesTest {
     }
 
     @Test
+    fun waiting_relaxed_weekends_is_named_and_absent_counts_as_off() {
+        val effective = aRuleset()
+
+        assertEquals(
+            listOf(PendingChange.RelaxedWeekendsChanged),
+            PendingChanges.between(effective, RulesetEdits.setRelaxedWeekends(effective, enabled = true)),
+        )
+        assertEquals(
+            emptyList<PendingChange>(),
+            PendingChanges.between(effective, RulesetEdits.setRelaxedWeekends(effective, enabled = false)),
+        )
+    }
+
+    @Test
     fun a_waiting_second_zone_is_a_time_zone_change() {
         val effective = aRuleset().copy(pendingTimeZone = "Etc/GMT-5")
 

@@ -2,6 +2,7 @@
 package dev.monkifocus.android.feature.rules.change
 
 import dev.monkifocus.android.core.domain.ports.RulesetSource
+import dev.monkifocus.android.core.domain.rules.RelaxedWeekends
 import dev.monkifocus.android.core.domain.rules.RuleMode
 import dev.monkifocus.android.core.domain.rules.Ruleset
 import dev.monkifocus.android.core.domain.rules.SiteTarget
@@ -120,6 +121,25 @@ class RuleChangeServiceTest {
             val outcome = service(stored()).propose(proposed, baseRevision = 1)
 
             assertEquals("2026-10-28T05:00:00Z", (outcome as RuleChangeOutcome.Pending).effectiveFrom)
+        }
+
+    @Test
+    fun turning_relaxed_weekends_on_waits_and_turning_it_off_applies_at_once() =
+        runBlocking {
+            val repository = stored()
+            val service = service(repository)
+
+            val on = service.propose(aRuleset().copy(relaxedWeekends = RelaxedWeekends(enabled = true)), baseRevision = 1)
+
+            // It decides bedtime, so it waits past the next local midnight until the old 22:30–07:00 window ends (05:00Z).
+            assertEquals("2026-10-28T05:00:00Z", (on as RuleChangeOutcome.Pending).effectiveFrom)
+            assertNull(repository.active(NOW)!!.ruleset.relaxedWeekends)
+
+            val off = service.propose(aRuleset().copy(relaxedWeekends = RelaxedWeekends(enabled = false)), on.state.configured.revision)
+
+            assertTrue(off is RuleChangeOutcome.Applied)
+            assertEquals(RelaxedWeekends(enabled = false), repository.active(NOW)!!.ruleset.relaxedWeekends)
+            assertNull(repository.pending(NOW))
         }
 
     @Test

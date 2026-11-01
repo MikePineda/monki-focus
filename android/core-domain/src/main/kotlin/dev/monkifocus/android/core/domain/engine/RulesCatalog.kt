@@ -51,8 +51,13 @@ class RulesCatalog(
                 }.sortedByDescending { it.domain.length }
     }
 
+    private val shortVideoSurfaces: Set<String> = surfaces.filter { it.shortVideo }.map { it.id }.toSet()
+
     /** Kind of a registered surface, or null for an unknown id. */
     fun surfaceKind(surface: String): SurfaceKind? = kinds[surface]
+
+    /** Whether the registry marks the surface `shortVideo` (relaxed weekends, §6.4); false for an unknown id. */
+    fun isShortVideo(surface: String): Boolean = surface in shortVideoSurfaces
 
     /** §3.1 normalisation of a rule, category or unlock domain. */
     fun normaliseDomain(domain: String): String = normaliseDomain(domain, aliases)

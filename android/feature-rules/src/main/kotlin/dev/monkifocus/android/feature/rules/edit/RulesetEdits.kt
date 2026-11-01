@@ -2,6 +2,7 @@
 package dev.monkifocus.android.feature.rules.edit
 
 import dev.monkifocus.android.core.domain.rules.Bedtime
+import dev.monkifocus.android.core.domain.rules.RelaxedWeekends
 import dev.monkifocus.android.core.domain.rules.Rule
 import dev.monkifocus.android.core.domain.rules.RuleMode
 import dev.monkifocus.android.core.domain.rules.Ruleset
@@ -41,6 +42,12 @@ object RulesetEdits {
         ruleset: Ruleset,
         bedtime: Bedtime,
     ): Ruleset = ruleset.copy(bedtime = bedtime)
+
+    /** Turns relaxed weekends (SEMANTICS.md §6.4) on or off; turning it on is loosening and waits. */
+    fun setRelaxedWeekends(
+        ruleset: Ruleset,
+        enabled: Boolean,
+    ): Ruleset = ruleset.copy(relaxedWeekends = RelaxedWeekends(enabled))
 
     fun setWorkHours(
         ruleset: Ruleset,

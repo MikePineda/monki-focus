@@ -15,6 +15,7 @@ object RulesTestTags {
     const val BEDTIME_START = "rules.bedtime.start"
     const val BEDTIME_END = "rules.bedtime.end"
     const val BEDTIME_SAVE = "rules.bedtime.save"
+    const val RELAXED_WEEKENDS = "rules.bedtime.relaxed_weekends"
     const val WORK_START = "rules.work.start"
     const val WORK_END = "rules.work.end"
     const val WORK_SAVE = "rules.work.save"
