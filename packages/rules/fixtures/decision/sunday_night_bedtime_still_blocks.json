@@ -1,0 +1,72 @@
+{
+  "id": "decision.sunday_night_bedtime_still_blocks",
+  "kind": "decision",
+  "description": "Sunday night is a school night: with relaxed weekends on, the window that starts on Sunday still blocks until Monday 07:00.",
+  "given": {
+    "ruleset": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "updatedAt": "2026-10-01T00:00:00Z",
+      "timeZone": "Australia/Sydney",
+      "rules": [
+        {
+          "id": "starter-instagram-reels-hide",
+          "target": {
+            "kind": "surface",
+            "surface": "instagram.reels"
+          },
+          "mode": "hide-feed",
+          "schedules": [],
+          "enabled": true
+        },
+        {
+          "id": "starter-youtube-shorts-block",
+          "target": {
+            "kind": "surface",
+            "surface": "youtube.shorts"
+          },
+          "mode": "block",
+          "schedules": [],
+          "enabled": true
+        }
+      ],
+      "categories": [],
+      "bedtime": {
+        "enabled": true,
+        "days": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+        "start": "22:30",
+        "end": "07:00",
+        "warnMinutesBefore": 30
+      },
+      "workHours": {
+        "days": ["mon", "tue", "wed", "thu", "fri"],
+        "start": "09:00",
+        "end": "17:30"
+      },
+      "relaxedWeekends": {
+        "enabled": true
+      }
+    },
+    "now": "2026-11-01T23:00:00+11:00",
+    "state": {
+      "escalation": [],
+      "usage": null,
+      "unlocks": [],
+      "guardianLinked": false
+    }
+  },
+  "when": {
+    "target": {
+      "kind": "site",
+      "urlText": "https://www.instagram.com/p/abc123"
+    }
+  },
+  "then": {
+    "access": "block",
+    "content": "show",
+    "ruleId": null,
+    "reason": "schedule_bedtime",
+    "explanationKey": "decision.schedule_bedtime",
+    "validUntil": "2026-11-01T20:00:00Z"
+  }
+}

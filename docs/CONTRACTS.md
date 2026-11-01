@@ -25,6 +25,13 @@ To be written by work package 0.2: the `Ruleset`, `Rule`, `Target`,
 `Schedule`, `Bedtime` and `CategoryAssignment` shapes; the two decision axes
 (`access`, `content`); specificity order; overlays; fixture envelope format.
 
+Normative today: `packages/rules/SEMANTICS.md` and `packages/rules/schema/v1`.
+Overlays on the rules: bedtime (§6.2) and the optional `relaxedWeekends`
+(`{enabled}`, §6.4): when on, Friday and Saturday night bedtime gates with an
+intention instead of blocking, and on Saturdays and Sundays `block` or
+`hide-feed` rules on short-video surfaces (`shortVideo` in
+`data/surfaces.json`) gate instead. Turning it on is loosening (§8).
+
 ## Decision fixtures
 
 To be written by work package 0.2: the fixture envelope, the `kind`s

@@ -43,6 +43,10 @@
         },
         "kind": {
           "$ref": "#/$defs/surfaceKind"
+        },
+        "shortVideo": {
+          "description": "A short-video surface (Reels, Shorts). Relaxed weekends (SEMANTICS.md §6.4) turn its `block` and `hide-feed` rules into friction on Saturdays and Sundays. Absent means false.",
+          "type": "boolean"
         }
       }
     }

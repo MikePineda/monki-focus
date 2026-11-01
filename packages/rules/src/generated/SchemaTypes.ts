@@ -236,6 +236,7 @@ export interface RulesSchemaBundle {
   'rule.schema.json#mode'?: RuleMode
   'rule.schema.json#ruleId'?: RuleId
   'ruleset.schema.json'?: Ruleset
+  'ruleset.schema.json#relaxedWeekends'?: RelaxedWeekends
   'schedule-fixture.schema.json'?: ScheduleFixture
   'schedule-fixture.schema.json#bedtimeCase'?: BedtimePhaseFixture
   'schedule-fixture.schema.json#id'?: string
@@ -581,7 +582,7 @@ export interface CandidatesGiven {
   now: Instant
 }
 /**
- * A user's rule set: the document that is imported, exported, synced and enforced. `timeZone` pins the zone every schedule, bedtime and budget day is evaluated in (the device zone is never an input). `pendingTimeZone` is set only while a time-zone change waits (both zones apply, the stricter wins). `workHours` is the user's working hours, which rules opt into with `{ "ref": "workHours" }`. Strict: unknown fields are rejected, keys are unique (`x-uniqueBy`) and the serialised document must not exceed 256 KB.
+ * A user's rule set: the document that is imported, exported, synced and enforced. `timeZone` pins the zone every schedule, bedtime and budget day is evaluated in (the device zone is never an input). `pendingTimeZone` is set only while a time-zone change waits (both zones apply, the stricter wins). `workHours` is the user's working hours, which rules opt into with `{ "ref": "workHours" }`. `relaxedWeekends` (optional, off when absent) softens bedtime on Friday and Saturday nights and short-video surfaces on Saturdays and Sundays. Strict: unknown fields are rejected, keys are unique (`x-uniqueBy`) and the serialised document must not exceed 256 KB.
  */
 export interface Ruleset {
   schemaVersion: 1
@@ -604,6 +605,7 @@ export interface Ruleset {
   categories: CategoryAssignment[]
   bedtime: Bedtime
   workHours: Schedule
+  relaxedWeekends?: RelaxedWeekends
 }
 /**
  * One rule of a rule set. `allow`, `friction` and `block` compete on the access axis; `hide-feed` and `allow` compete on the content axis (SEMANTICS.md).
@@ -638,6 +640,12 @@ export interface Schedule {
  */
 export interface ScheduleRef {
   ref: 'workHours'
+}
+/**
+ * Softer limits on weekends, chosen by the user (SEMANTICS.md §6.4). Absent means off. When enabled, a bedtime window that starts on a Friday or Saturday asks for an intention instead of blocking, and on Saturdays and Sundays (local dates) a `block` or `hide-feed` rule on a short-video surface asks for an intention instead. Turning it on is loosening (waits, §8); turning it off is tightening.
+ */
+export interface RelaxedWeekends {
+  enabled: boolean
 }
 export interface CandidatesWhen {
   target: Observation
@@ -1039,6 +1047,10 @@ export interface Surface {
   id: SurfaceId
   family: string
   kind: SurfaceKind
+  /**
+   * A short-video surface (Reels, Shorts). Relaxed weekends (SEMANTICS.md §6.4) turn its `block` and `hide-feed` rules into friction on Saturdays and Sundays. Absent means false.
+   */
+  shortVideo?: boolean
 }
 /**
  * One `normalizeUrl(urlText, siteProfiles)` case (SEMANTICS.md §2).
