@@ -120,6 +120,11 @@ export function setBedtime(ruleset: Ruleset, bedtime: Bedtime): Ruleset {
   return { ...ruleset, bedtime }
 }
 
+/** Relaxed weekends (SEMANTICS.md §6.4); turning it on waits like any loosening change. */
+export function setRelaxedWeekends(ruleset: Ruleset, enabled: boolean): Ruleset {
+  return { ...ruleset, relaxedWeekends: { enabled } }
+}
+
 export function setWorkHours(ruleset: Ruleset, workHours: Schedule): Ruleset {
   return { ...ruleset, workHours }
 }

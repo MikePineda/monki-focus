@@ -36,7 +36,7 @@ import type { BypassEventPayload, IntentionEntryKind } from '../storage/db'
 import type { BypassRecord } from './BypassRecorder'
 import type { EscalationStore } from './EscalationStore'
 import type { GateDiagnosticCode } from './GateDiagnostics'
-import { groupOf } from './GateGroup'
+import { BEDTIME_GROUP, groupOf } from './GateGroup'
 import type { GateTabs } from './GateTabs'
 import type { GateTicket } from './GateTicket'
 import type { IntentionNotes } from './IntentionNotes'
@@ -628,11 +628,20 @@ export class GateController {
   private async visit(destination: string, group: string): Promise<EscalationState> {
     const now = this.now()
     const ruleset = await this.options.rulesets.load()
-    const winner = ruleset.rules.find((rule) => rule.id === group)
+    // The relaxed-weekend bedtime gate is its own group, shared with no rule (§6.4).
+    const bedtime = group === BEDTIME_GROUP
+    const winner = bedtime ? { id: BEDTIME_GROUP } : ruleset.rules.find((rule) => rule.id === group)
     const own = await this.options.escalation.get(group)
     if (!winner) return own
     const ids = new Set(
-      frictionCandidates(ruleset, { kind: 'site', urlText: destination }, now, this.options.catalog)
+      bedtime
+        ? []
+        : frictionCandidates(
+            ruleset,
+            { kind: 'site', urlText: destination },
+            now,
+            this.options.catalog
+          )
     )
     const effective = effectiveEscalationState(
       winner,

@@ -8,7 +8,7 @@ import { Checkbox } from '../../ui/Checkbox'
 import { Icon } from '../../ui/Icon'
 import { InputField } from '../../ui/InputField'
 import { WeekdayPicker } from '../../ui/WeekdayPicker'
-import { setBedtime, setWorkHours } from './RulesetEdits'
+import { setBedtime, setRelaxedWeekends, setWorkHours } from './RulesetEdits'
 
 export interface ScheduleSettingsProps {
   ruleset: Ruleset
@@ -20,6 +20,9 @@ export function ScheduleSettings({ ruleset, onPropose }: ScheduleSettingsProps) 
   const { t } = useI18n()
   const [bedtime, setBedtimeDraft] = useState<Bedtime>(ruleset.bedtime)
   const [workHours, setWorkHoursDraft] = useState<Schedule>(ruleset.workHours)
+  const [relaxedWeekends, setRelaxedWeekendsDraft] = useState<boolean>(
+    ruleset.relaxedWeekends?.enabled ?? false
+  )
 
   return (
     <>
@@ -28,7 +31,7 @@ export function ScheduleSettings({ ruleset, onPropose }: ScheduleSettingsProps) 
         aria-labelledby="options-bedtime"
         onSubmit={(event) => {
           event.preventDefault()
-          void onPropose(setBedtime(ruleset, bedtime))
+          void onPropose(setRelaxedWeekends(setBedtime(ruleset, bedtime), relaxedWeekends))
         }}
       >
         <h3 id="options-bedtime" class="options__subheading">
@@ -59,6 +62,12 @@ export function ScheduleSettings({ ruleset, onPropose }: ScheduleSettingsProps) 
           label={t('rules.bedtime.days')}
           value={bedtime.days}
           onChange={(days) => setBedtimeDraft({ ...bedtime, days })}
+        />
+        <Checkbox
+          label={t('rules.bedtime.relaxedWeekends')}
+          description={t('rules.bedtime.relaxedWeekendsBody')}
+          checked={relaxedWeekends}
+          onChange={setRelaxedWeekendsDraft}
         />
         <div class="options__actions">
           <Button variant="ink" type="submit">

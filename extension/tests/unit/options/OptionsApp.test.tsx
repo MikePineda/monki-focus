@@ -235,6 +235,18 @@ describe('options: rules', () => {
     ).toBeInTheDocument()
   })
 
+  it('turning_on_relaxed_weekends_waits_until_the_change_takes_effect', async () => {
+    await renderOptions()
+
+    await userEvent.click(
+      await screen.findByRole('checkbox', { name: en['rules.bedtime.relaxedWeekends'] })
+    )
+    await userEvent.click(screen.getByRole('button', { name: en['rules.bedtime.save'] }))
+
+    expect(await screen.findByText(en['rules.pending.relaxed_weekends'])).toBeInTheDocument()
+    expect((await storedEffective()).relaxedWeekends?.enabled ?? false).toBe(false)
+  })
+
   it('bedtime_turned_off_waits_until_the_change_takes_effect', async () => {
     await renderOptions()
 

@@ -7,6 +7,7 @@ import {
   parseDomainInput,
   parseSubredditName,
   removeCategory,
+  setRelaxedWeekends,
   setDomainCategory,
 } from '../../../src/options/rules/RulesetEdits'
 import { pendingChanges, pendingRuleIds } from '../../../src/options/rules/PendingChanges'
@@ -14,6 +15,20 @@ import { validateRuleset } from '../../../src/shared/RulesetValidation'
 import { makeRule, makeRuleset } from '../../factories/makeRuleset'
 
 describe('RulesetEdits', () => {
+  it('relaxed_weekends_toggle_sets_the_ruleset_option', () => {
+    const on = setRelaxedWeekends(makeRuleset(), true)
+
+    expect(on.relaxedWeekends).toEqual({ enabled: true })
+    expect(validateRuleset(on)).toEqual({ valid: true })
+    expect(pendingChanges(on, setRelaxedWeekends(on, false))).toEqual([
+      { kind: 'relaxed_weekends' },
+    ])
+  })
+
+  it('an_absent_relaxed_weekends_option_equals_off', () => {
+    expect(pendingChanges(makeRuleset(), setRelaxedWeekends(makeRuleset(), false))).toEqual([])
+  })
+
   it.each([
     ['r/AskScience', 'AskScience'],
     ['/r/AskScience/', 'AskScience'],
