@@ -17,7 +17,9 @@ import dev.monkifocus.android.service.accessibility.ui.OverlayScreen
  * risk 2), launched by the service when the overlay cannot be trusted with
  * the IME. Not exported, own task affinity, no recents entry. It shows what
  * the service posts on the [GateRelay] and finishes when the service posts
- * nothing; system BACK is Close, so it never traps the user.
+ * nothing; system BACK is Close, so it never traps the user (once the
+ * service posted nothing, BACK only finishes it, so the BACK of "Go back"
+ * never turns into Close and HOME).
  *
  * It tells the relay when it is really on screen: leaving it (HOME, another
  * app) resets the relay in [onStop], so reopening the watched app launches
@@ -33,7 +35,8 @@ class GateActivity : ComponentActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    relay.act(UserAction.Close)
+                    // Nothing posted: the service took the screen down ("Go back" fires its BACK after us), so only finish.
+                    if (relay.content.value == null) finish() else relay.act(UserAction.Close)
                 }
             },
         )

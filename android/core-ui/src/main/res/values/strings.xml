@@ -73,6 +73,7 @@
     <string name="gate_another_site_label">Web address or search</string>
     <string name="gate_another_site_placeholder">example.com</string>
     <string name="gate_another_site_hint">Opens in this browser. Blocked sites stay blocked.</string>
+    <string name="gate_another_site_search_unavailable">This browser can’t search from here. Type a web address, like example.com.</string>
     <string name="gate_another_site_go">Go</string>
     <string name="gate_another_site_cancel">Cancel</string>
 

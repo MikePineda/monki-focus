@@ -7,7 +7,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -23,9 +22,12 @@ import dev.monkifocus.android.core.ui.components.MonkiTextField
 /**
  * "Go to another site" from a blocked or gated page: one field for a web
  * address or words to search, Go (enabled once something is typed), Cancel
- * back to the gate, and Close. The draft lives only in this screen; the
- * service checks a typed address with the engine before it is opened in
- * the same browser, so a blocked one shows its block instead.
+ * back to the gate, and Close. The draft lives only in this composition
+ * (`remember`, never saved instance state); the service checks a typed
+ * address with the engine before it is opened in the same browser, so a
+ * blocked one shows its block instead. With [searchUnavailable] (the
+ * browser takes no search intent) the helper asks for a web address, the
+ * way out that always works.
  */
 @Composable
 fun AnotherSiteScreen(
@@ -33,8 +35,9 @@ fun AnotherSiteScreen(
     onCancel: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    searchUnavailable: Boolean = false,
 ) {
-    var address by rememberSaveable { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
     val canGo = address.isNotBlank()
     val go = { if (canGo) onGo(address.trim()) }
     val focusRequester = remember { FocusRequester() }
@@ -50,9 +53,11 @@ fun AnotherSiteScreen(
             onValueChange = { address = it },
             label = stringResource(R.string.gate_another_site_label),
             placeholder = stringResource(R.string.gate_another_site_placeholder),
-            helper = stringResource(R.string.gate_another_site_hint),
+            helper =
+                stringResource(if (searchUnavailable) R.string.gate_another_site_search_unavailable else R.string.gate_another_site_hint),
             counter = "",
             fieldModifier = Modifier.focusRequester(focusRequester).testTag(GateTestTags.ADDRESS),
+            helperEmphasised = searchUnavailable,
             address = true,
             onDone = go,
         )

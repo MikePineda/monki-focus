@@ -2,6 +2,7 @@
 package dev.monkifocus.android.service.accessibility.pipeline
 
 import dev.monkifocus.android.core.domain.rules.EscalationPhase
+import dev.monkifocus.android.core.domain.rules.ExplanationKey
 import dev.monkifocus.android.core.domain.rules.RuleMode
 import dev.monkifocus.android.feature.gate.state.GateUiState
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
@@ -53,7 +54,7 @@ class EventPipelineAnotherSiteTest {
         h.act(UserAction.GoTo("weather.example"))
 
         assertEquals(
-            listOf(Call.Clear, Call.Open(CHROME, TypedAddress.Web("https://weather.example", "weather.example"))),
+            listOf(Call.Open(CHROME, TypedAddress.Web("https://weather.example", "weather.example")), Call.Clear),
             h.performer.take(),
         )
         h.opened(browserScreen("https://weather.example/"))
@@ -98,7 +99,92 @@ class EventPipelineAnotherSiteTest {
 
         h.act(UserAction.GoTo("weather today"))
 
-        assertEquals(listOf(Call.Clear, Call.Open(CHROME, TypedAddress.Search("weather today"))), h.performer.take())
+        assertEquals(listOf(Call.Open(CHROME, TypedAddress.Search("weather today")), Call.Clear), h.performer.take())
+    }
+
+    @Test
+    fun a_search_the_browser_cannot_take_fires_nothing_and_asks_for_a_web_address() {
+        val h = PipelineHarness(redditBlock)
+        h.opened(reddit)
+        h.act(UserAction.AnotherSite)
+        h.performer.opens = false
+        h.performer.take()
+
+        h.act(UserAction.GoTo("weather today"))
+
+        assertTrue("no intent fired, no overlay removed", h.performer.calls.none { it is Call.Open || it == Call.Clear })
+        assertTrue(h.gate.typingAddress)
+        assertTrue(h.gate.addressUnopened)
+        assertEquals("the gate is not left", EscalationPhase.IDLE, h.phaseOf("reddit"))
+        h.performer.opens = true
+        h.act(UserAction.GoTo("weather.example"))
+        assertTrue("a web address still opens", h.performer.calls.any { it is Call.Open })
+        assertNull(h.showing)
+    }
+
+    @Test
+    fun an_upper_case_address_with_a_trailing_dot_of_a_blocked_site_is_still_blocked() {
+        val h = PipelineHarness(redditBlock)
+        h.opened(reddit)
+        h.act(UserAction.AnotherSite)
+        h.performer.take()
+
+        h.act(UserAction.GoTo("HTTPS://WWW.REDDIT.COM."))
+
+        assertTrue(h.performer.calls.none { it is Call.Open })
+        assertEquals("reddit.com", (h.gate.state as GateUiState.Blocked).targetLabel)
+    }
+
+    @Test
+    fun the_prompt_offers_go_back_and_another_site() {
+        val h = PipelineHarness(redditFriction)
+        h.opened(reddit)
+        repeat(5) { h.tick(foreground = CHROME) }
+        assertTrue(h.gate.state is GateUiState.Asking)
+        assertTrue(h.gate.offersAnotherSite)
+        h.performer.take()
+
+        h.act(UserAction.GoBack)
+
+        assertEquals(listOf(Call.Clear, Call.Back), h.performer.take())
+        h.opened(reddit)
+        repeat(15) { h.tick(foreground = CHROME) }
+        h.act(UserAction.AnotherSite)
+        h.act(UserAction.GoTo("weather.example"))
+        assertTrue(h.performer.calls.any { it is Call.Open })
+    }
+
+    @Test
+    fun the_timeout_card_offers_go_back_and_another_site() {
+        val h = PipelineHarness(redditFriction)
+        h.opened(reddit)
+        repeat(5) { h.tick(foreground = CHROME) }
+        h.act(UserAction.Continue("", 5))
+        h.tick(foreground = CHROME, screen = reddit, afterMs = 5 * 60_000L)
+        assertTrue(h.gate.state is GateUiState.Timeout)
+        assertTrue(h.gate.offersAnotherSite)
+
+        h.act(UserAction.AnotherSite)
+        h.performer.take()
+        h.act(UserAction.GoTo("weather.example"))
+
+        assertEquals(
+            listOf(Call.Open(CHROME, TypedAddress.Web("https://weather.example", "weather.example")), Call.Clear),
+            h.performer.take(),
+        )
+        assertEquals("going elsewhere from the timeout is leaving", EscalationPhase.IDLE, h.phaseOf("reddit"))
+    }
+
+    @Test
+    fun close_reaching_a_closing_gate_activity_after_go_back_does_not_go_home() {
+        val h = PipelineHarness(redditBlock)
+        h.opened(reddit)
+        h.act(UserAction.GoBack)
+        h.performer.take()
+
+        h.act(UserAction.Close)
+
+        assertEquals(emptyList<Call>(), h.performer.take())
     }
 
     @Test
@@ -190,8 +276,7 @@ class EventPipelineAnotherSiteTest {
         h.opened(blankScreen(INSTAGRAM))
 
         assertFalse(h.gate.offersAnotherSite)
-        h.act(UserAction.GoTo("weather.example"))
-        assertTrue(h.performer.calls.none { it is Call.Open })
+        assertWayOutRejected(h)
     }
 
     @Test
@@ -202,6 +287,7 @@ class EventPipelineAnotherSiteTest {
 
         assertTrue(h.gate.state is GateUiState.BedtimeCover)
         assertFalse(h.gate.offersAnotherSite)
+        assertWayOutRejected(h)
     }
 
     @Test
@@ -210,8 +296,9 @@ class EventPipelineAnotherSiteTest {
 
         h.opened(reddit)
 
-        assertTrue(h.gate.state is GateUiState.Blocked)
+        assertEquals(ExplanationKey.ENGINE_ERROR, (h.gate.state as GateUiState.Blocked).explanationKey)
         assertFalse(h.gate.offersAnotherSite)
+        assertWayOutRejected(h)
     }
 
     @Test
@@ -223,6 +310,20 @@ class EventPipelineAnotherSiteTest {
 
         assertTrue(h.gate.state is GateUiState.EmergencyWait)
         assertFalse(h.gate.offersAnotherSite)
+        assertWayOutRejected(h)
+    }
+
+    /** "Go to another site", "Go" and "Go back" sent where they are not offered change nothing. */
+    private fun assertWayOutRejected(h: PipelineHarness) {
+        val before = h.showing
+        h.performer.take()
+
+        h.act(UserAction.AnotherSite)
+        h.act(UserAction.GoTo("weather.example"))
+        h.act(UserAction.GoBack)
+
+        assertEquals(emptyList<Call>(), h.performer.take())
+        assertEquals(before, h.showing)
     }
 
     @Test

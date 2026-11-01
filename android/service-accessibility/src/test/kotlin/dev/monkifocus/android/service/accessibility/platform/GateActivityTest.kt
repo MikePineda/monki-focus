@@ -4,6 +4,8 @@ package dev.monkifocus.android.service.accessibility.platform
 import androidx.test.core.app.ApplicationProvider
 import dev.monkifocus.android.feature.gate.state.GateUiState
 import dev.monkifocus.android.service.accessibility.action.OverlayContent
+import dev.monkifocus.android.service.accessibility.pipeline.UserAction
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -51,5 +53,34 @@ class GateActivityTest {
 
         assertFalse(relay.activityVisible)
         assertNull(relay.content.value)
+    }
+
+    @Test
+    fun system_back_on_a_shown_gate_is_close() {
+        val actions = mutableListOf<UserAction>()
+        relay.onAction = { actions += it }
+        relay.post(prompt)
+        val activity = Robolectric.buildActivity(GateActivity::class.java).setup()
+
+        activity.get().onBackPressedDispatcher.onBackPressed()
+
+        assertEquals(listOf<UserAction>(UserAction.Close), actions)
+        relay.onAction = null
+    }
+
+    @Test
+    fun the_back_of_go_back_reaching_the_closing_activity_only_finishes_it_never_close() {
+        val actions = mutableListOf<UserAction>()
+        relay.onAction = { actions += it }
+        relay.post(prompt.copy(offersAnotherSite = true))
+        val activity = Robolectric.buildActivity(GateActivity::class.java).setup()
+
+        // "Go back": the service takes the screen down, then its BACK arrives here.
+        relay.post(null)
+        activity.get().onBackPressedDispatcher.onBackPressed()
+
+        assertEquals(emptyList<UserAction>(), actions)
+        assertTrue(activity.get().isFinishing)
+        relay.onAction = null
     }
 }
