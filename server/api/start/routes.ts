@@ -15,7 +15,7 @@
 |     device tokens (`auth` with the `device` guard only), `X-Client-Version`
 |     gate (426 for old clients), no session, no CSRF, contract errors
 |     `{ code, fields? }`. Enrolment, heartbeat, bypass events and token
-|     rotation (S4); unlock requests land with S6.
+|     rotation (S4); unlock requests, their long-poll and token telemetry (S6).
 |   - /api/v1/auth/*: login (two steps with TOTP), register, logout, me.
 |   - /api/v1/me/*: the signed-in user's profile, password, two-factor,
 |     export and deletion.
@@ -24,6 +24,9 @@
 |     sides), the ntfy subscription, and a ward's summary for a guardian
 |     (only through an active link). /api/v1/auth/register-guardian is the
 |     one sign-up open while REGISTRATION_OPEN is off (a pairing code).
+|   - /api/v1/unlock-requests: the signed-in user's own unlock history.
+|   - /api/v1/actions/:token: ntfy action buttons, the single-use token is
+|     the credential (no session, no CSRF); GET only renders a confirmation.
 |   - /api/v1/admin/*: admins only; anyone else gets the 404 of an
 |     unknown route.
 |   Only these dashboard groups get the named `session` and `shield`
@@ -60,6 +63,12 @@ const GuardianRegistrationsController = () =>
   import('#controllers/guardian_registrations_controller')
 const GuardianLinksController = () => import('#controllers/guardian_links_controller')
 const GuardianWardsController = () => import('#controllers/guardian_wards_controller')
+const DeviceUnlockRequestsController = () =>
+  import('#controllers/device_unlock_requests_controller')
+const GuardianUnlockRequestsController = () =>
+  import('#controllers/guardian_unlock_requests_controller')
+const UnlockRequestsController = () => import('#controllers/unlock_requests_controller')
+const UnlockActionsController = () => import('#controllers/unlock_actions_controller')
 
 router
   .group(() => {
@@ -85,7 +94,21 @@ router
                   .post('bypass-events', [DeviceApiController, 'bypassEvents'])
                   .as('bypass_events')
                 router.post('token/rotate', [DeviceApiController, 'rotateToken']).as('token.rotate')
-                // Unlock requests land with S6.
+                router
+                  .post('unlock-requests', [DeviceUnlockRequestsController, 'store'])
+                  .as('unlock_requests.store')
+                router
+                  .get('unlock-requests/:uuid', [DeviceUnlockRequestsController, 'show'])
+                  .where('uuid', router.matchers.uuid())
+                  .as('unlock_requests.show')
+                router
+                  .delete('unlock-requests/:uuid', [DeviceUnlockRequestsController, 'destroy'])
+                  .where('uuid', router.matchers.uuid())
+                  .as('unlock_requests.destroy')
+                router
+                  .post('unlock-tokens/:jti/consumed', [DeviceUnlockRequestsController, 'consumed'])
+                  .where('jti', router.matchers.uuid())
+                  .as('unlock_tokens.consumed')
               })
               .use(middleware.auth({ guards: ['device'] }))
           })
@@ -204,6 +227,17 @@ router
               .get('wards/:wardUserId/summary', [GuardianWardsController, 'summary'])
               .where('wardUserId', router.matchers.number())
               .as('wards.summary')
+            router
+              .get('unlock-requests', [GuardianUnlockRequestsController, 'index'])
+              .as('unlock_requests.index')
+            router
+              .post('unlock-requests/:uuid/approve', [GuardianUnlockRequestsController, 'approve'])
+              .where('uuid', router.matchers.uuid())
+              .as('unlock_requests.approve')
+            router
+              .post('unlock-requests/:uuid/deny', [GuardianUnlockRequestsController, 'deny'])
+              .where('uuid', router.matchers.uuid())
+              .as('unlock_requests.deny')
           })
           .prefix('guardian')
           .as('guardian')
@@ -213,6 +247,25 @@ router
             middleware.auth(),
             middleware.userLocale(),
           ])
+
+        router
+          .get('unlock-requests', [UnlockRequestsController, 'index'])
+          .as('unlock_requests.index')
+          .use([
+            middleware.session(),
+            middleware.shield(),
+            middleware.auth(),
+            middleware.userLocale(),
+          ])
+
+        // ntfy action buttons: the token is the credential (no session, no CSRF, POST only decides).
+        router
+          .group(() => {
+            router.post(':token', [UnlockActionsController, 'decide']).as('decide')
+            router.get(':token', [UnlockActionsController, 'confirm']).as('confirm')
+          })
+          .prefix('actions')
+          .as('actions')
 
         router
           .group(() => {
