@@ -28,6 +28,7 @@ node_bin=''
 node_status='FAILED'
 dependencies_status='FAILED'
 services_status='FAILED'
+git_hooks_status='FAILED'
 android_status='absent'
 
 (umask 077 && : >>"$log") 2>/dev/null || log=/dev/null
@@ -152,12 +153,24 @@ install_browser() {
   (cd extension && log_step timeout 180 npx --no-install playwright install chromium)
 }
 
+# `npm ci --ignore-scripts` skips the `prepare` script, so this is the only install
+# of the commit and pre-push hooks. It is checked on its own, not behind the
+# fingerprint, so a failure is retried by the next start without reinstalling.
+ensure_git_hooks() {
+  local pre_push
+  pre_push="$(git -c safe.directory="$repo" rev-parse --git-path hooks/pre-push 2>/dev/null)"
+  if { [ -n "$pre_push" ] && [ -f "$pre_push" ]; } || log_step npx --no-install lefthook install; then
+    git_hooks_status='installed'
+  fi
+}
+
 step_dependencies() {
   [ -n "$node_bin" ] || return 0
   local fingerprint
   fingerprint="$(dependencies_fingerprint)"
   if [ -n "$fingerprint" ] && [ "$fingerprint" = "$(cat "$hash_file" 2>/dev/null)" ]; then
     dependencies_status='up to date'
+    ensure_git_hooks
     return 0
   fi
   rm -f "$hash_file"
@@ -167,7 +180,7 @@ step_dependencies() {
   mkdir -p node_modules
   printf '%s\n' "$fingerprint" >"$hash_file"
   dependencies_status='installed'
-  log_step npx --no-install lefthook install
+  ensure_git_hooks
   install_browser
 }
 
@@ -449,6 +462,7 @@ print_summary() {
     echo 'cloud session setup:'
     echo "node: $node_status"
     echo "dependencies: $dependencies_status"
+    echo "git hooks: $git_hooks_status"
     echo "services: $services_status"
     echo "android sdk: $android_status"
     echo "log: $log"

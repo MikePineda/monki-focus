@@ -55,7 +55,11 @@ npx)
   printf 'npx-cwd %s %s\n' "${PWD##*/}" "$*" >>"$state/calls"
   case "$*" in
   *playwright*) fails_if "${FAKE_ALL_FAIL:-}${FAKE_PLAYWRIGHT_FAIL:-}" ;;
-  *lefthook*) fails_if "${FAKE_ALL_FAIL:-}${FAKE_LEFTHOOK_FAIL:-}" ;;
+  *lefthook*)
+    fails_if "${FAKE_ALL_FAIL:-}${FAKE_LEFTHOOK_FAIL:-}"
+    mkdir -p .git/hooks
+    : >.git/hooks/pre-push
+    ;;
   esac
   ;;
 docker)
@@ -444,6 +448,18 @@ installs_git_hooks_and_the_browser_after_a_successful_install() {
   called "npx-cwd extension --no-install playwright install chromium"
 }
 
+a_failed_git_hook_install_is_reported_and_retried() {
+  run_setup FAKE_LEFTHOOK_FAIL=1
+  expect_exit_zero
+  has "$stdout" 'dependencies: installed'
+  has "$stdout" 'git hooks: FAILED'
+  forget_calls
+  run_setup
+  never_called 'npm ci'
+  called "npx-cwd repo --no-install lefthook install"
+  has "$stdout" 'git hooks: installed'
+}
+
 a_failed_browser_download_does_not_fail_the_install() {
   run_setup FAKE_PLAYWRIGHT_FAIL=1
   expect_exit_zero
@@ -748,6 +764,7 @@ for name in \
   refuses_to_install_with_an_npm_too_old_for_the_scripts_policy \
   does_not_install_when_node_is_unavailable \
   installs_git_hooks_and_the_browser_after_a_successful_install \
+  a_failed_git_hook_install_is_reported_and_retried \
   a_failed_browser_download_does_not_fail_the_install \
   starts_the_test_services_with_docker_compose \
   starts_the_docker_service_when_the_daemon_is_down \
