@@ -2,9 +2,10 @@
 #
 # Required check `commitlint`: every commit of the pull request follows
 # Conventional Commits with a DCO `Signed-off-by:` trailer
-# (commitlint.config.mjs). The pull request title is linted too, because the
-# squash merge (the only merge method) turns it into the commit release-please
-# reads.
+# (commitlint.config.mjs). `main` accepts rebase merges only, so these commits
+# land as written and are what release-please reads. The pull request title
+# never becomes a commit; it is linted to keep titles in the same format, and
+# for Dependabot, whose commits are not linted, it is the only check.
 name: commitlint
 
 on:
@@ -39,8 +40,11 @@ jobs:
 
       - run: npm ci --ignore-scripts
 
+      - name: Specification of the commitlint configs
+        run: bash scripts/ci/commitlint-test.sh
+
       # Dependabot commits carry no DCO sign-off and a generated body; their
-      # PR title (`build(deps): bump …`) is still linted below.
+      # PR title (`build(deps): Bump …`) is still linted below.
       - name: Lint every commit of the pull request
         if: github.event.pull_request.user.login != 'dependabot[bot]'
         env:
@@ -48,14 +52,16 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: npx --no-install commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
 
-      # The title alone carries no trailer: the squash commit gets the
-      # sign-offs from the commit bodies, so only `trailer-exists` is relaxed.
+      # A title has no trailers (commitlint.title.config.mjs). Only pull requests
+      # opened by Dependabot may also capitalise the subject
+      # (commitlint.dependabot.config.mjs); everything else keeps the full rules.
       - name: Lint the pull request title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
-          cat > .commitlint-title.config.mjs <<'EOF'
-          import base from './commitlint.config.mjs'
-          export default { ...base, rules: { ...base.rules, 'trailer-exists': [0] } }
-          EOF
-          printf '%s\n' "$PR_TITLE" | npx --no-install commitlint --config .commitlint-title.config.mjs --verbose
+          config=commitlint.title.config.mjs
+          if [[ "$PR_AUTHOR" == 'dependabot[bot]' ]]; then
+            config=commitlint.dependabot.config.mjs
+          fi
+          printf '%s\n' "$PR_TITLE" | npx --no-install commitlint --config "$config" --verbose

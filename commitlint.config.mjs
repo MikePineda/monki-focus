@@ -9,7 +9,7 @@
 export default {
   extends: ['@commitlint/config-conventional'],
   // No message is exempt: the commitlint workflow skips per-commit linting
-  // for Dependabot PRs and lints their squash title instead.
+  // for Dependabot PRs and lints their title instead.
   defaultIgnores: false,
   rules: {
     'type-enum': [
@@ -46,6 +46,8 @@ export default {
         'e2e',
         'ci',
         'deps',
+        // Dependabot's scope for updates that touch only dev dependencies.
+        'deps-dev',
         'docs',
         'repo',
         'security',
