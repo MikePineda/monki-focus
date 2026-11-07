@@ -114,7 +114,8 @@ gh api --method PUT -H "Accept: application/vnd.github+json" \
 
 Repository settings this relies on: CodeQL **default setup off** (the
 advanced `codeql.yml` replaces it), secret scanning with push protection on,
-and Actions "Read repository contents" as the default token permission.
+Dependabot alerts and security updates on, and Actions "Read repository
+contents" as the default token permission.
 
 **Residual risk (single maintainer).** On a pull request, `ci.yml`,
 `scripts/ci/*` (component detection, the privacy check) and
@@ -127,14 +128,20 @@ enforced and these files rely on careful review. Turn on
 
 ### Environments and secrets
 
-| Environment      | Deployment branches | Reviewer                      | Used by                                             |
-| ---------------- | ------------------- | ----------------------------- | --------------------------------------------------- |
-| `release-please` | `main` only         | none                          | the `release-please` job (holds its token)          |
-| `release`        | `main` only         | **required** (the maintainer) | every `*-publish` job: signing, attestation, upload |
+| Environment      | Deployment branches | Reviewer | Used by                                             |
+| ---------------- | ------------------- | -------- | --------------------------------------------------- |
+| `release-please` | `main` only         | none     | the `release-please` job (holds its token)          |
+| `release`        | `main` only         | none     | every `*-publish` job: signing, attestation, upload |
 
-"Prevent self-review" stays off for a single-maintainer repo. Release jobs run
-on the push to `main`, build `$GITHUB_SHA` and fail unless the release tag
-points at it (`scripts/ci/assert-release-tag.sh`).
+Release jobs run on the push to `main`, build `$GITHUB_SHA` and fail unless the
+release tag points at it (`scripts/ci/assert-release-tag.sh`).
+
+**Residual risk (no release reviewer).** The maintainer chose to let agents merge
+and release without an approval step for now (`CLAUDE.md`, "Delivery"), so a
+merged release PR signs and publishes on its own, and a bad change that passes
+the automatic checks reaches users with no person reading it first. Add the
+maintainer as required reviewer of `release`, with "Prevent self-review" off,
+before the first public store release (phase 6).
 
 | Secret                      | Where                | What                                                                                                              |
 | --------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------- |
@@ -186,8 +193,8 @@ Notes:
 
 - Release PRs are titled `chore(repo): release <component> X.Y.Z` and their
   commit carries a `Signed-off-by:` line (`signoff` in the config), so they
-  pass `commitlint`. Squash-merge them; never edit the `CHANGELOG.md` files
-  by hand.
+  pass `commitlint`. Rebase-merge them, the only method `main` accepts; never
+  edit the `CHANGELOG.md` files by hand.
 - `packages/protocol` ships with the server and the clients, not on its own.
   Its GitHub Release is a draft with `force-tag-creation`, so the tag exists
   and release-please keeps working. `skip-github-release` is deliberately not
@@ -221,9 +228,18 @@ sha256sum --check SHA256SUMS
 
 ## Server operations
 
+### How a deploy happens
+
+CI never deploys. The maintainer's instance is redeployed by its deploy panel,
+which watches `main` and rebuilds when a merge touches `server/`, the shared
+packages the server ships, `Dockerfile`, `docker/` or the root `package*.json`.
+So merging is deploying, and no GitHub step is involved. Confirm it with
+`GET /api/health`: `status` must be `ok` and `sha` the merged commit. Roll back
+with a revert PR; migrations are additive, so older code keeps working.
+Self-hosters run the GHCR image from a server release instead.
+
 To be written with work package S9:
 
-- deploy and rollback;
 - environment variables and secrets;
 - signing-key rotation (see [Signing keys](#signing-keys) below);
 - ntfy configuration and topic rotation;
