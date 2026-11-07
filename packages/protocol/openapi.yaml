@@ -42,6 +42,7 @@ tags:
   - name: unlocks
   - name: bypass-events
   - name: rule-sets
+  - name: activity
 paths:
   /keys:
     get:
@@ -210,6 +211,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BypassEventBatchResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationFailed'
+        '426':
+          $ref: '#/components/responses/UpgradeRequired'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /device/activity-blocks:
+    post:
+      operationId: reportActivityBlocks
+      tags: [activity]
+      summary: Report a batch of 5-minute activity blocks (idempotent)
+      description: |
+        The `ActivityBlock` of `@monki-focus/rules` (SEMANTICS.md §10.6)
+        without `deviceId`, which the token names. At most 500 blocks per
+        batch, 120 batches per hour per device. A block is identified by
+        (device, `blockStart`, `source`, `activityKey`, `categoryPath`); a
+        re-sent block replaces its `level` and `seconds`, so re-sending a
+        batch adds no rows. `accepted` counts new blocks, `updated` the ones
+        replaced. `activityKey` is a normalised domain or app id (or null
+        when key sync is off), never a URL, a path or a title; validation
+        errors name the field and the rule, never the value.
+      parameters:
+        - $ref: '#/components/parameters/ClientVersion'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityBlockBatch'
+      responses:
+        '200':
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityBlockBatchResult'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '422':
@@ -961,6 +1000,55 @@ components:
           type: integer
           minimum: 0
         duplicates:
+          type: integer
+          minimum: 0
+    ActivityBlock:
+      type: object
+      additionalProperties: false
+      required: [blockStart, activityKey, categoryPath, level, source, seconds]
+      properties:
+        blockStart:
+          description: UTC, aligned to a multiple of 5 minutes.
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-5][05]:00Z$'
+        activityKey:
+          description: Normalised domain or app id; null when key sync is off. Never a URL, path or title.
+          type: [string, 'null']
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$'
+        categoryPath:
+          type: string
+          maxLength: 96
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*(/[a-z0-9]+(-[a-z0-9]+)*)*$'
+        level:
+          type: integer
+          enum: [0, 25, 50, 75, 100]
+        source:
+          type: string
+          enum: [web, app, android]
+        seconds:
+          type: integer
+          minimum: 1
+          maximum: 300
+    ActivityBlockBatch:
+      type: object
+      additionalProperties: false
+      required: [blocks]
+      properties:
+        blocks:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/ActivityBlock'
+    ActivityBlockBatchResult:
+      type: object
+      additionalProperties: false
+      required: [accepted, updated]
+      properties:
+        accepted:
+          type: integer
+          minimum: 0
+        updated:
           type: integer
           minimum: 0
     UnlockScope:
