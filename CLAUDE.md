@@ -271,8 +271,11 @@ gh api --method PUT "repos/{owner}/{repo}/pulls/$PR/merge" -f merge_method=rebas
    `main` moved, because required checks don't demand an up-to-date branch and
    the deploy panel doesn't wait for CI on `main`. Then all of these must be
    complete and green: `ci`, `commitlint`, `gitleaks` and every CodeQL `analyze`
-   job. The separate `CodeQL` check, which carries the findings, must be complete
-   and not `failure` (`neutral` is fine). An agent's own PR also needs the layers
+   job. The separate `CodeQL` check carries the findings and exists only when a
+   language was analysed. If `gh api "repos/{owner}/{repo}/code-scanning/analyses?ref=refs/pull/$PR/merge"`
+   lists a CodeQL analysis, the check must be complete and not `failure` (`neutral`
+   is fine). With none, as on a docs-only PR, no check is expected and its absence
+   isn't a skipped gate. An agent's own PR also needs the layers
    above that apply. Release and Dependabot PRs get no push and no local run: CI
    stands in, and to update one, comment `@dependabot rebase` or wait for
    release-please. `e2e`, `extension-e2e` and `android-instrumented` are advisory,
