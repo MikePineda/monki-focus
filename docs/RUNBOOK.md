@@ -123,7 +123,9 @@ contents" as the default token permission.
 check that judges it; only gitleaks reads its config from the base commit.
 `.github/CODEOWNERS` lists these files explicitly, but with one maintainer a
 required code-owner review would block every self-merge, so it is not
-enforced and these files rely on careful review. Turn on
+enforced. A read-only reviewer subagent checks these files instead (`CLAUDE.md`,
+"Delivery"), which is a rule agents follow rather than something GitHub enforces.
+Turn on
 `require_code_owner_review` in `main.json` once a second maintainer exists.
 
 ### Environments and secrets
@@ -234,8 +236,9 @@ CI never deploys. The maintainer's instance is redeployed by its deploy panel,
 which watches `main` and rebuilds when a merge touches `server/`, the shared
 packages the server ships, `Dockerfile`, `docker/` or the root `package*.json`.
 So merging is deploying, and no GitHub step is involved. Confirm it with
-`GET /api/health`: `status` must be `ok` and `sha` the merged commit. Roll back
-with a revert PR; migrations are additive, so older code keeps working.
+`GET /api/health`: `status` must be `ok` or `warning` and `sha` the merged commit
+or a later one. Roll back with a revert PR; migrations are additive, so older
+code keeps working.
 Self-hosters run the GHCR image from a server release instead.
 
 To be written with work package S9:
