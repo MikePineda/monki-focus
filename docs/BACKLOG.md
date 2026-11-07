@@ -44,3 +44,8 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-11-01 Facebook: scope the Reel entry-point selectors (`[role="feed"] > div:has(a[href^="/reel/"])`, `[role="article"]:has(...)`) to home and watch so group posts that share a reel stay visible.
 - 2026-11-01 Android: a surface-rule picker on the rules screen (like the extension's) so existing installs can add new site rules such as Facebook Reels without importing a rule set.
 - 2026-11-01 macOS: map a rule-less bedtime gate to the `bedtime` group in `AppGatePolicy` (relaxed weekends) and add the toggle with the M8 settings UI.
+- 2026-11-07 Release: add the maintainer as required reviewer of the `release` environment before the first public store release (phase 6); it's off so agents can deliver unattended.
+- 2026-11-07 Server tests: without ntfy the real-ntfy group of `outbox_dispatch.spec.ts` skips silently, so that coverage can vanish with no failure; make it fail in CI when ntfy is expected.
+- 2026-11-07 Android deps: Dependabot's tooling group (AGP 9.5, json-schema-validator 3.x) fails the `android` job and CodeQL's Kotlin analysis; split it or fix the upgrade.
+- 2026-11-07 Security: OSV reports deepmerge (low, no patched version) and minimatch (medium, fixed only in 11.x, which is a major for its transitive parents); revisit when a parent moves or a patch ships.
+- 2026-11-07 Cloud sessions: make `scripts/cloud-setup.sh` retry a failed Playwright browser download, which currently waits for the next lockfile change.
