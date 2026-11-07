@@ -1,6 +1,6 @@
 {
   "name": "@monki-focus/protocol",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "monki-focus device API contract (OpenAPI), PASETO v4.public unlock and policy token reference implementation, schemas and shared test vectors.",
   "license": "AGPL-3.0-or-later",
