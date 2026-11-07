@@ -60,6 +60,8 @@ passes dependabot_chore_prefix_for_dev_dependencies_passes "$dependabot" \
   'chore(deps-dev): Bump wxt from 0.21.4 to 0.21.5 in the extension group'
 passes dependabot_actions_title_passes "$dependabot" \
   'ci(deps): Bump the actions group with 3 updates'
+passes dependabot_long_title_passes "$dependabot" \
+  'build(deps): Bump @example-scope/a-rather-long-package-name from 10.20.30 to 10.20.31 in the tooling group'
 rejects dependabot_title_with_unknown_scope_fails "$dependabot" scope-enum \
   'build(deps-prod): Bump wxt from 0.21.4 to 0.21.5'
 rejects dependabot_title_without_a_type_fails "$dependabot" type-empty \

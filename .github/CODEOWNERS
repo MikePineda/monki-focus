@@ -7,6 +7,8 @@
 /scripts/ci/ @MikePineda
 /.gitleaks.toml @MikePineda
 /commitlint.config.mjs @MikePineda
+/commitlint.title.config.mjs @MikePineda
+/commitlint.dependabot.config.mjs @MikePineda
 /lefthook.yml @MikePineda
 /release-please-config.json @MikePineda
 /.release-please-manifest.json @MikePineda
