@@ -204,8 +204,9 @@ npx --no-install turbo run lint typecheck test build --continue
 npx --no-install turbo run test --filter=@monki-focus/api   # one workspace
 npm run format:check
 
-# Extension E2E (Playwright's Chromium: `npx playwright install chromium` in extension/).
-npm run e2e -w extension
+# Extension E2E, through turbo so it builds the packages the extension imports.
+# Needs Playwright's Chromium: `npx --no-install playwright install chromium` in extension/.
+npx --no-install turbo run e2e --filter=@monki-focus/extension
 
 # Server stack smoke, on its own ephemeral services.
 npx --no-install turbo run build --filter=@monki-focus/api && bash scripts/e2e.sh
