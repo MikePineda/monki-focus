@@ -141,7 +141,9 @@ release tag points at it (`scripts/ci/assert-release-tag.sh`).
 **Residual risk (no release reviewer).** The maintainer chose to let agents merge
 and release without an approval step for now (`CLAUDE.md`, "Delivery"), so a
 merged release PR signs and publishes on its own, and a bad change that passes
-the automatic checks reaches users with no person reading it first. Add the
+the automatic checks reaches users with no person reading it first. Which PRs an
+agent may merge and the up-to-date requirement are rules agents follow; GitHub
+enforces only the required checks and the rebase-only merge. Add the
 maintainer as required reviewer of `release`, with "Prevent self-review" off,
 before the first public store release (phase 6).
 
