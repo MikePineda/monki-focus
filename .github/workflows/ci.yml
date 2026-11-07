@@ -70,6 +70,8 @@ jobs:
               - 'packages/protocol/**'
             tokens: &tokens
               - 'packages/design-tokens/**'
+            analytics: &analytics
+              - 'packages/analytics/**'
             server: &server
               - 'server/**'
               - 'Dockerfile'
@@ -96,6 +98,7 @@ jobs:
               - *engine
               - *protocol
               - *tokens
+              - *analytics
               - *server
               - *extension
               - *root
@@ -122,6 +125,8 @@ jobs:
               - *rules
               - *engine
               - *protocol
+              - *tokens
+              - *analytics
               - *root
 
   node:
