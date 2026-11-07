@@ -185,5 +185,6 @@ Review checklists, by area:
   of payloads; pushes from the app treated as unauthenticated (§3a).
 - **LLM:** no tools; output rendered as text; CSP; source allowlist.
 - **CI:** actions pinned by SHA; `permissions: {}` by default; no
-  `pull_request_target` with a PR checkout; release environments with a
-  reviewer; build attestations.
+  `pull_request_target` with a PR checkout; release environments limited to
+  `main`, with a required reviewer before the first public store release
+  (accepted risk until then, `docs/RUNBOOK.md`); build attestations.

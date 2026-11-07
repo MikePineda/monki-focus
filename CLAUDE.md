@@ -26,9 +26,11 @@ data, screenshots, branch names or commit messages. Use roles: "the user",
 - `docs/internal/` is gitignored and holds private notes with real names.
   Never copy text from it into tracked files without scrubbing it, and never
   `git add -f` anything under it.
-- Before every push, gitleaks and `scripts/ci/privacy-pre-push.sh` run via the
-  lefthook `pre-push` hook (patterns come from a local, gitignored file and
-  from the `PRIVACY_PATTERNS` CI secret — never write them into the repo).
+- Before every push, `scripts/ci/privacy-pre-push.sh` runs via the lefthook
+  `pre-push` hook (patterns come from a local, gitignored file and from the
+  `PRIVACY_PATTERNS` CI secret — never write them into the repo). Without the
+  local file, as in a cloud session, it runs only the generic checks and CI
+  enforces the patterns. gitleaks runs in CI on every pull request.
 
 **Owner Q&A lives in `docs/internal/QA.md` and the plan in
 `docs/internal/PLAN-*.md` plus `docs/internal/plan/` (local-only, gitignored):
@@ -187,9 +189,98 @@ npm run format         # prettier (format:check in CI)
 Today `scripts/verify.mjs` only runs `turbo run lint typecheck test build`;
 component detection and the Android, macOS and E2E layers land in WP 0.7.
 
+Commands for each layer, the same locally and in a cloud session:
+
+```bash
+# Dependencies, as CI does it: only install scripts approved in `allowScripts`.
+npm ci --ignore-scripts && npm rebuild --strict-allow-scripts
+
+# Test services: Postgres 17 on 5443 and ntfy on 8443, matching server/api/.env.test.
+docker compose -f docker-compose.test.yml up -d --wait
+docker compose -f docker-compose.test.yml down -v
+
+# JS and server: lint, typecheck, unit and Japa tests, build.
+npx --no-install turbo run lint typecheck test build --continue
+npx --no-install turbo run test --filter=@monki-focus/api   # one workspace
+npm run format:check
+
+# Extension E2E (Playwright's Chromium: `npx playwright install chromium` in extension/).
+npm run e2e -w extension
+
+# Server stack smoke, on its own ephemeral services.
+npx --no-install turbo run build --filter=@monki-focus/api && bash scripts/e2e.sh
+
+# Android (JDK 21; ANDROID_HOME or android/local.properties for the Android modules).
+(cd android && ./gradlew spotlessCheck lintDebug testDebugUnitTest assembleDebug --continue)
+(cd android && ./gradlew spotlessCheck :core-domain:test :detectors:test :core-crypto:test)
+
+# Guard scripts, including the cloud setup specification.
+bash scripts/ci/self-test.sh
+```
+
+No test needs a real secret or an external API: ntfy is real but local, the LLM
+provider is `fake`, and the test env files (`server/api/.env.test`,
+`e2e/e2e.env`) are committed with throwaway values.
+
+## Cloud sessions
+
+Anthropic-hosted sessions start from a fresh clone on Ubuntu 24.04 x86_64.
+`.claude/settings.json` runs `scripts/cloud-setup.sh` on startup and resume. It
+is a no-op anywhere else. It installs the Node of `.nvmrc` when missing (the
+image stops at 22), runs the CI install only when a lockfile or manifest
+changed, starts the test services and persists the environment. It always exits
+0: read its summary at the start of the session, and the log it names when a
+step says `FAILED`. A failed browser download is not retried until the
+lockfile changes, so run the Playwright install above by hand if needed.
+
+- **Doesn't exist there:** `docs/internal/` (work from `docs/`), personal skills
+  and MCP servers. Put what a subagent needs in its brief.
+- **Can't run there:** the macOS app and `MonkiCore` (they need Darwin and
+  Xcode; CI's `macos` job is the authority) and Android instrumented tests.
+- **GitHub goes through a proxy:** GraphQL is rejected, so `gh pr`, `gh issue`
+  and auto-merge don't work. Use `gh api` (REST). Pushing tags and deleting
+  branches are rejected too. Don't set `GH_TOKEN`.
+- **Long commands:** the full suite outlasts the default command timeout. Run it
+  in the background.
+
+## Delivery: no owner approval needed for now
+
+The owner chose an independent flow: agents merge their own pull requests and
+that deploys. No gate waits for a person, so the automatic ones are the only
+protection and none of them may be skipped.
+
+```bash
+gh api repos/{owner}/{repo}/pulls -f head="$BRANCH" -f base=main -f title="$TITLE" -f body="$BODY"
+gh api "repos/{owner}/{repo}/commits/$SHA/check-runs" --paginate --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'
+gh api --method PUT "repos/{owner}/{repo}/pulls/$PR/merge" -f merge_method=rebase --jq .sha
+```
+
+1. **Merge only when** the layers above that apply are green, the required
+   checks (`ci`, `commitlint`, `gitleaks`) passed, and, for the paths under
+   "Security review required", a read-only reviewer subagent approved. A PR with
+   a failed check isn't merged, and rules are never bypassed or force-pushed.
+2. **Stop and ask the owner** before anything hard to undo that CI can't judge:
+   a migration that drops or rewrites data, rotating keys, weakening a gate in
+   `.github/` or `scripts/ci/`, or a change to what the guardian can see.
+3. **After the merge,** a commit touching `server/`, the shared packages it
+   ships, `Dockerfile`, `docker/` or the root `package*.json` deploys by itself
+   through the deploy panel. Poll `$PROD_HEALTH_URL` (an environment variable,
+   never in the repo) until `status` is `ok` and `sha` is the merged commit.
+4. **If it doesn't get there in 15 minutes, or prod is unhealthy,** open a revert
+   PR, merge it the same way, confirm prod recovered and tell the owner. Agents
+   have no deploy panel credentials: forward fixes and reverts are the only
+   rollback, which is why migrations stay additive.
+5. **Release PRs** (`chore(repo): release <component> X.Y.Z`) are merged the same
+   way and publish public artefacts. Skip the `android` one until the signing
+   secrets exist in the `release` environment, because its publish job would
+   fail.
+
 ## Known traps (each one already cost time)
 
 - **commitlint's `signed-off-by` rule demands sign-off as the very last
   line**, so it rejects a `Co-Authored-By` placed after it. The config uses
   `trailer-exists` instead. `git commit -s` with the trailer inside `-m`
   duplicates the sign-off; use `--trailer` for extra trailers.
+- **`main` is merged by rebase, so commit hashes change.** Comparing a branch
+  with `git log origin/main..branch` overstates unmerged work. Before deleting a
+  branch or worktree, check `git cherry origin/main <sha>` and the PR's state.

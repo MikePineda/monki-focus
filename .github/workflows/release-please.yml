@@ -16,7 +16,7 @@
 #              unsigned artefact and its SBOM and uploads them as a workflow
 #              artifact. Third-party actions (setup-xcode, docker/*, anchore)
 #              only ever run here.
-#   *-publish  the `release` environment (required reviewer). Runs only
+#   *-publish  the `release` environment (main only). Runs only
 #              first-party actions (actions/*, sigstore/cosign-installer) and
 #              preinstalled CLIs: signs (Android keystore lives only here),
 #              writes SHA256SUMS, attests build provenance, uploads to the
