@@ -32,12 +32,17 @@ import {
 } from '../background/shorts/ShortsRedirectSync'
 import { openMonkiDb } from '../background/storage/db'
 import { DbConnection } from '../background/storage/DbConnection'
+import { requestNonce } from '../background/sync/RequestNonce'
+import { RuleSetSync, SERVER_SYNC_ALARM, SERVER_SYNC_MINUTES } from '../background/sync/RuleSetSync'
+import { ServerClient } from '../background/sync/ServerClient'
+import { ServerConnectionStore } from '../background/sync/ServerConnectionStore'
 import { createTrackingModule } from '../background/tracking/TrackingModule'
 import { trackingTimingFor } from '../background/tracking/TrackingTiming'
 import { bundledRulesCatalog } from '../shared/bundledRulesCatalog'
 import { systemClock } from '../shared/clock'
 import { decisionChangedMessage } from '../shared/messages'
 import { runtimeClock } from '../shared/RuntimeClock'
+import { validateRuleset } from '../shared/RulesetValidation'
 
 // Wiring only: every behaviour lives in a module under src/background.
 // Failures are swallowed here on purpose (reason codes only, never URLs):
@@ -64,6 +69,22 @@ export default defineBackground(() => {
     catalog,
     clock: gateClock,
     onPendingChanged: pendingRulesAlarm(browser.alarms),
+  })
+  // Rule set sync with the user's own server (only once they connected one):
+  // incoming sets go through `ruleChanges`, the Options editor's path.
+  const serverSync = new RuleSetSync({
+    connections: new ServerConnectionStore(browser.storage.local),
+    client: (origin) =>
+      new ServerClient({
+        origin,
+        fetch: (url, init) => fetch(url, init),
+        extensionVersion: extensionVersion(browser.runtime),
+      }),
+    rules: ruleChanges,
+    validate: validateRuleset,
+    clock: systemClock,
+    boot: crypto.randomUUID(),
+    nonce: () => requestNonce(),
   })
   const shortsRedirect = new ShortsRedirectSync(decisionService, browser.declarativeNetRequest)
   const reelsRedirect = new ShortsRedirectSync(
@@ -187,6 +208,7 @@ export default defineBackground(() => {
   })
   browser.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === PENDING_RULES_ALARM) void ruleChanges.promoteIfDue().catch(() => undefined)
+    if (alarm.name === SERVER_SYNC_ALARM) void serverSync.run().catch(() => undefined)
     if (alarm.name === VALIDITY_ALARM) {
       // A decision ran out: decide the redirects and the open pages again.
       validity.rang()
@@ -204,6 +226,8 @@ export default defineBackground(() => {
     void ruleChanges.promoteIfDue().catch(() => undefined)
   })
   void browser.alarms.create(RESTRICTION_ALARM, { periodInMinutes: RESTRICTION_CHECK_MINUTES })
+  void browser.alarms.create(SERVER_SYNC_ALARM, { periodInMinutes: SERVER_SYNC_MINUTES })
+  void serverSync.run().catch(() => undefined)
   void ruleChanges.promoteIfDue().catch(() => undefined)
   void shortsRedirect.sync().catch(() => undefined)
   void reelsRedirect.sync().catch(() => undefined)
