@@ -3,6 +3,9 @@
 # Dependency updates. Commit prefixes keep Conventional Commits:
 # `build(deps): …` for application dependencies, `ci(deps): …` for actions
 # (still pinned by SHA; Dependabot bumps the SHA and the `# vX.Y.Z` comment).
+# npm updates that touch only dev dependencies use `chore(deps-dev): …`, which
+# never cuts a release; `prefix-development` is not available on the other
+# ecosystems listed here.
 # Ecosystems whose directory has no manifest yet (gradle, swift, docker) are
 # reported as "dependency file not found" in the Dependabot log until the
 # component lands; nothing else breaks. Every ecosystem waits 7 days after a
@@ -24,6 +27,7 @@ updates:
         update-types: ['version-update:semver-major']
     commit-message:
       prefix: build
+      prefix-development: chore
       include: scope
     groups:
       adonisjs:
