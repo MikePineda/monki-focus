@@ -62,6 +62,9 @@ export async function launchExtension({
       `--disable-extensions-except=${buildDir}`,
       `--load-extension=${buildDir}`,
       `--host-resolver-rules=${hostResolverRules(fixturePort)}`,
+      // Every host resolves to the local fixture server, so a proxy in the
+      // environment (cloud sessions have one) could only break the run.
+      '--no-proxy-server',
       '--ignore-certificate-errors',
       ...(locale ? [`--lang=${locale}`] : []),
     ],
