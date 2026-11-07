@@ -29,7 +29,7 @@
     "e2e": {
       "dependsOn": ["^build"],
       "cache": false,
-      "passThroughEnv": ["E2E_SLOT", "E2E_WORKERS"]
+      "passThroughEnv": ["E2E_SLOT", "E2E_WORKERS", "PLAYWRIGHT_BROWSERS_PATH"]
     }
   }
 }
