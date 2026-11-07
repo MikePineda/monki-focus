@@ -130,6 +130,13 @@ for call in 'Timber.i("node %s", node.text)' 'Log.d(TAG, node.contentDescription
   expect "logging: fails on ${call%%(*}" 1 bash "$script_dir/check-android-logging.sh" "$tmp/android"
 done
 
+# --- cloud-setup.sh ----------------------------------------------------------
+if bash "$script_dir/cloud-setup-test.sh"; then
+  pass 'cloud setup: specification passes'
+else
+  fail 'cloud setup: specification passes'
+fi
+
 if [[ $failures -gt 0 ]]; then
   echo "self-test: ${failures} failure(s)" >&2
   exit 1
