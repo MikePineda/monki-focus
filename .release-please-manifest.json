@@ -4,7 +4,7 @@
   "packages/analytics": "0.0.0",
   "packages/protocol": "0.0.0",
   "extension": "0.0.0",
-  "server": "0.0.0",
+  "server": "1.0.0",
   "android": "0.0.0",
   "macos": "0.0.0"
 }

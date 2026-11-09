@@ -1,6 +1,6 @@
 {
   "name": "@monki-focus/api",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "monki-focus optional self-hostable server: guardian unlocks, analytics sync and reports (AdonisJS).",
@@ -28,7 +28,6 @@
     "#models/*": "./app/models/*.js",
     "#validators/*": "./app/validators/*.js",
     "#transformers/*": "./app/transformers/*.js",
-    "#commands/*": "./commands/*.js",
     "#middleware/*": "./app/middleware/*.js",
     "#domain/*": "./app/domain/*.js",
     "#http/*": "./app/http/*.js",
