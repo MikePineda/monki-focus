@@ -50,3 +50,6 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-11-07 Security: OSV reports deepmerge (low, no patched version) and minimatch (medium, fixed only in 11.x, which is a major for its transitive parents); revisit when a parent moves or a patch ships.
 - 2026-11-07 Cloud sessions: make `scripts/cloud-setup.sh` retry a failed Playwright browser download, which currently waits for the next lockfile change.
 - 2026-11-07 Extension E2E: `useRuleset` can see zero gate redirects before the starter's are installed, so `reddit_home_is_served_by_the_local_fixture_server` sometimes lands on the gate (seen once in CI, then 48/48 on rerun); wait for the redirects to settle before the test starts.
+- 2026-11-09 Cloud sessions: the Maven mirror sits ahead of `google()` with no content filter; exclude `androidx.*` and `com.android.*` from it so those groups can only come from Google.
+- 2026-11-09 Cloud sessions: the specs for the Gradle mirror only grep the generated init script; a mutant that never re-adds the Plugin Portal survives, so run the script against a small fixture build.
+- 2026-11-09 Delivery: the guard in `codeql.yml` fails open (`CHANGED != 'true'`), so a wrong filter key reports every language as skipped on a code PR; cross-check a PR's paths against the filters.
