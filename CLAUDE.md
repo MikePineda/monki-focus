@@ -242,6 +242,10 @@ lockfile changes, so run the Playwright install above by hand if needed.
 - **GitHub goes through a proxy:** GraphQL is rejected, so `gh pr`, `gh issue`
   and auto-merge don't work. Use `gh api` (REST). Pushing tags and deleting
   branches are rejected too. Don't set `GH_TOKEN`.
+- **Maven Central rate-limits the shared egress IP,** and Gradle fails on the
+  first 429. The setup puts `maven-central.storage-download.googleapis.com` in
+  front of it for Gradle and Robolectric when that host is on the environment's
+  allowlist; its summary says so when it isn't.
 - **Long commands:** the full suite outlasts the default command timeout. Run it
   in the background.
 
@@ -272,15 +276,24 @@ gh api --method PUT "repos/{owner}/{repo}/pulls/$PR/merge" -f merge_method=rebas
    the deploy panel doesn't wait for CI on `main`. Then all of these must be
    complete and green: `ci`, `commitlint`, `gitleaks` and every CodeQL `analyze`
    job. The separate `CodeQL` check carries the findings and exists only when a
-   language was analysed. If `gh api "repos/{owner}/{repo}/code-scanning/analyses?ref=refs/pull/$PR/merge"`
-   lists a CodeQL analysis, the check must be complete and not `failure` (`neutral`
-   is fine). With none, as on a docs-only PR, no check is expected and its absence
-   isn't a skipped gate. An agent's own PR also needs the layers
-   above that apply. Release and Dependabot PRs get no push and no local run: CI
+   language was analysed. To tell, read the steps of the CodeQL run for the PR's
+   head commit (the code-scanning API answers 403 in cloud sessions):
+
+   ```bash
+   RUN=$(gh api "repos/{owner}/{repo}/actions/runs?head_sha=$SHA&event=pull_request" --jq '[.workflow_runs[] | select(.name == "CodeQL") | .id] | first')
+   gh api "repos/{owner}/{repo}/actions/runs/$RUN/jobs" --jq '.jobs[].steps[] | select(.name | startswith("Run github/codeql-action/analyze")) | .conclusion'
+   ```
+
+   With any `success`, the check must be complete and not `failure` (`neutral` is
+   fine). With exactly one `skipped` per `analyze` job, as on a docs-only PR, no
+   check is expected and its absence isn't a skipped gate. Any other answer, an
+   empty one included, proves nothing: stop and find out why. An agent's own PR
+   also needs the layers above that apply. Release and Dependabot PRs get no push and no local run: CI
    stands in, and to update one, comment `@dependabot rebase` or wait for
    release-please. `e2e`, `extension-e2e` and `android-instrumented` are advisory,
    so read a failure there but it doesn't block. Rules are never bypassed or
    force-pushed on `main`.
+
 3. **Reviewer required.** A read-only reviewer subagent approves any change to
    the paths under "Security review required" and to the gates themselves:
    `.github/`, `scripts/ci/`, `scripts/verify.mjs`, `scripts/e2e.sh`,

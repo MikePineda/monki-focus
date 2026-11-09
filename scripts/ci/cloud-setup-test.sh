@@ -21,6 +21,7 @@ at='@'
 proxy_user='synth%40user'
 proxy_pass='s3cr%2Ft'
 proxy_url="http://$proxy_user:$proxy_pass${at}proxy.example.com:3128"
+mirror_host='maven-central.storage-download.googleapis.com'
 
 failures=0
 spec_failed=0
@@ -123,6 +124,10 @@ curl)
   fails_if "${FAKE_ALL_FAIL:-}"
   case "$*" in
   *file://*) exec /usr/bin/curl "$@" ;;
+  *storage-download.googleapis.com*)
+    leak_probe
+    [ -n "${FAKE_MIRROR_UP:-}" ] || exit 7
+    ;;
   *) exit 7 ;;
   esac
   ;;
@@ -151,6 +156,7 @@ new_world() {
   hash_file="$repo/node_modules/.cloud-setup.sha256"
   gradle_props="$home/.gradle/gradle.properties"
   jvm_options="$home/.gradle/cloud-setup-jvm.options"
+  init_script="$home/.gradle/init.d/cloud-maven-mirror.gradle"
   mkdir -p "$repo/packages/a" "$repo/extension" "$repo/server/api" \
     "$home" "$state" "$fake" "$world/tmp" "$world/dist"
 
@@ -266,7 +272,7 @@ spec() {
 exits_immediately_outside_the_cloud() {
   local value
   for value in '' false 1 TRUE; do
-    run_setup CLAUDE_CODE_REMOTE="$value" HTTPS_PROXY="$proxy_url"
+    run_setup CLAUDE_CODE_REMOTE="$value" HTTPS_PROXY="$proxy_url" FAKE_MIRROR_UP=1
     expect_exit_zero
     [[ ! -s "$stdout" ]] || complain "printed something with CLAUDE_CODE_REMOTE='$value'"
     [[ ! -s "$stderr" ]] || complain "wrote to stderr with CLAUDE_CODE_REMOTE='$value'"
@@ -283,7 +289,7 @@ exits_immediately_outside_the_cloud() {
 uses_the_preinstalled_node_when_present() {
   run_setup
   expect_exit_zero
-  never_called 'curl'
+  never_called 'SHASUMS256.txt'
   has "$env_file" "export PATH=\"$node_root/node24/bin:\$PATH\""
   has "$stdout" 'v24.0.0'
   has "$stdout" "$node_root/node24/bin/node"
@@ -293,7 +299,7 @@ uses_the_node_on_path_when_it_has_the_wanted_major() {
   rm -rf "$node_root/node24"
   run_setup FAKE_PATH_NODE=v24.1.0
   expect_exit_zero
-  never_called 'curl'
+  never_called 'SHASUMS256.txt'
   is_absent "$node_root/node24"
   has "$stdout" 'v24.1.0'
 }
@@ -636,7 +642,7 @@ escapes_backslashes_for_the_properties_format() {
   has "$gradle_props" 'systemProp.https.proxyPassword=back\\slash'
 }
 
-writes_nothing_for_the_jvm_without_a_proxy() {
+writes_nothing_for_the_jvm_without_a_proxy_or_a_mirror() {
   run_setup
   is_absent "$home/.gradle"
   lacks "$env_file" 'JAVA_TOOL_OPTIONS'
@@ -686,6 +692,109 @@ never_prints_a_proxy_password_with_a_raw_at_sign() {
   has "$gradle_props" 'systemProp.https.proxyHost=proxy.example.com'
   lacks "$log" 'pa@ss'
   lacks "$log" 'ss@proxy'
+}
+
+# --- maven mirror --------------------------------------------------------------
+reachable_mirror_writes_a_private_init_script_idempotently() {
+  run_setup FAKE_MIRROR_UP=1
+  run_setup FAKE_MIRROR_UP=1
+  expect_exit_zero
+  is_private "$init_script"
+  has "$init_script" 'beforeSettings'
+  has "$init_script" 'settings.pluginManagement.repositories'
+  has "$init_script" 'settings.dependencyResolutionManagement.repositories'
+  has "$init_script" "https://$mirror_host/maven2/"
+  [[ "$(ls -A "$home/.gradle/init.d")" == 'cloud-maven-mirror.gradle' ]] || complain 'left work files in init.d'
+  [[ "$(grep -c 'beforeSettings' "$init_script")" == 1 ]] || complain 'init script content duplicated'
+  has "$stdout" "maven mirror: on ($mirror_host)"
+}
+
+# A build that declares no plugin repositories gets the Plugin Portal only while
+# the list is empty, which the mirror would otherwise end.
+init_script_keeps_the_default_plugin_portal() {
+  run_setup FAKE_MIRROR_UP=1
+  has "$init_script" 'settingsEvaluated'
+  has "$init_script" 'gradlePluginPortal()'
+}
+
+probes_the_mirror_once_with_a_short_timeout() {
+  run_setup FAKE_MIRROR_UP=1
+  call_count "$mirror_host" 1
+  has "$state/calls" '--max-time'
+  lacks "$state/calls" '--retry'
+  # The JVM ignores NO_PROXY, so the probe has to take the path the builds take.
+  has "$state/calls" '--noproxy'
+}
+
+blocked_mirror_removes_a_stale_init_script_and_names_the_domain() {
+  run_setup FAKE_MIRROR_UP=1
+  is_file "$init_script"
+  run_setup
+  expect_exit_zero
+  is_absent "$init_script"
+  has "$stdout" "maven mirror: blocked, allow $mirror_host"
+  [[ "$(grep -c "$mirror_host" "$stdout")" == 1 ]] || complain 'expected one summary line naming the domain'
+}
+
+a_failed_mirror_probe_still_exits_zero() {
+  run_setup
+  expect_exit_zero
+  [[ ! -s "$stderr" ]] || complain 'wrote to stderr'
+  is_absent "$init_script"
+  has "$stdout" 'dependencies: installed'
+}
+
+an_unwritable_init_directory_is_reported_and_keeps_the_flags_off() {
+  : >"$home/.gradle"
+  run_setup FAKE_MIRROR_UP=1
+  expect_exit_zero
+  has "$stdout" 'maven mirror: FAILED'
+  lacks "$env_file" 'JAVA_TOOL_OPTIONS'
+}
+
+robolectric_flags_are_written_with_a_proxy() {
+  run_setup HTTPS_PROXY="$proxy_url" FAKE_MIRROR_UP=1
+  has "$jvm_options" '-Dhttps.proxyHost="proxy.example.com"'
+  has "$jvm_options" "-Drobolectric.dependency.repo.url=\"https://$mirror_host/maven2/\""
+  has "$jvm_options" '-Drobolectric.dependency.repo.id="cloudMavenCentralMirror"'
+  is_private "$jvm_options"
+}
+
+robolectric_flags_are_written_without_a_proxy() {
+  run_setup FAKE_MIRROR_UP=1
+  has "$jvm_options" "-Drobolectric.dependency.repo.url=\"https://$mirror_host/maven2/\""
+  lacks "$jvm_options" 'proxyHost'
+  is_private "$jvm_options"
+  has "$env_file" "export JAVA_TOOL_OPTIONS='-XX:VMOptionsFile=$jvm_options'"
+  is_absent "$gradle_props"
+}
+
+robolectric_flags_are_absent_when_the_mirror_is_blocked() {
+  run_setup HTTPS_PROXY="$proxy_url" FAKE_MIRROR_UP=1
+  has "$jvm_options" 'robolectric'
+  run_setup HTTPS_PROXY="$proxy_url"
+  lacks "$jvm_options" 'robolectric'
+  has "$jvm_options" '-Dhttps.proxyHost="proxy.example.com"'
+}
+
+# JAVA_TOOL_OPTIONS may still name the file, and a JVM refuses to start when the
+# options file is missing, so it is emptied instead of removed.
+a_blocked_mirror_empties_the_options_file_instead_of_removing_it() {
+  run_setup FAKE_MIRROR_UP=1
+  has "$jvm_options" 'robolectric'
+  run_setup
+  expect_exit_zero
+  is_file "$jvm_options"
+  [[ ! -s "$jvm_options" ]] || complain 'options file should be empty'
+  is_private "$jvm_options"
+}
+
+an_unparseable_proxy_still_gets_the_mirror_flags_and_no_proxy_flags() {
+  run_setup HTTPS_PROXY='http://proxy.example.com:notaport' FAKE_MIRROR_UP=1
+  expect_exit_zero
+  has "$jvm_options" 'robolectric.dependency.repo.url'
+  lacks "$jvm_options" 'proxyHost'
+  is_absent "$gradle_props"
 }
 
 # --- failure and summary -------------------------------------------------------
@@ -784,12 +893,23 @@ for name in \
   replaces_the_proxy_block_when_the_proxy_changes \
   reads_a_lowercase_proxy_without_a_scheme_or_credentials \
   escapes_backslashes_for_the_properties_format \
-  writes_nothing_for_the_jvm_without_a_proxy \
+  writes_nothing_for_the_jvm_without_a_proxy_or_a_mirror \
   jvm_flags_reach_test_jvms_from_a_private_file \
   java_tool_options_never_carries_credentials \
   keeps_existing_java_tool_options \
   never_prints_proxy_credentials \
   never_prints_a_proxy_password_with_a_raw_at_sign \
+  reachable_mirror_writes_a_private_init_script_idempotently \
+  init_script_keeps_the_default_plugin_portal \
+  probes_the_mirror_once_with_a_short_timeout \
+  blocked_mirror_removes_a_stale_init_script_and_names_the_domain \
+  a_failed_mirror_probe_still_exits_zero \
+  an_unwritable_init_directory_is_reported_and_keeps_the_flags_off \
+  robolectric_flags_are_written_with_a_proxy \
+  robolectric_flags_are_written_without_a_proxy \
+  robolectric_flags_are_absent_when_the_mirror_is_blocked \
+  a_blocked_mirror_empties_the_options_file_instead_of_removing_it \
+  an_unparseable_proxy_still_gets_the_mirror_flags_and_no_proxy_flags \
   exits_zero_when_every_step_fails \
   exits_zero_when_the_repo_is_unusable \
   exits_zero_when_the_log_cannot_be_written \
