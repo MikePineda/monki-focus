@@ -458,7 +458,7 @@ EOF
 }
 
 maven_mirror_answers() {
-  log_step curl -fsS --connect-timeout 5 --max-time 15 -o /dev/null \
+  log_step curl -fsS --noproxy '' --connect-timeout 5 --max-time 15 -o /dev/null \
     "${maven_mirror_url}org/robolectric/android-all-instrumented/maven-metadata.xml"
 }
 

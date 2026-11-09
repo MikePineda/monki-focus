@@ -722,6 +722,8 @@ probes_the_mirror_once_with_a_short_timeout() {
   call_count "$mirror_host" 1
   has "$state/calls" '--max-time'
   lacks "$state/calls" '--retry'
+  # The JVM ignores NO_PROXY, so the probe has to take the path the builds take.
+  has "$state/calls" '--noproxy'
 }
 
 blocked_mirror_removes_a_stale_init_script_and_names_the_domain() {
