@@ -1,6 +1,6 @@
 {
   "name": "@monki-focus/analytics",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Pure TypeScript analytics core of monki-focus: ActivityWatch-compatible events, heartbeat merging, categorisation, the focus pulse, 5-minute blocks, browser dedupe, cross-device capping and ActivityWatch export.",
   "license": "AGPL-3.0-or-later",
