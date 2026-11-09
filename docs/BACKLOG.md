@@ -50,4 +50,3 @@ Ideas that are out of the current scope. One dated line each; newest last.
 - 2026-11-07 Security: OSV reports deepmerge (low, no patched version) and minimatch (medium, fixed only in 11.x, which is a major for its transitive parents); revisit when a parent moves or a patch ships.
 - 2026-11-07 Cloud sessions: make `scripts/cloud-setup.sh` retry a failed Playwright browser download, which currently waits for the next lockfile change.
 - 2026-11-07 Extension E2E: `useRuleset` can see zero gate redirects before the starter's are installed, so `reddit_home_is_served_by_the_local_fixture_server` sometimes lands on the gate (seen once in CI, then 48/48 on rerun); wait for the redirects to settle before the test starts.
-- 2026-11-07 Delivery: test line added by an agent to exercise the PR, checks and merge flow end to end; safe to delete.
