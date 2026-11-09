@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # Prepares an Anthropic-hosted Claude Code cloud session: the Node version of
-# .nvmrc, the dependencies, the test services, the session environment and the
-# JVM proxy. Runs from the SessionStart hook in .claude/settings.json, on startup
+# .nvmrc, the dependencies, the test services, the session environment, the JVM
+# proxy and the Maven Central mirror. Runs from the SessionStart hook in .claude/settings.json, on startup
 # and on resume, so every step is idempotent and fast when nothing changed.
 #
 # It does nothing outside a cloud session. It never fails the session: it always
@@ -331,6 +331,7 @@ proxy_host=''
 proxy_port=''
 proxy_user=''
 proxy_password=''
+proxy_parsed=''
 
 percent_decode() {
   local value="${1//\\/\\\\}"
@@ -409,6 +410,74 @@ write_gradle_proxy() {
   } | write_private_file "$file"
 }
 
+step_jvm_proxy() {
+  local url="${HTTPS_PROXY:-${https_proxy:-}}" gradle_dir="${HOME:-/root}/.gradle"
+  [ -n "$url" ] || return 0
+  if ! parse_proxy_url "$url"; then
+    echo 'jvm proxy: the proxy variable could not be parsed, skipping'
+    return 0
+  fi
+  (umask 077 && mkdir -p "$gradle_dir") || return 0
+  write_gradle_proxy "$gradle_dir" || echo 'jvm proxy: could not write gradle.properties'
+  proxy_parsed=1
+}
+
+# --- 6. Maven mirror -----------------------------------------------------------
+# Maven Central answers 429 to the shared cloud egress and Gradle treats any 429
+# as fatal, so Gradle and Robolectric read from Google's mirror of Central when
+# the environment's domain allowlist lets it through.
+maven_mirror_host='maven-central.storage-download.googleapis.com'
+maven_mirror_url="https://$maven_mirror_host/maven2/"
+maven_mirror_id='cloudMavenCentralMirror'
+maven_mirror_status="blocked, allow $maven_mirror_host in the environment's network settings"
+maven_mirror_on=''
+
+# Runs for every build of the composite, included builds too. The repository list
+# is still empty here, so the mirror lands ahead of everything the settings script
+# declares, and those stay as the fallback for whatever the mirror answers 404.
+maven_mirror_init_script() {
+  cat <<EOF
+// Written by scripts/cloud-setup.sh; rewritten on every session start.
+beforeSettings { settings ->
+    def addMirror = { repositories ->
+        repositories.maven { repository ->
+            repository.name = '$maven_mirror_id'
+            repository.url = '$maven_mirror_url'
+        }
+    }
+    addMirror(settings.pluginManagement.repositories)
+    addMirror(settings.dependencyResolutionManagement.repositories)
+    // The Plugin Portal is the default only while no plugin repository is declared.
+    settings.gradle.settingsEvaluated {
+        if (settings.pluginManagement.repositories.size() == 1) {
+            settings.pluginManagement.repositories.gradlePluginPortal()
+        }
+    }
+}
+EOF
+}
+
+maven_mirror_answers() {
+  log_step curl -fsS --connect-timeout 5 --max-time 15 -o /dev/null \
+    "${maven_mirror_url}org/robolectric/android-all-instrumented/maven-metadata.xml"
+}
+
+step_maven_mirror() {
+  local init_dir="${HOME:-/root}/.gradle/init.d" init_script
+  init_script="$init_dir/cloud-maven-mirror.gradle"
+  if ! maven_mirror_answers; then
+    rm -f "$init_script"
+    return 0
+  fi
+  if (umask 077 && mkdir -p "$init_dir") && maven_mirror_init_script | write_private_file "$init_script"; then
+    maven_mirror_on=1
+    maven_mirror_status="on ($maven_mirror_host)"
+  else
+    maven_mirror_status='FAILED (could not write the init script)'
+  fi
+}
+
+# --- 7. JVM options ------------------------------------------------------------
 # One flag per line, quoted the way HotSpot's options file parser expects.
 jvm_flag() {
   case "$2" in
@@ -432,9 +501,9 @@ jvm_proxy_flags() {
 # Test JVMs do not read gradle.properties, hence JAVA_TOOL_OPTIONS. The JVM echoes
 # that variable to stderr on every start ("Picked up JAVA_TOOL_OPTIONS: ..."), so
 # it only names a private file holding the flags, never the credentials.
-export_jvm_proxy() {
-  local options_file="$1/cloud-setup-jvm.options" options quote="'" escaped="'\\''"
-  jvm_proxy_flags | write_private_file "$options_file" || return 1
+export_jvm_options() {
+  local options_file="$1" options quote="'" escaped="'\\''"
+  jvm_options | write_private_file "$options_file" || return 1
   options="-XX:VMOptionsFile=$options_file"
   case "${JAVA_TOOL_OPTIONS:-}" in
   '') ;;
@@ -444,19 +513,34 @@ export_jvm_proxy() {
   append_env_line "export JAVA_TOOL_OPTIONS='${options//$quote/$escaped}'"
 }
 
-step_jvm_proxy() {
-  local url="${HTTPS_PROXY:-${https_proxy:-}}" gradle_dir="${HOME:-/root}/.gradle"
-  [ -n "$url" ] || return 0
-  if ! parse_proxy_url "$url"; then
-    echo 'jvm proxy: the proxy variable could not be parsed, skipping'
+# Robolectric downloads its android-all jars itself, outside Gradle's repositories.
+# It has no fallback, so these flags exist only while the mirror answers.
+jvm_mirror_flags() {
+  jvm_flag robolectric.dependency.repo.url "$maven_mirror_url"
+  jvm_flag robolectric.dependency.repo.id "$maven_mirror_id"
+}
+
+jvm_options() {
+  if [ -n "$proxy_parsed" ]; then jvm_proxy_flags; fi
+  if [ -n "$maven_mirror_on" ]; then jvm_mirror_flags; fi
+}
+
+# With nothing to pass, a file left by an earlier run is emptied and not removed:
+# JAVA_TOOL_OPTIONS may still name it, and a JVM will not start without it.
+step_jvm_options() {
+  local gradle_dir="${HOME:-/root}/.gradle" options_file
+  options_file="$gradle_dir/cloud-setup-jvm.options"
+  if [ -z "$proxy_parsed$maven_mirror_on" ]; then
+    if [ -f "$options_file" ]; then
+      write_private_file "$options_file" </dev/null || echo 'jvm options: could not empty the JVM options file'
+    fi
     return 0
   fi
   (umask 077 && mkdir -p "$gradle_dir") || return 0
-  write_gradle_proxy "$gradle_dir" || echo 'jvm proxy: could not write gradle.properties'
-  export_jvm_proxy "$gradle_dir" || echo 'jvm proxy: could not write the JVM options file'
+  export_jvm_options "$options_file" || echo 'jvm options: could not write the JVM options file'
 }
 
-# --- 6. Summary ----------------------------------------------------------------
+# --- 8. Summary ----------------------------------------------------------------
 print_summary() {
   {
     echo 'cloud session setup:'
@@ -465,6 +549,7 @@ print_summary() {
     echo "git hooks: $git_hooks_status"
     echo "services: $services_status"
     echo "android sdk: $android_status"
+    echo "maven mirror: $maven_mirror_status"
     echo "log: $log"
   } >&3
 }
@@ -475,6 +560,8 @@ if cd "$repo"; then
   step_services
   step_environment
   step_jvm_proxy
+  step_maven_mirror
+  step_jvm_options
 fi
 print_summary
 exit 0
