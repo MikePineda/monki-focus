@@ -46,6 +46,11 @@ export function consumeBypassBatch(deviceId: number) {
   return consume(`bypass_events:device_${deviceId}`, 120, '1 hour')
 }
 
+/** Activity block batches: 120 per hour per device, like bypass batches. */
+export function consumeActivityBatch(deviceId: number) {
+  return consume(`activity_blocks:device_${deviceId}`, 120, '1 hour')
+}
+
 export function consumeTokenRotation(deviceId: number) {
   return consume(`token_rotation:device_${deviceId}`, 10, '1 hour')
 }

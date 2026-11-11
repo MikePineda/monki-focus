@@ -73,6 +73,7 @@ test.group('Database schema', () => {
     assert.deepEqual(
       result.rows.map((row) => row.definition),
       [
+        'activity_blocks.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
         'bypass_events.FOREIGN KEY (ward_user_id) REFERENCES users(id) ON DELETE CASCADE',
         'device_enrollment_codes.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
         'devices.FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
@@ -105,6 +106,7 @@ test.group('Database schema', () => {
     assert.deepEqual(
       result.rows.map((row) => row.definition),
       [
+        'activity_blocks.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE',
         'auth_access_tokens.FOREIGN KEY (tokenable_id) REFERENCES devices(id) ON DELETE CASCADE',
         'bypass_events.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL',
         'device_enrollment_codes.FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL',
