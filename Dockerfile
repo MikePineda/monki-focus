@@ -19,7 +19,7 @@ ARG NODE_IMAGE=node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054
 # HEAD of the checkout in the build context (bind-mounted, never copied),
 # else "unknown" (for example a git worktree, whose .git is a pointer).
 ########################################################################
-FROM alpine/git:v2.54.0@sha256:4fac439ee3b9204bec99c712b8a15942999632458f716ae8149fbb97cb760cd4 AS gitsha
+FROM alpine/git:v2.54.0@sha256:6a1fdb962814ca11508ca8d1bab94375b5b7ac4e4a9a40981c29fc32c02f095d AS gitsha
 ARG GIT_SHA=""
 RUN --mount=type=bind,target=/src \
     if [ -n "$GIT_SHA" ]; then echo "$GIT_SHA"; \
